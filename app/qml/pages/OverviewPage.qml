@@ -43,23 +43,59 @@ Page {
         }
     }
 
-    // Live tiles
+    // Live tiles (same height: each has a 34 px chart or bar area)
     Row { width: parent.width; spacing: 14
         property real w: (width - 14 * 3) / 4
-        Tile { width: parent.w; label: tr("ov.cpu"); value: Math.round(app.mon["cpu"] || 0) + "%"; sub: (app.pcProfile["threads"] || "") + " thr"; spark: app.cpuHistory; sparkColor: Theme.accent2 }
-        Tile { width: parent.w; label: tr("ov.ram"); value: Math.round(app.mon["ram"] || 0) + "%"; sub: app.size(app.mon["ram_used"] || 0) + " " + tr("common.of") + " " + app.size(app.mon["ram_total"] || 0); spark: app.ramHistory; sparkColor: Theme.accent3 }
-        Tile { width: parent.w; label: tr("ov.disk") + " " + app.selectedDrive + ":"
+        Tile { width: parent.w; icon: "cpu"; label: tr("ov.cpu"); value: Math.round(app.mon["cpu"] || 0) + "%"
+            sub: (app.pcProfile["threads"] || "") + " " + tr("u.thr"); spark: app.cpuHistory; sparkColor: Theme.accent2 }
+        Tile { width: parent.w; icon: "memory-stick"; label: tr("ov.ram"); value: Math.round(app.mon["ram"] || 0) + "%"
+            sub: app.size(app.mon["ram_used"] || 0) + " " + tr("common.of") + " " + app.size(app.mon["ram_total"] || 0); spark: app.ramHistory; sparkColor: Theme.accent3 }
+        Tile { width: parent.w; icon: "hard-drive"; label: tr("ov.disk") + " " + app.selectedDrive + ":"
             property var v: { var vs = app.volumeList; for (var i = 0; i < vs.length; i++) if (vs[i].letter === app.selectedDrive) return vs[i]; return vs[0] || {} }
-            value: app.size(v.free || 0); sub: tr("common.free") + " " + tr("common.of") + " " + app.size(v.total || 0) }
-        Tile { width: parent.w; label: tr("ov.startup")
-            value: { var n = 0; var l = app.startupList; for (var i = 0; i < l.length; i++) if (l[i].enabled) n++; return n }
-            sub: tr("ov.startup.sub") }
+            value: app.size(v.free || 0); sub: tr("common.free") + " " + tr("common.of") + " " + app.size(v.total || 0)
+            bar: v.total ? 1 - (v.free || 0) / v.total : -1; alarm: true }
+        Tile { width: parent.w; icon: "power"; label: tr("ov.startup")
+            property int on: { var n = 0; var l = app.startupList; for (var i = 0; i < l.length; i++) if (l[i].enabled) n++; return n }
+            value: on; sub: tr("ov.startup.sub"); sparkColor: Theme.accent2
+            bar: app.startupList.length ? on / app.startupList.length : -1 }
+    }
+
+    // Quick actions
+    component ActionCard: Card {
+        id: ac
+        property string icon: ""
+        property string title: ""
+        property string sub: ""
+        signal clicked()
+        pad: 16
+        color: hov.containsMouse ? Theme.cardAlt : Theme.card
+        Row { width: parent.width; spacing: 14
+            Rectangle { width: 42; height: 42; radius: 12; anchors.verticalCenter: parent.verticalCenter
+                gradient: Gradient { orientation: Gradient.Horizontal; GradientStop { position: 0; color: Theme.accent } GradientStop { position: 1; color: Theme.accent3 } }
+                Icon { anchors.centerIn: parent; name: ac.icon; size: 20; color: "white" } }
+            Column { width: parent.width - 56; spacing: 2; anchors.verticalCenter: parent.verticalCenter
+                Txt { text: ac.title; bold: true; font.pixelSize: 14; width: parent.width; elide: Text.ElideRight; maximumLineCount: 1 }
+                Txt { text: ac.sub; muted: true; font.pixelSize: 12; width: parent.width; elide: Text.ElideRight; maximumLineCount: 1 } }
+        }
+        MouseArea { id: hov; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: ac.clicked() }
+    }
+    Row { width: parent.width; spacing: 14
+        property real w: (width - 14 * 2) / 3
+        ActionCard { width: parent.w; icon: "shield-check"; title: tr("ov.qa.privacy")
+            sub: tr1("ov.qa.privacy.sub", app.privacyOn + " " + tr("common.of") + " " + app.privacy.length); onClicked: go("privacy") }
+        ActionCard { width: parent.w; icon: "memory-stick"; title: tr("ov.qa.ram")
+            sub: tr1("ov.qa.ram.sub", Math.round(app.mon["ram"] || 0) + "%"); onClicked: if (!app.busy) app.freeRam() }
+        ActionCard { width: parent.w; icon: "hard-drive"; title: tr("ov.qa.disks"); sub: tr("ov.qa.disks.sub")
+            onClicked: { go("disks"); if (!app.busy) app.scanDrives() } }
     }
 
     // Quick clean
     Card {
-        Row { width: parent.width; spacing: 20
-            Column { width: parent.width - 220; spacing: 4; anchors.verticalCenter: parent.verticalCenter
+        Row { width: parent.width; spacing: 18
+            Rectangle { width: 52; height: 52; radius: 15; anchors.verticalCenter: parent.verticalCenter
+                gradient: Gradient { orientation: Gradient.Horizontal; GradientStop { position: 0; color: Theme.accent } GradientStop { position: 1; color: Theme.accent3 } }
+                Icon { anchors.centerIn: parent; name: "sparkles"; size: 26; color: "white" } }
+            Column { width: parent.width - 290; spacing: 4; anchors.verticalCenter: parent.verticalCenter
                 Txt { text: tr("ov.quick"); font.pixelSize: 17; bold: true; font.weight: Font.Bold }
                 Txt { text: tr("ov.quick.hint"); muted: true; width: parent.width }
             }

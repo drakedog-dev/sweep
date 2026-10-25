@@ -1,6 +1,15 @@
 # Sweep
 
-Clean, de-bloat and speed up Windows in one click. Free, open source, works offline.
+<p align="center">
+  <a href="../../releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/pabloescobarbl-ops/sweep?label=release&color=7C3AED"></a>
+  <a href="../../releases"><img alt="Downloads" src="https://img.shields.io/github/downloads/pabloescobarbl-ops/sweep/total?color=2563EB"></a>
+  <img alt="Windows 10 and 11" src="https://img.shields.io/badge/Windows-10%20%7C%2011-0EA5E9">
+  <a href="LICENSE"><img alt="MIT licence" src="https://img.shields.io/badge/licence-MIT-34D399"></a>
+</p>
+
+<p align="center"><b>Clean, de-bloat and speed up Windows in one click.</b><br>Free, open source, no ads, no telemetry.</p>
+
+<p align="center"><img src="docs/hero-en.png" alt="Sweep: Privacy page in the dark theme and Overview in the light theme" width="100%"></p>
 
 **Version 1.0** is a full rewrite: a native-feeling Qt interface with smooth animations, live CPU, memory and disk monitors, a **PC profile** that adapts recommendations to weak, mid-range and powerful machines, Windows visual-effects and power-plan presets, English and Russian, dark and light themes with five accent colours.
 
@@ -13,6 +22,15 @@ Windows 10 and 11. Sweep goes online only to check GitHub for updates (on start 
 Grab `Sweep-Setup-x.y.exe` from the [latest release](../../releases/latest) and run it. Sweep asks for administrator rights (the usual Windows UAC prompt) because privacy switches, services and system startup entries cannot be changed without them. If you decline, it still opens with a banner and a **Grant rights** button.
 
 Windows SmartScreen may warn about an unknown publisher because the build is not code-signed yet. Click **More info**, then **Run anyway**. The full source is in this repository.
+
+**Kaspersky users.** Kaspersky places unsigned programs into a restricted group and silently blocks their registry changes, so privacy switches will not stick. Add `C:\Program Files\Sweep\Sweep.exe` to trusted applications (Kaspersky settings → Threats and Exclusions → Specify trusted applications) and tick "Do not monitor application activity". Sweep recognises this situation and shows the same hint on the Privacy page.
+
+## Screenshots
+
+| | |
+|---|---|
+| ![Overview](docs/screens/en-overview.png) | ![Junk](docs/screens/en-junk.png) |
+| ![Disks](docs/screens/en-disks.png) | ![Light theme](docs/screens/en-light.png) |
 
 ## What it does
 

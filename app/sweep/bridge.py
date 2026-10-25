@@ -286,7 +286,9 @@ class App(QObject):
 
     @Property("QVariantList", notify=changed)
     def startupList(self):
-        return [{"name": e["name"], "command": e.get("command", ""), "source": e.get("source", ""), "enabled": bool(e.get("enabled"))} for e in self.startup]
+        src = {"User": "start.src.user", "System": "start.src.system", "System32": "start.src.system32", "Folder": "start.src.folder"}
+        return [{"name": e["name"], "command": e.get("command", ""), "source": self.i18n.t(src[e.get("source", "")]) if e.get("source") in src else e.get("source", ""),
+                 "enabled": bool(e.get("enabled"))} for e in self.startup]
 
     @Property("QVariantList", notify=changed)
     def volumeList(self):
@@ -859,10 +861,10 @@ class App(QObject):
             return []
         t, sz = self.i18n.t, self.i18n.size
         rows = [{"section": t("sys.os"), "items": [["Windows", i.get("os", "")], [t("sys.computer").capitalize(), i.get("pc", "")], [t("sys.uptime"), self._uptime()]]}]
-        rows.append({"section": t("sys.cpu"), "items": [["", i.get("cpu", "")], ["", f"{i.get('cores', 0)} / {i.get('threads', 0)}  ·  {i.get('mhz', 0)} MHz"]]})
-        rows.append({"section": t("sys.gpu"), "items": [[g.get("name", ""), (sz(g["ram"]) + "  ·  " if g.get("ram") else "") + str(g.get("driver", ""))] for g in i.get("gpu", [])]})
+        rows.append({"section": t("sys.cpu"), "items": [["", i.get("cpu", "")], ["", t("sys.cores", i.get('cores', 0), i.get('threads', 0)) + f"  ·  {i.get('mhz', 0)} " + t("u.mhz")]]})
+        rows.append({"section": t("sys.gpu"), "items": [[g.get("name", ""), (sz(g["ram"]) + "  ·  " if g.get("ram") else "") + (t("sys.driver", g["driver"]) if g.get("driver") else "")] for g in i.get("gpu", [])]})
         rows.append({"section": t("sys.board"), "items": [["", i.get("board", "")], ["BIOS", i.get("bios", "")]]})
-        mods = [[m.get("slot", ""), f"{sz(m['size'])}  ·  {m.get('speed', '')} MHz  ·  {m.get('maker', '')}"] for m in i.get("mods", [])]
+        mods = [[m.get("slot", ""), f"{sz(m['size'])}  ·  {m.get('speed', '')} " + t("u.mhz") + f"  ·  {m.get('maker', '')}"] for m in i.get("mods", [])]
         rows.append({"section": t("sys.ram"), "items": [["", f"{sz(i.get('ram_total', 0))}  ·  {t('common.free')} {sz(i.get('ram_free', 0))}"]] + mods})
         rows.append({"section": t("sys.disks"), "items": [[d.get("name", ""), f"{sz(d['size'])}  ·  {d.get('media', '')}  ·  {d.get('bus', '')}"] for d in i.get("disks", [])]})
         temps = i.get("temps") or []

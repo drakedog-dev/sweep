@@ -9,7 +9,9 @@ Page {
         width: parent.width; visible: app.privacyHint !== ""; height: visible ? hintCol.implicitHeight + 30 : 0; radius: 14
         color: Theme.dark ? "#3A2A12" : "#FEF3C7"; border.color: Theme.warn
         Column { id: hintCol; anchors.left: parent.left; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; anchors.leftMargin: 18; anchors.rightMargin: 18; spacing: 6
-            Txt { text: "\u26A0  " + tr("priv.blocked.title"); bold: true; font.pixelSize: 14; width: parent.width; color: Theme.warn }
+            Row { spacing: 8
+                Icon { name: "triangle-alert"; size: 16; color: Theme.warn; anchors.verticalCenter: parent.verticalCenter }
+                Txt { text: tr("priv.blocked.title"); bold: true; font.pixelSize: 14; color: Theme.warn; anchors.verticalCenter: parent.verticalCenter } }
             Txt { text: app.privacyHint; width: parent.width; font.pixelSize: 13; wrapMode: Text.WordWrap } }
     }
     Card { pad: 10

@@ -8,7 +8,8 @@ Page {
     Card { pad: 10
         Column { width: parent.width
             Repeater { model: app.junk
-                ToggleRow { title: modelData.name; hint: modelData.hint; meta: app.size(modelData.size); checked: modelData.checked; onToggled: v => app.setChecked(modelData.id, v) } }
+                ToggleRow { icon: ({temp: "file-clock", bin: "trash-2", thumbs: "image", wu: "download", dumps: "bug", logs: "scroll-text", cache: "globe", history: "history", cookies: "cookie"})[modelData.id] || ""
+                    title: modelData.name; hint: modelData.hint; meta: app.size(modelData.size); checked: modelData.checked; onToggled: v => app.setChecked(modelData.id, v) } }
         }
     }
     footer: [

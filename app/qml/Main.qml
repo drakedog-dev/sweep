@@ -38,7 +38,8 @@ ApplicationWindow {
         }
     }
     readonly property var navKeys: ["overview", "junk", "privacy", "registry", "services", "startup", "boost", "disks", "apps", "system", "quarantine", "settings"]
-    readonly property var navIcons: ["⌂", "⌘", "◉", "☰", "⚙", "⏻", "⚡", "▤", "▦", "≡", "⚑", "⚙"]
+    readonly property var navIcons: ["layout-dashboard", "trash-2", "shield-check", "database", "server", "power", "rocket", "hard-drive", "package", "cpu", "archive", "settings"]
+    function go(key) { var i = navKeys.indexOf(key); if (i >= 0) current = i }
 
     // ---------- sidebar ----------
     Rectangle {
@@ -71,7 +72,7 @@ ApplicationWindow {
             Repeater { model: navKeys.length
                 Item { width: side.width; height: 40
                     Row { anchors.fill: parent; anchors.leftMargin: 26; spacing: 12
-                        Text { text: navIcons[index]; width: 20; color: current === index ? Theme.accent2 : Theme.muted; font.pixelSize: 15; anchors.verticalCenter: parent.verticalCenter; horizontalAlignment: Text.AlignHCenter
+                        Icon { name: navIcons[index]; size: 18; color: current === index ? Theme.accent2 : Theme.muted; anchors.verticalCenter: parent.verticalCenter
                             Behavior on color { ColorAnimation { duration: Theme.dur } } }
                         Txt { text: tr("nav." + navKeys[index]); font.pixelSize: 14; bold: true; color: current === index ? Theme.text : Theme.muted; anchors.verticalCenter: parent.verticalCenter
                             Behavior on color { ColorAnimation { duration: Theme.dur } } }
@@ -94,7 +95,7 @@ ApplicationWindow {
                         color: app.pcProfile["class"] === "strong" ? Theme.good : app.pcProfile["class"] === "weak" ? Theme.bad : Theme.warn }
                     Txt { text: tr("ov.profile." + (app.pcProfile["class"] || "mid")); bold: true; font.pixelSize: 13 }
                 }
-                Txt { text: (app.pcProfile["ram_gb"] || "") + " " + tr("u.gb") + " · " + (app.pcProfile["threads"] || "") + " thr · " + (app.pcProfile["ssd"] ? "SSD" : "HDD"); muted: true; font.pixelSize: 11 }
+                Txt { text: (app.pcProfile["ram_gb"] || "") + " " + tr("u.gb") + " · " + (app.pcProfile["threads"] || "") + " " + tr("u.thr") + " · " + (app.pcProfile["ssd"] ? "SSD" : "HDD"); muted: true; font.pixelSize: 11 }
             }
         }
     }
@@ -112,7 +113,7 @@ ApplicationWindow {
             height: visible ? Math.max(52, adminRow.implicitHeight + 20) : 0; radius: 14
             color: Theme.dark ? "#3A2A12" : "#FEF3C7"; border.color: Theme.warn
             Row { id: adminRow; anchors.left: parent.left; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; anchors.leftMargin: 16; anchors.rightMargin: 12; spacing: 12
-                Text { text: "\u26A0"; color: Theme.warn; font.pixelSize: 18; anchors.verticalCenter: parent.verticalCenter }
+                Icon { name: "triangle-alert"; size: 20; color: Theme.warn; anchors.verticalCenter: parent.verticalCenter }
                 Txt { text: tr("admin.banner"); width: parent.width - grantBtn.width - 48; anchors.verticalCenter: parent.verticalCenter; font.pixelSize: 13 }
                 AccentButton { id: grantBtn; text: tr("admin.grant"); compact: true; anchors.verticalCenter: parent.verticalCenter; onClicked: app.requestAdmin(navKeys[current]) }
             }

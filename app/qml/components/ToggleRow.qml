@@ -8,6 +8,7 @@ Rectangle {
     property string meta: ""
     property bool checked: false
     property bool disabledLook: false
+    property string icon: ""
     signal toggled(bool value)
     width: parent ? parent.width : 400
     implicitHeight: col.implicitHeight + 18
@@ -16,8 +17,14 @@ Rectangle {
     Behavior on color { ColorAnimation { duration: 120 } }
     opacity: disabledLook ? 0.55 : 1
     MouseArea { id: ma; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { sw.checked = !sw.checked; row.checked = sw.checked; row.toggled(sw.checked) } }
+    Rectangle {
+        id: iconBox; visible: row.icon !== ""; width: visible ? 36 : 0; height: 36; radius: 10
+        anchors.left: parent.left; anchors.leftMargin: 10; anchors.verticalCenter: parent.verticalCenter
+        color: Theme.soft
+        Icon { anchors.centerIn: parent; name: row.icon; size: 18; color: row.checked ? Theme.accent2 : Theme.muted }
+    }
     Column {
-        id: col; anchors.left: parent.left; anchors.right: sw.left; anchors.verticalCenter: parent.verticalCenter
+        id: col; anchors.left: iconBox.visible ? iconBox.right : parent.left; anchors.right: sw.left; anchors.verticalCenter: parent.verticalCenter
         anchors.leftMargin: 12; anchors.rightMargin: 16; spacing: 2
         Row { spacing: 10
             Txt { text: row.title; bold: true; font.pixelSize: 14 }

@@ -27,10 +27,10 @@ Page {
         Txt { text: tr("set.accent"); font.pixelSize: 15; bold: true; topPadding: 8 }
         Row { spacing: 8
             Repeater { model: ["violet", "cyan", "green", "amber", "rose"]
-                Chip { label: modelData; dot: Theme.accents[modelData][1]; on: Theme.accentName === modelData; onPick: app.setAccent(modelData) } } }
+                Chip { label: tr("accent." + modelData); dot: Theme.accents[modelData][1]; on: Theme.accentName === modelData; onPick: app.setAccent(modelData) } } }
         Row { spacing: 14; topPadding: 8
             Txt { text: tr("set.anim"); font.pixelSize: 15; bold: true; anchors.verticalCenter: parent.verticalCenter }
-            Toggle { checked: Theme.anim; onToggled: v => app.setAnimations(v) } }
+            Toggle { checked: Theme.anim; anchors.verticalCenter: parent.verticalCenter; onToggled: v => app.setAnimations(v) } }
     } }
     Card { Row { width: parent.width; spacing: 12
         Rectangle { width: 12; height: 12; radius: 6; anchors.verticalCenter: parent.verticalCenter; color: app.isAdmin ? Theme.good : Theme.warn }

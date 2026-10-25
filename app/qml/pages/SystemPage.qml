@@ -4,7 +4,7 @@ import "../components"
 
 Page {
     title: tr("nav.system"); subtitle: tr("hdr.system"); hint: tr("sys.hint")
-    bigLabel: tr("sys.computer"); bigValue: (app.pcProfile["ram_gb"] || "") + " " + tr("u.gb") + " · " + (app.pcProfile["threads"] || "") + " thr"
+    bigLabel: tr("sys.computer"); bigValue: (app.pcProfile["ram_gb"] || "") + " " + tr("u.gb") + " · " + (app.pcProfile["threads"] || "") + " " + tr("u.thr")
     Repeater { model: app.systemRows
         Card { pad: 18
             Column { width: parent.width; spacing: 6

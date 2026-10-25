@@ -28,5 +28,12 @@ Item {
             Txt { text: page.hint; muted: true; width: parent.width; visible: page.hint !== ""; leftPadding: 4 }
         }
     }
+    Rectangle { // fade at the bottom edge: there is more below
+        anchors.left: flick.left; anchors.right: flick.right; anchors.rightMargin: 12; anchors.bottom: flick.bottom; height: 36
+        visible: flick.contentHeight > flick.height + 4 && !flick.atYEnd
+        gradient: Gradient {
+            GradientStop { position: 0; color: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, 0) }
+            GradientStop { position: 1; color: Theme.bg } }
+    }
     Row { id: footerRow; anchors.left: parent.left; anchors.bottom: parent.bottom; anchors.bottomMargin: 14; spacing: 10; visible: children.length > 0 }
 }

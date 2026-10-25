@@ -280,7 +280,8 @@ def system_info() -> dict:
     if P.IS_WINDOWS:
         d = P.ps_json(r'''
 $os=Get-CimInstance Win32_OperatingSystem; $cs=Get-CimInstance Win32_ComputerSystem; $cpu=Get-CimInstance Win32_Processor|select -First 1
-$gpu=Get-CimInstance Win32_VideoController|%{@{name=$_.Name;ram=[long]$_.AdapterRAM;driver=$_.DriverVersion}}
+$vram=@{}; Get-ChildItem 'HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}' -EA SilentlyContinue|%{ $p=Get-ItemProperty $_.PSPath -EA SilentlyContinue; $q=$p.'HardwareInformation.qwMemorySize'; if($p.DriverDesc -and $q){ if($q -is [byte[]]){$q=[BitConverter]::ToInt64($q,0)}; $vram[[string]$p.DriverDesc]=[long]$q } }
+$gpu=Get-CimInstance Win32_VideoController|%{ $r=[long]$_.AdapterRAM; if($vram.ContainsKey([string]$_.Name)){$r=$vram[[string]$_.Name]}; @{name=$_.Name;ram=$r;driver=$_.DriverVersion}}
 $mb=Get-CimInstance Win32_BaseBoard; $bios=Get-CimInstance Win32_BIOS
 $mods=Get-CimInstance Win32_PhysicalMemory|%{@{slot=$_.DeviceLocator;size=[long]$_.Capacity;speed=$_.Speed;maker=$_.Manufacturer}}
 $disks=Get-PhysicalDisk -EA SilentlyContinue|%{@{name=$_.FriendlyName;size=[long]$_.Size;media=[string]$_.MediaType;bus=[string]$_.BusType}}

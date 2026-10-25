@@ -28,16 +28,74 @@ QtObject {
     readonly property color faint:     dark ? "#5B5680" : "#9B97BF"
     readonly property color soft:      dark ? "#221C47" : "#E4DEFA"
     readonly property color softHover: dark ? "#2C2559" : "#D8D0F7"
-    readonly property color status:    dark ? "#0A0816" : "#1E1B3A"
-    readonly property color statusText:dark ? "#8B86B0" : "#C4BFE6"
+    readonly property color status:    dark ? "#0A0816" : "#ECE8FB"
+    readonly property color statusText:dark ? "#8B86B0" : "#5B5680"
     readonly property color good:   "#34D399"
     readonly property color warn:   "#FBBF24"
     readonly property color bad:    "#F87171"
-    readonly property color track:  dark ? "#2F2A5A" : "#CFC8F0"
+    readonly property color track:  dark ? "#2F2A5A" : "#C4BCEB"
+    readonly property color knobOff: dark ? "#CBD5E1" : "#FFFFFF"
 
     readonly property int radius: 18
     readonly property int radiusSm: 12
     readonly property int dur: anim ? 220 : 0
     readonly property int durSlow: anim ? 420 : 0
     readonly property string font: Qt.platform.os === "windows" ? "Segoe UI" : "DejaVu Sans"
+
+    // Lucide icons (ISC licence, fonts/LICENSE-lucide.txt), subset to the glyphs Sweep uses
+    readonly property FontLoader iconLoader: FontLoader { source: "fonts/lucide.ttf" }
+    readonly property string iconFont: iconLoader.name
+    readonly property var icons: ({
+        "layout-dashboard": "\ue1c1",
+        "trash-2": "\ue18e",
+        "shield-check": "\ue1ff",
+        "database": "\ue0ad",
+        "server": "\ue153",
+        "power": "\ue140",
+        "rocket": "\ue286",
+        "hard-drive": "\ue0ed",
+        "package": "\ue129",
+        "cpu": "\ue0a9",
+        "archive": "\ue041",
+        "settings": "\ue154",
+        "file-clock": "\ue315",
+        "image": "\ue0f6",
+        "download": "\ue0b2",
+        "bug": "\ue20c",
+        "scroll-text": "\ue45f",
+        "globe": "\ue0e8",
+        "history": "\ue1f5",
+        "cookie": "\ue26b",
+        "memory-stick": "\ue445",
+        "triangle-alert": "\ue193",
+        "sparkles": "\ue412",
+        "check": "\ue06c",
+        "star": "\ue176",
+        "github": "\ue0e6",
+        "folder-open": "\ue247",
+        "refresh-cw": "\ue145",
+        "gauge": "\ue1bf",
+        "zap": "\ue1b4",
+        "clock": "\ue087",
+        "calendar-clock": "\ue304",
+        "activity": "\ue038",
+        "external-link": "\ue0b9",
+        "archive-restore": "\ue2cd",
+        "eraser": "\ue28f",
+        "broom": "\ue730",
+        "lock": "\ue10b",
+        "monitor": "\ue11d",
+        "layout-grid": "\ue0ff",
+        "file-x": "\ue0cd",
+        "shield": "\ue158",
+        "info": "\ue0f9",
+        "circle-check": "\ue226",
+        "languages": "\ue0fe",
+        "palette": "\ue1dd",
+        "brush": "\ue1d3",
+        "list-checks": "\ue1d0",
+        "undo-2": "\ue2a1",
+        "search": "\ue151"
+    })
+    function icon(name) { return icons[name] || "" }
 }
