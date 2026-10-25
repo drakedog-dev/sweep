@@ -1,0 +1,6 @@
+lint: success
+run: https://github.com/drakedog-dev/sweep/actions/runs/40205275818
+commit: 07d78829b7c05cb40d735944008814ede2f28b85
+
+--- log.txt (last 1 of 1 lines)
+2026-10-25 15:06:09  ui-test: pages 14, programs 12, boots 10, updates 5 (winget=True, checked=True), QML warnings 0
