@@ -2,6 +2,18 @@
 
 All notable changes to Sweep. The newest version is at the top; the in-app update dialog and the GitHub release notes are built from this file.
 
+## 1.0.18
+- Program updates: nothing is ticked by itself any more. Tick what you want and press "Update selected", or take everything with "Update all"
+- A progress bar with a percentage while Sweep looks for updates, in three steps: the winget catalogue, the sources, the final check
+- Every update shows a percentage for its download and install, and the queue shows an overall one
+- Correct versions: winget's tables are read in full, so no name, id or version is cut short; where winget only knows "older than 3.14.7", Sweep shows the real version from Windows
+- After an update Sweep reads the installed version again and shows "Updated to x.y"; if the version did not change, it says so
+- Forks and look-alikes are caught: when the catalogue entry is another program (FlClash X was offered FlClash by another author), the row is marked and cannot be ticked; "Same program" overrides it if you are sure
+- "Package not found" fixed: when winget lists an update but then does not see the program installed, Sweep installs the new version over the old one, as long as Windows still lists the program
+- What's new: the release notes of each update, straight from the catalogue
+- New Install tab on the Programs page: 45 popular free programs by category, ready-made sets (fresh Windows, gaming, work) and a search through the whole winget catalogue, with the same live progress and SHA-256 check
+- Terms of use and the privacy policy describe catalogue search and installs, so they are shown once more for your consent
+
 ## 1.0.17
 - Program updates: a selection bar above the list with a select-all checkbox, "All", "All but major" and "None", and a counter of selected programs
 - Click anywhere on a program's row to tick or untick it
