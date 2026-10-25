@@ -789,7 +789,7 @@ class App(QObject):
             urllib.request.urlretrieve(info["url"], dst)
             if P.IS_WINDOWS:
                 import subprocess
-                subprocess.Popen([dst, "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/CLOSEAPPLICATIONS", "/RESTARTAPPLICATIONS"])
+                subprocess.Popen([dst, "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/CLOSEAPPLICATIONS", "/RELAUNCH=1"])
             return dst
 
         def done(_):

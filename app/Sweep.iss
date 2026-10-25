@@ -42,6 +42,14 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\Sweep.exe"; Tasks: desktopico
 
 [Run]
 Filename: "{app}\Sweep.exe"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall skipifsilent shellexec
+; silent self-update started from inside Sweep: relaunch the app when asked to
+Filename: "{app}\Sweep.exe"; Flags: nowait shellexec; Check: ShouldRelaunch
+
+[Code]
+function ShouldRelaunch: Boolean;
+begin
+  Result := WizardSilent and (ExpandConstant('{param:RELAUNCH|0}') = '1');
+end;
 
 [InstallDelete]
 ; files of the old PowerShell build
