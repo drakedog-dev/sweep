@@ -1,0 +1,37 @@
+build: success
+run: https://github.com/drakedog-dev/sweep/actions/runs/40226267451
+commit: 6a9a8e96cc656644fd5ae80c21c1e3d87c129f71
+
+--- build.txt (last 24 of 24 lines)
+version 1.0.20, tag existed before: False
+Bug fixes and polish, nothing new.
+- Russian Windows: startup entries, folders and program paths with Cyrillic names are read correctly, so their switches work (PowerShell answered in the console code page)
+- Quarantine: restoring never deletes what could not be put back; such files stay in the quarantine
+- Uninstall leftovers that are locked keep a copy in quarantine before they are removed at the next restart
+- Scheduled tasks removed with a program come back with the rest of its backup on the Registry page
+- Junk cleaning never reaches outside known folders, even when a Windows folder variable is empty
+- The drive scan no longer follows links into other folders and drives
+- One task at a time: a second click while Sweep works shows a hint instead of starting a parallel job
+- Numbers in Russian use a decimal comma (4,7 ГБ, 29,4 с); big sizes have no ".0"
+- Nothing is cut or runs out of its card in a narrow window: Programs tabs, Overview, Boost buttons, Disks, About buttons, Boot chart labels
+- Settings and About describe correctly when Sweep goes online
+- Restore points: the Windows frequency limit is always put back
+- No console window flashes while leftovers are removed
+
+### Download
+
+| File | Size | SHA-256 |
+|---|---|---|
+| [Sweep-Setup-1.0.20.exe](https://github.com/drakedog-dev/sweep/releases/download/v1.0.20/Sweep-Setup-1.0.20.exe) | 34.8 MB | `c53eabff727314c3ba05693c81b4e7d28abbf966ca65531a2a4aefc85ca00026` |
+
+Windows 10 and 11, 64-bit. Installer not signed yet. Check the file in PowerShell: `Get-FileHash .\Sweep-Setup-1.0.20.exe`
+
+Sweep offers this update by itself when it starts. Full list of commits: [v1.0.19...v1.0.20](https://github.com/drakedog-dev/sweep/compare/v1.0.19...v1.0.20)
+
+--- log.txt (last 6 of 6 lines)
+2026-10-25 19:30:19  auto clean 20261025_193013: freed 441730054
+2026-10-25 19:30:20  titlebar dark: dark=0x80070006, caption=0x80070006, border=0x80070006, text=0x80070006
+2026-10-25 19:30:22  context: Sweep 1.0.20, admin=True, 64bit, user=runnervmdaln5\runneradmin, os=Microsoft Windows Server 2025 Datacenter 26100, antivirus=none reported, exe=D:\a\sweep\sweep\app\dist\Sweep\Sweep.exe
+2026-10-25 19:30:50  updates: winget upgrade rc=0x0 via conpty, 24 updates, 3 s
+2026-10-25 19:30:59  install: search 'vlc' rc=0x0 via conpty: 10 found
+2026-10-25 19:31:06  ui-test: pages 14, programs 59, boots 0, updates 24 (winget=True, checked=True, suspect 0), install picks 45 (installed 4), search 10, QML warnings 0
