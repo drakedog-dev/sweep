@@ -189,7 +189,7 @@ STRINGS: dict[str, dict[str, str]] = {
     "about.issues.btn": {"ru": "Сообщить об ошибке или предложить", "en": "Report a bug or suggest"},
     "about.source": {"ru": "Исходный код", "en": "Source code"},
     "about.licence": {"ru": "Лицензия MIT", "en": "MIT licence"},
-    "about.author": {"ru": "Автор: Alex (Drakedog), Москва", "en": "Author: Alex (Drakedog), Moscow"},
+    "about.author": {"ru": "Автор: Alex (Drakedog)", "en": "Author: Alex (Drakedog)"},
     # units
     "u.gb": {"ru": "ГБ", "en": "GB"}, "u.mb": {"ru": "МБ", "en": "MB"}, "u.kb": {"ru": "КБ", "en": "KB"}, "u.b": {"ru": "Б", "en": "B"},
     "u.days": {"ru": "{0} д {1} ч {2} мин", "en": "{0} d {1} h {2} min"},
