@@ -37,7 +37,7 @@ temp folders, Recycle Bin, thumbnail cache, Windows Update cache, crash dumps an
 
 **Quarantine.** Nothing is deleted outright. Files are moved to `ProgramData\Sweep\Quarantine`, and **Restore** puts them back. Purge the quarantine yourself when you are sure.
 
-Dark and light themes. Resizable, full-screen friendly.
+Dark and light themes, English and Russian interface (switch in the sidebar). Resizable, full-screen friendly.
 
 ## Safety rules
 

@@ -1,6 +1,6 @@
 ﻿#requires -version 5.1
 <#
-    Sweep 0.7 — чистка, приватность и ускорение Windows.
+    Sweep 0.8 — чистка, приватность и ускорение Windows.
     Windows 10 и 11. Ничего не отправляет в интернет.
     Правила безопасности:
       1. Файлы не удаляются, а переносятся в карантин, откуда их можно вернуть одной кнопкой.
@@ -28,6 +28,156 @@ $Quarantine = Join-Path $Root 'Quarantine'
 $LogFile    = Join-Path $Root 'log.txt'
 $SvcBackup  = Join-Path $Root 'services-backup.json'
 New-Item -ItemType Directory -Path $Quarantine -Force | Out-Null
+
+# =====================================================================
+#  ЯЗЫК. Интерфейс написан по-русски; английский берётся из словаря $EN.
+#  Ключи с {0} это шаблоны: совпадение по регулярному выражению, подстановка захваченных частей.
+# =====================================================================
+$SettingsFile = Join-Path $Root 'settings.json'
+function Get-Settings { try { if (Test-Path $SettingsFile) { return (Get-Content $SettingsFile -Raw -Encoding UTF8 | ConvertFrom-Json) } } catch {}; return [pscustomobject]@{} }
+function Save-Setting([string]$name, $value) {
+    try { $st = Get-Settings; $st | Add-Member -NotePropertyName $name -NotePropertyValue $value -Force; [IO.File]::WriteAllText($SettingsFile, ($st | ConvertTo-Json), [Text.Encoding]::UTF8) } catch {}
+}
+$script:Lang = 'ru'
+try { $saved = (Get-Settings).lang; if ($saved -eq 'en') { $script:Lang = 'en' } elseif (-not $saved -and (Get-Culture).TwoLetterISOLanguageName -ne 'ru') { $script:Lang = 'en' } } catch {}
+$EN = @{
+
+# Static UI
+'Обзор'='Overview'; 'Мусор'='Junk'; 'Приватность'='Privacy'; 'Реестр'='Registry'; 'Службы'='Services'; 'Автозагрузка'='Startup'; 'Ускорение'='Boost'; 'Диски'='Disks'; 'Система'='System'; 'Приложения'='Apps'; 'Карантин'='Quarantine'
+'версия 0.8'='version 0.8'; 'Светлая тема'='Light theme'; 'Тёмная тема'='Dark theme'; 'Проверить обновления'='Check for updates'; 'Обновить'='Update'
+'Не выходит в интернет. Обновления только по вашему нажатию.'='Works offline. Updates are checked only when you ask.'
+'ОТКЛЮЧЕНО'='DISABLED'; 'НАЙДЕНО ЗАПИСЕЙ'='ENTRIES FOUND'; 'СВОБОДНО ПАМЯТИ'='FREE MEMORY'; 'В КАРАНТИНЕ'='IN QUARANTINE'; 'НАЙДЕНО'='FOUND'
+'ДИСК C:'='DRIVE C:'; 'ПАМЯТЬ'='MEMORY'; 'Выключено (служба)'='Turned off'; 
+'Состояние компьютера одним взглядом'='Your PC at a glance'; 'Ничего не удаляется безвозвратно: всё попадает в карантин'='Nothing is deleted for good: everything goes to quarantine'
+'Телеметрия, реклама и сбор данных под вашим контролем'='Telemetry, ads and data collection under your control'; 'Безопасная чистка с резервной копией каждой ветки'='Safe cleaning with a backup of every key'
+'Выключайте то, что вам не нужно, и возвращайте одним движением'='Turn off what you do not need, turn it back on with one flip'; 'Что запускается вместе с Windows'='What launches with Windows'
+'Память, диски и обновления'='Memory, drives and updates'; 'Что занимает место на каждом диске'='What takes up space on each drive'; 'Железо и Windows на одном экране'='Hardware and Windows on one screen'
+'Предустановленный мусор Windows'='Pre-installed Windows bloat'; 'Всё, что убрано, можно вернуть'='Everything removed can be restored'
+'можно освободить'='can be freed'; 'свободно'='free'; 'программ запускается с Windows'='programs launch with Windows'; 'из 100'='of 100'
+'Индекс здоровья'='Health index'; 'Считается по мусору, автозагрузке, свободному месту и настройкам приватности.'='Based on junk, startup items, free space and privacy settings.'
+'Компьютер в хорошей форме'='Your PC is in good shape'; 'Есть что улучшить'='Room for improvement'; 'Компьютеру нужна забота'='Your PC needs some care'
+'Быстрая очистка'='Quick clean'; 'Очистить сейчас'='Clean now'
+'Уберёт временные файлы, кэши и отчёты об ошибках с настройками по умолчанию. Корзина и куки не трогаются. Всё попадает в карантин.'='Removes temp files, caches and error reports with default settings. Recycle Bin and cookies are left alone. Everything goes to quarantine.'
+'Как это работает'='How it works'
+'• Файлы не удаляются, а переносятся в карантин. Кнопка «Вернуть» ставит их на место.'='• Files are moved to quarantine, not deleted. The Restore button puts them back.'
+'• Настройки приватности и службы включаются обратно тем же переключателем.'='• Privacy settings and services are reversible with the same switch.'
+'• Перед чисткой реестра каждая ветка сохраняется в файл .reg.'='• Every registry key is exported to a .reg file before cleaning.'
+'• Программа не выходит в интернет и не собирает данные.'='• The app does not go online and collects no data.'
+'• Всё в порядке, так держать'='• All good, keep it up'
+'Очистить'='Clean'; 'Проверить заново'='Scan again'; 'Проверить'='Scan'; 'Отключить всю слежку'='Disable all tracking'; 'Очистить реестр'='Clean registry'; 'Обновить список'='Refresh list'
+'Освободить'='Free up'; 'Оптимизировать'='Optimise'; 'Открыть обновления'='Open Windows Update'; 'Собрать сведения'='Collect info'; 'Скопировать'='Copy'
+'Удалить весь карантин навсегда'='Purge quarantine permanently'; 'Точно удалить? Нажмите ещё раз'='Really purge? Click again'; 'Вернуть'='Restore'
+'Найти крупные файлы'='Find large files'; 'Отмеченные в карантин'='Quarantine selected'; 'Открыть в Проводнике'='Open in Explorer'; 'Крупные файлы'='Large files'
+'Удалить отмеченные'='Remove selected'; 'Открыть Microsoft Store'='Open Microsoft Store'
+'Переключатель включён, значит слежка отключена. Любой пункт можно вернуть к стандартной настройке. Полностью подействует после перезагрузки.'='Switch on means tracking is disabled. Any item can be reverted to the Windows default. Takes full effect after a restart.'
+'Только безопасные разделы: списки недавних файлов, кэши оболочки и записи, которые ссылаются на удалённые программы. Перед изменением каждая ветка сохраняется в файл .reg, и её можно вернуть одной кнопкой.'='Safe keys only: recent-file lists, shell caches and entries pointing to deleted programs. Every key is exported to a .reg file first and can be restored with one click.'
+'Резервные копии реестра'='Registry backups'; 'Резервных копий пока нет.'='No backups yet.'
+'Переключатель включён, значит служба работает. Выключите, чтобы освободить ресурсы. Исходная настройка запоминается, всё обратимо.'='Switch on means the service is running. Turn it off to free resources. The original setting is remembered, everything is reversible.'
+'Выключите переключатель, и программа перестанет запускаться вместе с Windows. Ничего не удаляется.'='Turn the switch off and the program will stop launching with Windows. Nothing is deleted.'
+'Освободить оперативную память'='Free up RAM'; 'Просит все программы отдать память, которую они держат про запас.'='Asks every program to release memory it holds in reserve.'
+'Оптимизировать диски'='Optimise drives'; 'TRIM для SSD, дефрагментация для HDD. Windows сама определяет тип диска. Может занять несколько минут.'='TRIM for SSD, defragmentation for HDD. Windows detects the drive type. May take a few minutes.'
+'Автоочистка по расписанию'='Scheduled auto-clean'
+'Раз в неделю Sweep сам уберёт временные файлы и кэши с настройками по умолчанию, без окон и вопросов. Всё, как обычно, попадает в карантин.'='Once a week Sweep removes temp files and caches with default settings, silently. Everything goes to quarantine as usual.'
+'Обновления Windows'='Windows Update'; 'Открывает окно обновлений. Обновления закрывают дыры в безопасности и часто исправляют тормоза.'='Opens Windows Update. Updates close security holes and often fix slowdowns.'
+'Выберите диск, и Sweep найдёт на нём самые крупные файлы. Системные папки Windows и Program Files не проверяются. Отмеченные файлы переносятся в карантин, откуда их можно вернуть.'='Pick a drive and Sweep will find its largest files. Windows and Program Files folders are skipped. Selected files go to quarantine and can be restored.'
+'Выберите диск и нажмите «Найти крупные файлы».'='Pick a drive and click "Find large files".'
+'Сведения о компьютере. Собираются только по вашему нажатию и никуда не отправляются.'='Information about this PC. Collected only when you ask, never sent anywhere.'
+'Предустановленные приложения Microsoft, которые редко кому нужны. Удаление освобождает место и убирает лишнее из меню Пуск. Любое из них можно бесплатно вернуть из Microsoft Store.'='Pre-installed Microsoft and partner apps most people never use. Removing them frees space and declutters the Start menu. Any of them can be reinstalled for free from Microsoft Store.'
+'Нажмите «Проверить», чтобы увидеть установленные.'='Click "Scan" to see which ones are installed.'
+'Всё, что убрал Sweep, лежит здесь. Нажмите «Вернуть», и файлы встанут на свои места. Место освобождается окончательно после удаления карантина.'='Everything Sweep removed is kept here. Click "Restore" to put files back. Space is freed for good only when you purge the quarantine.'
+'Карантин пуст.'='Quarantine is empty.'; 'В автозагрузке ничего нет.'='Nothing in startup.'; 'Лишних записей не найдено.'='No stale entries found.'; 'Лишних предустановленных приложений не найдено.'='No bloat apps found.'
+'Файлов крупнее 50 МБ вне системных папок не найдено.'='No files larger than 50 MB outside system folders.'; 'Выключено'='Off'; 'Готово'='Done'; 'скоро'='soon'
+# Junk categories
+'Временные файлы'='Temporary files'; 'Папки Temp пользователя и Windows'='User and Windows Temp folders'; 'Корзина'='Recycle Bin'; 'Очищается без карантина, вернуть будет нельзя'='Emptied without quarantine, cannot be undone'
+'Кэш эскизов Проводника'='Explorer thumbnail cache'; 'Картинки предпросмотра, Windows создаёт их заново'='Preview images, Windows rebuilds them'; 'Кэш обновлений Windows'='Windows Update cache'; 'Установщики уже установленных обновлений'='Installers of updates already applied'
+'Отчёты об ошибках и дампы'='Error reports and dumps'; 'Файлы о сбоях программ, нужны только разработчикам'='Crash files, useful only to developers'; 'Старые журналы Windows'='Old Windows logs'; 'Логи установки и обслуживания старше 30 дней'='Setup and servicing logs older than 30 days'
+'Кэш браузеров'='Browser caches'; 'Chrome, Edge, Яндекс, Brave, Vivaldi, Opera, Firefox. Лучше закрыть браузеры'='Chrome, Edge, Yandex, Brave, Vivaldi, Opera, Firefox. Close browsers first'; 'Куки браузеров'='Browser cookies'; 'Выйдете из всех сайтов. По умолчанию выключено'='You will be signed out of all sites. Off by default'
+# Privacy
+'Сбор данных'='Data collection'; 'Реклама и подсказки'='Ads and suggestions'; 'Помощники Microsoft'='Microsoft assistants'
+'Телеметрия и сбор диагностики'='Telemetry and diagnostics'; 'Служба DiagTrack и задания сбора данных'='DiagTrack service and data collection tasks'; 'Рекламный идентификатор'='Advertising ID'; 'Приложения не смогут показывать рекламу по вашим интересам'='Apps cannot target ads to your interests'
+'Реклама в Пуске и уведомлениях'='Ads in Start and notifications'; 'Предложения приложений, советы и автоустановка рекламных приложений'='App suggestions, tips and silent installs of promoted apps'; 'История активности'='Activity history'; 'Windows не будет собирать, что вы открывали, и отправлять это в облако'='Windows stops recording what you open and uploading it'
+'Поиск в интернете из меню Пуск'='Web search from Start menu'; 'Пуск ищет только на компьютере и не отправляет запросы в Bing'='Start searches only this PC and sends nothing to Bing'; 'Кортана'='Cortana'; 'Голосовой помощник Microsoft'='Microsoft voice assistant'
+'Запросы отзывов'='Feedback prompts'; 'Windows перестанет спрашивать «Как вам Windows?»'='Windows stops asking "How do you like Windows?"'; 'Отправка отчётов об ошибках'='Error reporting'; 'Сведения о сбоях не уходят в Microsoft'='Crash details are not sent to Microsoft'
+'Отслеживание запуска программ'='App launch tracking'; 'Используется для подсказок в Пуске'='Used for Start menu suggestions'; 'Реклама на экране блокировки'='Lock screen ads'; 'Windows: интересные факты и советы поверх картинки экрана блокировки'='Fun facts and tips over the lock screen picture'
+'Экран «Что нового» после обновлений'='"What is new" screen after updates'; 'Windows не будет показывать приветствие и предложения после каждого обновления'='No welcome screen and offers after every update'; 'Реклама в Проводнике'='Ads in File Explorer'; 'Баннеры OneDrive и Microsoft 365 в окнах папок'='OneDrive and Microsoft 365 banners in folder windows'
+'Рекомендации в меню Пуск (Windows 11)'='Start menu recommendations (Windows 11)'; 'Раздел «Рекомендуем» перестанет подсовывать сайты и приложения'='The Recommended section stops pushing sites and apps'; 'Картинки и новости в строке поиска'='Search box highlights'; 'Поле поиска на панели задач станет пустым, без «главного за день»'='Taskbar search box stays empty, no daily highlights'
+'Новости и виджеты на панели задач'='News and widgets on the taskbar'; '«Новости и интересы» в Windows 10, виджеты в Windows 11'='News and Interests in Windows 10, Widgets in Windows 11'; 'Copilot'='Copilot'; 'Кнопка и панель Copilot исчезнут с панели задач'='Copilot button and panel disappear from the taskbar'
+'Сбор данных браузером Edge'='Edge data collection'; 'Edge перестанет отправлять историю и данные об использовании'='Edge stops sending browsing and usage data'
+# Registry
+'Списки недавних документов и команд'='Recent documents and commands'; 'RecentDocs, RunMRU, история диалогов «Открыть» и «Сохранить»'='RecentDocs, RunMRU, Open and Save dialog history'; 'Кэш названий программ (MuiCache)'='Program name cache (MuiCache)'; 'Названия давно удалённых программ, Windows пересоздаёт при необходимости'='Names of long-removed programs, Windows rebuilds it'
+'Пути к удалённым программам (App Paths)'='Paths to removed programs (App Paths)'; 'Записи, у которых исполняемый файл уже не существует'='Entries whose executable no longer exists'; 'Автозагрузка несуществующих программ'='Startup entries for missing programs'; 'Записи Run, чей файл удалён с диска'='Run entries whose file was deleted'
+# Services
+'SysMain (Superfetch)'='SysMain (Superfetch)'; 'Предзагрузка программ. На старых HDD чаще мешает, на SSD не нужна'='Preloads programs. Hurts on old HDDs, unnecessary on SSDs'; 'Индексирование поиска Windows'='Windows Search indexing'; 'Ускоряет поиск файлов, но постоянно грузит диск на слабых ПК'='Speeds up file search but keeps the disk busy on weak PCs'
+'Xbox: вход'='Xbox: sign-in'; 'Xbox: сохранения'='Xbox: game saves'; 'Xbox: сеть'='Xbox: networking'; 'Xbox: геймпад'='Xbox: controller'; 'Нужна только для игр Xbox'='Only needed for Xbox games'; 'Нужна только для геймпада Xbox'='Only needed for an Xbox controller'
+'Загрузка карт'='Maps download'; 'Офлайн-карты Windows'='Windows offline maps'; 'Демо-режим магазина'='Retail demo mode'; 'Нужна только витринным компьютерам в магазине'='Only for display PCs in shops'; 'Факс'='Fax'; 'Если нет факса, не нужна'='Not needed without a fax machine'
+'Удалённый реестр'='Remote Registry'; 'Позволяет менять реестр по сети. Дома не нужна'='Lets the registry be edited over the network. Not for home use'; 'Общий доступ Media Player'='Media Player sharing'; 'Раздача музыки по домашней сети'='Streams music over the home network'; 'Телефонная служба'='Phone service'; 'Связь с телефоном через «Связь с Windows»'='Phone Link connection'
+'Пользователь'='User'; 'Система (32)'='System (32-bit)'; 'Папка автозагрузки'='Startup folder'
+# Apps
+'Игровой клиент Xbox'='Xbox game client'; 'Xbox (новое приложение)'='Xbox (new app)'; 'Магазин игр Xbox'='Xbox game store'; 'Оверлей для записи игр. Если не играете, не нужен'='Game recording overlay. Unneeded if you do not play'; 'Media Player / Музыка Groove'='Media Player / Groove Music'; 'Проигрыватель Microsoft'='Microsoft media player'
+'Кино и ТВ'='Movies and TV'; 'Видеопроигрыватель и магазин фильмов'='Video player and movie store'; 'Новости'='News'; 'Лента новостей Microsoft'='Microsoft news feed'; 'Погода'='Weather'; 'Погода от MSN'='MSN weather'; 'Поиск Bing'='Bing Search'; 'Веб-поиск в меню Пуск'='Web search in Start menu'
+'Техническая поддержка'='Get Help'; 'Чат с поддержкой Microsoft'='Microsoft support chat'; 'Советы'='Tips'; 'Приложение «Начало работы»'='Get Started app'; 'Пасьянсы с рекламой'='Card games with ads'; 'Люди'='People'; 'Контакты Microsoft'='Microsoft contacts'
+'Реклама подписки Microsoft 365'='Microsoft 365 subscription promo'; 'Мессенджер'='Messenger'; 'Центр отзывов'='Feedback Hub'; 'Отправка отзывов в Microsoft'='Sends feedback to Microsoft'; 'Просмотр 3D-моделей'='3D model viewer'; 'Портал смешанной реальности'='Mixed Reality Portal'; 'Нужен только для VR-шлема'='Only for a VR headset'
+'Карты'='Maps'; 'Голосовой помощник'='Voice assistant'; 'Видеоредактор с подпиской'='Video editor with subscription'; 'Список задач'='To-do list'; 'Teams (личный)'='Teams (personal)'; 'Чат Teams для дома'='Teams chat for home'; 'Чат Teams'='Teams chat'; 'Автоматизация для бизнеса'='Business automation'
+'Приложение помощника Microsoft'='Microsoft assistant app'; 'Outlook (новый)'='Outlook (new)'; 'Почтовый клиент с рекламой'='Mail client with ads'; 'Рукописные заметки'='Handwritten notes'; 'Доска для рисования'='Drawing board'; 'Игра'='Game'; 'Spotify (предустановка)'='Spotify (pre-installed)'; 'Рекламная предустановка'='Promotional pre-install'
+# Status templates: {n} are wildcards
+'Проверяю, что можно освободить…'='Checking what can be freed…'; 'Проверяю: {0}…'='Checking: {0}…'; 'Убираю: {0}…'='Removing: {0}…'; 'Отключаю: {0}…'='Disabling: {0}…'
+'Проверка закончена. Отметьте, что убрать, и нажмите «Очистить». Всё, кроме корзины, попадёт в карантин.'='Scan finished. Tick what to remove and click "Clean". Everything except the Recycle Bin goes to quarantine.'
+'Готово. Убрано: {0}. Файлы лежат в карантине, их можно вернуть в разделе «Карантин». Занятые программами файлы пропущены.'='Done. Removed: {0}. Files are in quarantine and can be restored from the Quarantine section. Files in use were skipped.'
+'Вся слежка отключена. Подействует полностью после перезагрузки.'='All tracking disabled. Takes full effect after a restart.'
+'{0}: отключено.'='{0}: disabled.'; '{0}: включено обратно.'='{0}: enabled again.'
+'Проверяю реестр: {0}…'='Checking registry: {0}…'; 'Найдено записей: {0}. Перед очисткой каждая ветка будет сохранена в .reg.'='Entries found: {0}. Every key will be saved to .reg before cleaning.'
+'Сохраняю копию и чищу: {0}…'='Backing up and cleaning: {0}…'; 'Готово. Удалено записей: {0}. Резервная копия сохранена, её можно вернуть ниже.'='Done. Entries removed: {0}. A backup was saved and can be restored below.'
+'Возвращаю записи реестра…'='Restoring registry entries…'; 'Восстановлено веток: {0}.'='Keys restored: {0}.'; 'Чистка реестра {0}   файлов: {1}'='Registry clean {0}   files: {1}'
+'Служба «{0}» включена.'='Service "{0}" enabled.'; 'Служба «{0}» выключена.'='Service "{0}" disabled.'; 'Не удалось изменить службу: {0}'='Could not change service: {0}'
+'Автозагрузка «{0}» включена. Подействует после перезагрузки.'='Startup entry "{0}" enabled. Takes effect after a restart.'; 'Автозагрузка «{0}» отключена. Подействует после перезагрузки.'='Startup entry "{0}" disabled. Takes effect after a restart.'
+'Не удалось изменить «{0}»: {1}'='Could not change "{0}": {1}'
+'Освобождаю память…'='Freeing memory…'; 'Свободно сейчас: {0}'='Free now: {0}'; 'Память освобождена. Прибавилось: {0}.'='Memory freed. Gained: {0}.'
+'Оптимизирую диск {0}: …'='Optimising drive {0}: …'; 'Диски оптимизированы.'='Drives optimised.'
+'Автоочистка включена: каждое воскресенье в 12:00, или при первом включении компьютера после этого.'='Auto-clean enabled: every Sunday at 12:00, or the next time the PC is on.'; 'Автоочистка выключена.'='Auto-clean disabled.'; 'Включено. Следующий запуск: {0}'='Enabled. Next run: {0}'; 'Не удалось изменить расписание: {0}'='Could not change schedule: {0}'
+'Ищу крупные файлы на диске {0}: … На большом диске это может занять минуту.'='Looking for large files on drive {0}: … A big drive may take a minute.'
+'Найдено крупных файлов: {0}. Отметьте ненужные и нажмите «Отмеченные в карантин». Видео, архивы и образы дисков часто оказываются именно здесь.'='Large files found: {0}. Tick the ones you do not need and click "Quarantine selected". Videos, archives and disk images often end up here.'
+'В карантин перенесено: {0}. Вернуть можно в разделе «Карантин».'='Moved to quarantine: {0}. Restore from the Quarantine section.'; 'Крупные файлы на диске {0}:'='Large files on drive {0}:'
+'занято {0} из {1}  ·  свободно {2}  ·  {3}%'='used {0} of {1}  ·  free {2}  ·  {3}%'; 'Диск {0}:'='Drive {0}:'
+'Проверяю установленные приложения…'='Checking installed apps…'; 'Найдено предустановленных приложений: {0}. Отметьте ненужные и нажмите «Удалить отмеченные».'='Bloat apps found: {0}. Tick the ones to remove and click "Remove selected".'
+'Удаляю {0}…'='Removing {0}…'; 'Удалено приложений: {0}. Вернуть любое можно из Microsoft Store.'='Apps removed: {0}. Any can be reinstalled from Microsoft Store.'
+'Собираю сведения о системе…'='Collecting system info…'; 'Сведения собраны. Кнопка «Скопировать» положит их в буфер обмена текстом.'='Info collected. "Copy" puts it on the clipboard as text.'; 'Не удалось собрать часть сведений: {0}'='Some info could not be collected: {0}'
+'Скопировано в буфер обмена.'='Copied to clipboard.'; 'Не удалось скопировать.'='Could not copy.'
+'Возвращаю файлы на место…'='Restoring files…'; 'Возвращено объектов: {0}.'='Items restored: {0}.'; 'Очистка {0}   {1}'='Clean {0}   {1}'; 'Удаляю карантин…'='Purging quarantine…'; 'Карантин очищен, место освобождено окончательно.'='Quarantine purged, space freed for good.'
+'Проверяю обновления…'='Checking for updates…'; 'У вас последняя версия ({0}).'='You have the latest version ({0}).'; 'Доступна новая версия {0}. Нажмите «Обновить до {0}».'='Version {0} is available. Click "Update to {0}".'; 'Обновить до {0}'='Update to {0}'
+'Скачиваю {0}…'='Downloading {0}…'; 'Не удалось обновить: {0}'='Update failed: {0}'; 'Проверка обновлений: {0}'='Update check: {0}'; 'Репозиторий обновлений не указан.'='Update repository is not set.'
+'Не удалось переключить тему: {0}'='Could not switch theme: {0}'; 'Ошибка: {0} (записано в журнал)'='Error: {0} (written to log)'
+# Health tips
+'Много мусора: запустите очистку'='Lots of junk: run a clean'; 'Есть что почистить'='Some junk to clean'; 'Автозагрузка перегружена: {0} программ'='Startup is overloaded: {0} programs'; 'В автозагрузке {0} программ, часть можно выключить'='{0} programs in startup, some can be turned off'
+'На системном диске почти нет места'='System drive is almost full'; 'На системном диске мало места'='System drive is low on space'; 'Слежка и реклама Windows включены'='Windows tracking and ads are on'; 'Часть телеметрии ещё включена'='Some telemetry is still on'; 'Компьютер не перезагружался {0} дней'='PC has not been restarted for {0} days'
+# System info
+'Windows'='Windows'; 'Компьютер'='Computer'; 'Работает без перезагрузки'='Uptime'; 'Процессор'='Processor'; 'Модель'='Model'; 'Ядра / потоки'='Cores / threads'; 'Частота'='Clock'; 'Загрузка сейчас'='Load now'; 'Видеокарта'='Graphics'; 'Видеопамять'='Video memory'; 'Драйвер'='Driver'
+'Материнская плата'='Motherboard'; 'Оперативная память'='Memory'; 'Всего'='Total'; 'Свободно сейчас'='Free now'; 'Температура'='Temperature'; 'Датчики'='Sensors'; 'недоступно без драйвера (датчики не отдаёт Windows)'='unavailable without a driver (Windows exposes no sensors)'; 'нет данных'='no data'
+'{0} д {1} ч {2} мин'='{0} d {1} h {2} min'; '{0} ({1} план.)'='{0} ({1} modules)'; 'Планка {0}'='Module {0}'; 'свободно {0} из {1}'='free {0} of {1}'; '{0} от {1}'='{0} dated {1}'
+# Units
+'ГБ'='GB'; 'МБ'='MB'; 'КБ'='KB'; 'Б'='B'; '{0} из {1}'='{0} of {1}'
+
+'свободно из {0}'='free of {0}'; 'Язык: English'='Language: Русский'; 'Перезапуск для смены языка…'='Restarting to switch language…'
+}
+$EnTemplates = @()
+foreach ($k in $EN.Keys) {
+    if ($k -notmatch '\{\d\}') { continue }
+    $order = @([regex]::Matches($k, '\{(\d)\}') | ForEach-Object { [int]$_.Groups[1].Value })
+    $rx = '^' + ([regex]::Replace([regex]::Escape($k), '\\\{(\d)\}', '(.+?)')) + '$'
+    $EnTemplates += @{ Rx = [regex]$rx; Order = $order; En = $EN[$k] }
+}
+function T([string]$s) {
+    if ($script:Lang -ne 'en' -or [string]::IsNullOrEmpty($s)) { return $s }
+    if ($EN.ContainsKey($s)) { $r = $EN[$s]; if ($s -ceq $s.ToUpperInvariant() -and $s -cne $s.ToLowerInvariant()) { return $r.ToUpperInvariant() }; return $r }
+    foreach ($t in $EnTemplates) {
+        $m = $t.Rx.Match($s)
+        if ($m.Success) {
+            $max = ($t.Order | Measure-Object -Maximum).Maximum
+            $args2 = @(0..$max | ForEach-Object { $n = $_; $i = [array]::IndexOf($t.Order, $n); if ($i -ge 0) { $v = $m.Groups[$i + 1].Value; if ($EN.ContainsKey($v)) { $EN[$v] } else { $v } } else { '' } })
+            try { return ($t.En -f $args2) } catch { return $t.En }
+        }
+    }
+    return $s
+}
 
 function Write-Log([string]$msg) { try { Add-Content -Path $LogFile -Value ("{0}  {1}" -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), $msg) -Encoding UTF8 } catch {} }
 
@@ -70,7 +220,7 @@ function Get-CatItems($c) {
 function Get-CatSize($c) { $t = [long]0; foreach ($it in (Get-CatItems $c)) { $t += Get-ItemSize $it }; return $t }
 function Get-RecycleBinSize { try { $t = [long]0; foreach ($i in (New-Object -ComObject Shell.Application).Namespace(0xA).Items()) { $t += $i.Size }; return $t } catch { return [long]0 } }
 function Format-Size([long]$b) {
-    if ($b -ge 1GB) { return ('{0:N1} ГБ' -f ($b / 1GB)) }; if ($b -ge 1MB) { return ('{0:N0} МБ' -f ($b / 1MB)) }; if ($b -ge 1KB) { return ('{0:N0} КБ' -f ($b / 1KB)) }; return "$b Б"
+    if ($b -ge 1GB) { return ('{0:N1} ' -f ($b / 1GB)) + (T 'ГБ') }; if ($b -ge 1MB) { return ('{0:N0} ' -f ($b / 1MB)) + (T 'МБ') }; if ($b -ge 1KB) { return ('{0:N0} ' -f ($b / 1KB)) + (T 'КБ') }; return "$b " + (T 'Б')
 }
 
 function Move-ToQuarantine($c, [string]$session) {
@@ -488,7 +638,7 @@ if ($args -contains '-auto') {
         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
         <StackPanel Orientation="Horizontal" Margin="24,26,24,22">
           <Border Width="40" Height="40" CornerRadius="12" Background="{StaticResource AccentGrad}"><TextBlock Text="&#xE74D;" FontFamily="Segoe MDL2 Assets" FontSize="18" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
-          <StackPanel Margin="12,0,0,0" VerticalAlignment="Center"><TextBlock Text="Sweep" FontSize="20" FontWeight="Bold"/><TextBlock Text="версия 0.7" FontSize="11" Foreground="{DynamicResource TextMuted}"/></StackPanel>
+          <StackPanel Margin="12,0,0,0" VerticalAlignment="Center"><TextBlock Text="Sweep" FontSize="20" FontWeight="Bold"/><TextBlock Text="версия 0.8" FontSize="11" Foreground="{DynamicResource TextMuted}"/></StackPanel>
         </StackPanel>
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Hidden"><StackPanel>
           <RadioButton x:Name="NavHome"    Style="{StaticResource Nav}" Tag="&#xE80F;" Content="Обзор" IsChecked="True"/>
@@ -506,9 +656,10 @@ if ($args -contains '-auto') {
         <StackPanel Grid.Row="2" Margin="16,8,16,16">
           <Button x:Name="BtnUpdateApp" Content="Обновить" Style="{StaticResource BtnMain}" Margin="0,0,0,8" HorizontalAlignment="Stretch" Visibility="Collapsed"/>
           <Grid>
-            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
             <Button x:Name="BtnTheme" Content="Светлая тема" Style="{StaticResource Btn}" Margin="0,0,6,0" HorizontalAlignment="Stretch" Padding="10,9" FontSize="12"/>
-            <Button x:Name="BtnCheckUpdate" Grid.Column="1" Content="&#xE895;" FontFamily="Segoe MDL2 Assets" Style="{StaticResource Btn}" Margin="0" Padding="12,9" ToolTip="Проверить обновления"/>
+            <Button x:Name="BtnLang" Grid.Column="1" Content="EN" Style="{StaticResource Btn}" Margin="0,0,6,0" Padding="10,9" FontSize="12" ToolTip="Язык: English"/>
+            <Button x:Name="BtnCheckUpdate" Grid.Column="2" Content="&#xE895;" FontFamily="Segoe MDL2 Assets" Style="{StaticResource Btn}" Margin="0" Padding="12,9" ToolTip="Проверить обновления"/>
           </Grid>
           <TextBlock Text="Не выходит в интернет. Обновления только по вашему нажатию." FontSize="10" Foreground="{DynamicResource TextMuted}" Margin="2,8,0,0" TextWrapping="Wrap"/>
         </StackPanel>
@@ -710,14 +861,21 @@ if ($args -contains '-auto') {
 "@
 
 $Window = [Windows.Markup.XamlReader]::Load((New-Object System.Xml.XmlNodeReader $xaml))
+function Translate-Tree($node) {
+    if ($node -is [System.Windows.Controls.TextBlock]) { if ($node.Text) { $node.Text = T $node.Text } }
+    elseif ($node -is [System.Windows.Controls.ContentControl] -and $node.Content -is [string]) { $node.Content = T $node.Content }
+    if ($node -is [System.Windows.FrameworkElement] -and $node.ToolTip -is [string]) { $node.ToolTip = T $node.ToolTip }
+    if ($node -is [System.Windows.DependencyObject]) { foreach ($ch in [System.Windows.LogicalTreeHelper]::GetChildren($node)) { if ($ch -is [System.Windows.DependencyObject]) { Translate-Tree $ch } } }
+}
+if ($script:Lang -eq 'en') { Translate-Tree $Window }
 $ui = @{}
-foreach ($n in 'HeadTitle','HeadSub','BigLabel','BigTotal','Busy','Sections','SectionShift','NavHome','SecHome','BtnUpdateApp','BtnCheckUpdate','HealthRing','HealthText','HealthTitle','HealthHint','HealthTips','NavApps','SecApps','AppsPanel','BtnAppsRemove','BtnAppsScan','BtnAppsStore','SchedText','SchedBox','NavDisk','SecDisk','DiskPanel','BigFilesTitle','BigFilesPanel','BtnBigScan','BtnBigClean','BtnDiskOpen','TileJunk','TileDisk','TileDiskSub','TileMem','TileMemSub','TileStartup','BtnQuick',
+foreach ($n in 'HeadTitle','HeadSub','BigLabel','BigTotal','Busy','Sections','SectionShift','NavHome','SecHome','BtnUpdateApp','BtnCheckUpdate','BtnLang','HealthRing','HealthText','HealthTitle','HealthHint','HealthTips','NavApps','SecApps','AppsPanel','BtnAppsRemove','BtnAppsScan','BtnAppsStore','SchedText','SchedBox','NavDisk','SecDisk','DiskPanel','BigFilesTitle','BigFilesPanel','BtnBigScan','BtnBigClean','BtnDiskOpen','TileJunk','TileDisk','TileDiskSub','TileMem','TileMemSub','TileStartup','BtnQuick',
               'NavClean','NavPrivacy','NavReg','NavSvc','NavStartup','NavBoost','NavSys','NavQ',
               'SecClean','SecPrivacy','SecReg','SecSvc','SecStartup','SecBoost','SecSys','SecQ',
               'CatPanel','BtnClean','BtnScan','PrivPanel','BtnPrivAll','RegPanel','RegBackupPanel','BtnRegClean','BtnRegScan','SvcPanel','StartupPanel','BtnStartupRefresh',
               'BtnMem','MemText','BtnDisk','DiskText','BtnUpdate','SysPanel','BtnSysInfo','BtnSysCopy','QPanel','BtnQRefresh','BtnQPurge','StatusText','BtnTheme') { $ui[$n] = $Window.FindName($n) }
 
-function Set-Status([string]$text) { $ui.StatusText.Text = $text; $Window.Dispatcher.Invoke([action]{}, [Windows.Threading.DispatcherPriority]::Render) }
+function Set-Status([string]$text) { $ui.StatusText.Text = (T $text); $Window.Dispatcher.Invoke([action]{}, [Windows.Threading.DispatcherPriority]::Render) }
 $Window.Dispatcher.add_UnhandledException({
     param($sender, $e)
     $e.Handled = $true
@@ -727,7 +885,7 @@ $Window.Dispatcher.add_UnhandledException({
 })
 function Set-Busy([bool]$on) { $ui.Busy.Visibility = $(if ($on) { 'Visible' } else { 'Collapsed' }) }
 function New-Text([string]$text, [string]$color = 'TextMain', [int]$size = 13, [bool]$bold = $false) {
-    $t = New-Object System.Windows.Controls.TextBlock; $t.Text = $text; $t.FontSize = $size; $t.TextWrapping = 'Wrap'
+    $t = New-Object System.Windows.Controls.TextBlock; $t.Text = (T $text); $t.FontSize = $size; $t.TextWrapping = 'Wrap'
     if ($color -in 'TextMain','TextMuted','Good','Warn') { $t.SetResourceReference([System.Windows.Controls.TextBlock]::ForegroundProperty, $color) } else { $t.Foreground = $color }
     if ($bold) { $t.FontWeight = 'SemiBold' }
     return $t
@@ -761,7 +919,7 @@ function Show-Section([string]$nav) {
     $d = $Sections[$nav]
     foreach ($k in $Sections.Keys) { $ui[$Sections[$k].Sec].Visibility = 'Collapsed' }
     $ui[$d.Sec].Visibility = 'Visible'
-    $ui.HeadTitle.Text = $d.Title; $ui.HeadSub.Text = $d.Sub; $ui.BigLabel.Text = $d.Big
+    $ui.HeadTitle.Text = (T $d.Title); $ui.HeadSub.Text = (T $d.Sub); $ui.BigLabel.Text = (T $d.Big)
     Update-BigNumber $nav
     $FadeIn.Begin($Window, $true)
 }
@@ -782,9 +940,9 @@ function Update-BigNumber([string]$nav) {
     switch ($nav) {
         'NavHome'    { Set-BigSize (Get-CheckedTotal); Update-Tiles; Update-Health }
         'NavClean'   { Set-BigSize (Get-CheckedTotal) }
-        'NavPrivacy' { $n = @($PrivBoxes.Values | Where-Object { $_.IsChecked }).Count; $ui.BigTotal.Text = "$n из $($Privacy.Count)" }
+        'NavPrivacy' { $n = @($PrivBoxes.Values | Where-Object { $_.IsChecked }).Count; $ui.BigTotal.Text = ((T '{0} из {1}') -f $n, $Privacy.Count) }
         'NavReg'     { $ui.BigTotal.Text = $(if ($script:regFound -ge 0) { "$($script:regFound)" } else { '…' }) }
-        'NavSvc'     { $n = @($SvcBoxes | Where-Object { -not $_.IsChecked }).Count; $ui.BigTotal.Text = "$n из $($SvcBoxes.Count)" }
+        'NavSvc'     { $n = @($SvcBoxes | Where-Object { -not $_.IsChecked }).Count; $ui.BigTotal.Text = ((T '{0} из {1}') -f $n, $SvcBoxes.Count) }
         'NavStartup' { $n = @($ui.StartupPanel.Children | Where-Object { $_ -is [System.Windows.Controls.CheckBox] -and -not $_.IsChecked }).Count; $ui.BigTotal.Text = "$n" }
         'NavBoost'   { $ui.BigTotal.Text = Format-Size ([long]((Get-CimInstance Win32_OperatingSystem).FreePhysicalMemory * 1KB)) }
         'NavDisk'    { if (-not $ui.DiskPanel.Children.Count) { Load-Disks }; $v = Get-SelectedVolume; if ($v) { $ui.BigTotal.Text = Format-Size ([long]$v.SizeRemaining) } }
@@ -799,9 +957,9 @@ function Update-Tiles {
     try {
         $ui.TileJunk.Text = Format-Size (Get-CheckedTotal)
         $sys = Get-Volume -DriveLetter ($env:SystemDrive.TrimEnd(':')) -ErrorAction SilentlyContinue
-        if ($sys) { $ui.TileDisk.Text = Format-Size ([long]$sys.SizeRemaining); $ui.TileDiskSub.Text = "свободно из $(Format-Size ([long]$sys.Size))" }
+        if ($sys) { $ui.TileDisk.Text = Format-Size ([long]$sys.SizeRemaining); $ui.TileDiskSub.Text = ((T 'свободно из {0}') -f (Format-Size ([long]$sys.Size))) }
         $os = Get-CimInstance Win32_OperatingSystem
-        $ui.TileMem.Text = Format-Size ([long]($os.FreePhysicalMemory * 1KB)); $ui.TileMemSub.Text = "свободно из $(Format-Size ([long]($os.TotalVisibleMemorySize * 1KB)))"
+        $ui.TileMem.Text = Format-Size ([long]($os.FreePhysicalMemory * 1KB)); $ui.TileMemSub.Text = ((T 'свободно из {0}') -f (Format-Size ([long]($os.TotalVisibleMemorySize * 1KB))))
         $ui.TileStartup.Text = "$(@($ui.StartupPanel.Children | Where-Object { $_ -is [System.Windows.Controls.CheckBox] -and $_.IsChecked }).Count)"
     } catch { Write-Log "Плитки: $($_.Exception.Message)" }
 }
@@ -820,7 +978,7 @@ function Start-Scan {
     foreach ($c in $Categories) {
         Set-Status "Проверяю: $($c.Name)…"
         $size = if ($c.Id -eq 'bin') { Get-RecycleBinSize } else { Get-CatSize $c }
-        $CatSizes[$c.Id] = $size; $CatBoxes[$c.Id].Title.Text = "$($c.Name)    $(Format-Size $size)"
+        $CatSizes[$c.Id] = $size; $CatBoxes[$c.Id].Title.Text = "$(T $c.Name)    $(Format-Size $size)"
     }
     Set-BigSize (Get-CheckedTotal); Set-Busy $false; Update-Tiles; Update-Health
     Set-Status 'Проверка закончена. Отметьте, что убрать, и нажмите «Очистить». Всё, кроме корзины, попадёт в карантин.'
@@ -846,7 +1004,7 @@ $ui.BtnClean.Add_Click({
             'wu'  { try { Stop-Service wuauserv -Force -ErrorAction SilentlyContinue; $wuStopped = $true } catch {}; $freed += Move-ToQuarantine $c $session }
             default { $freed += Move-ToQuarantine $c $session }
         }
-        $CatSizes[$c.Id] = [long]0; $CatBoxes[$c.Id].Title.Text = $c.Name
+        $CatSizes[$c.Id] = [long]0; $CatBoxes[$c.Id].Title.Text = (T $c.Name)
     }
     if ($wuStopped) { try { Start-Service wuauserv -ErrorAction SilentlyContinue } catch {} }
     Set-BigSize 0; Set-Busy $false; Write-Log "Освобождено $(Format-Size $freed)"
@@ -858,11 +1016,11 @@ $ui.BtnClean.Add_Click({
 $PrivBoxes = @{}
 $lastGroup = ''
 foreach ($p in ($Privacy | Sort-Object { @('Сбор данных','Реклама и подсказки','Помощники Microsoft').IndexOf($_.Group) })) {
-    if ($p.Group -ne $lastGroup) { $h = New-Text $p.Group.ToUpper() 'TextMuted' 10 $true; $h.Margin = '10,14,0,2'; $ui.PrivPanel.Children.Add($h) | Out-Null; $lastGroup = $p.Group }
+    if ($p.Group -ne $lastGroup) { $h = New-Text (T $p.Group).ToUpper() 'TextMuted' 10 $true; $h.Margin = '10,14,0,2'; $ui.PrivPanel.Children.Add($h) | Out-Null; $lastGroup = $p.Group }
     $row = New-CheckRow $p.Name $p.Hint (Get-PrivacyState $p) $p.Id
     $row.Box.Add_Click({
         $item = $Privacy | Where-Object { $_.Id -eq $this.Tag }
-        try { Set-Privacy $item ([bool]$this.IsChecked); $state = if ($this.IsChecked) { 'отключено' } else { 'включено обратно' }; Write-Log "Приватность: $($item.Name) $state"; Set-Status "$($item.Name): $state." }
+        try { Set-Privacy $item ([bool]$this.IsChecked); $state = if ($this.IsChecked) { 'отключено' } else { 'включено обратно' }; Write-Log "Приватность: $($item.Name) $state"; Set-Status ((T "{0}: $state.") -f (T $item.Name)) }
         catch { Set-Status "Не удалось изменить «$($item.Name)»: $($_.Exception.Message)" }
         Update-BigNumber 'NavPrivacy'
     })
@@ -890,8 +1048,8 @@ function Load-RegBackups {
         $g = New-Object System.Windows.Controls.Grid; $g.Margin = '0,6'
         $c1 = New-Object System.Windows.Controls.ColumnDefinition; $c1.Width = '*'; $c2 = New-Object System.Windows.Controls.ColumnDefinition; $c2.Width = 'Auto'
         $g.ColumnDefinitions.Add($c1); $g.ColumnDefinitions.Add($c2)
-        $info = New-Text "Чистка реестра $($s.Date)   файлов: $($s.Count)" 'TextMain' 14 $true; $info.VerticalAlignment = 'Center'
-        $btn = New-Object System.Windows.Controls.Button; $btn.Content = 'Вернуть'; $btn.Style = $Window.FindResource('BtnGood'); $btn.Tag = $s.Session; $btn.Margin = '0'
+        $info = New-Text ((T 'Чистка реестра {0}   файлов: {1}') -f $s.Date, $s.Count) 'TextMain' 14 $true; $info.VerticalAlignment = 'Center'
+        $btn = New-Object System.Windows.Controls.Button; $btn.Content = (T 'Вернуть'); $btn.Style = $Window.FindResource('BtnGood'); $btn.Tag = $s.Session; $btn.Margin = '0'
         $btn.Add_Click({ Set-Status 'Возвращаю записи реестра…'; $n = Restore-RegSession $this.Tag; Write-Log "Реестр: восстановлено файлов $n"; Set-Status "Восстановлено веток: $n."; Load-RegBackups })
         [System.Windows.Controls.Grid]::SetColumn($info, 0); [System.Windows.Controls.Grid]::SetColumn($btn, 1)
         $g.Children.Add($info) | Out-Null; $g.Children.Add($btn) | Out-Null
@@ -903,7 +1061,7 @@ $ui.BtnRegScan.Add_Click({
     foreach ($c in $RegCategories) {
         Set-Status "Проверяю реестр: $($c.Name)…"
         $n = @(Find-RegItems $c).Count; $total += $n
-        $RegBoxes[$c.Id].Title.Text = "$($c.Name)    $n"
+        $RegBoxes[$c.Id].Title.Text = "$(T $c.Name)    $n"
     }
     $script:regFound = $total; Update-BigNumber 'NavReg'; Set-Busy $false
     $ui.BtnRegClean.IsEnabled = ($total -gt 0)
@@ -916,7 +1074,7 @@ $ui.BtnRegClean.Add_Click({
         if (-not $RegBoxes[$c.Id].Box.IsChecked) { continue }
         Set-Status "Сохраняю копию и чищу: $($c.Name)…"
         $done += Clean-RegCategory $c $session
-        $RegBoxes[$c.Id].Title.Text = $c.Name
+        $RegBoxes[$c.Id].Title.Text = (T $c.Name)
     }
     $script:regFound = 0; Update-BigNumber 'NavReg'; Set-Busy $false; Write-Log "Реестр: удалено записей $done, сеанс $session"
     Set-Status "Готово. Удалено записей: $done. Резервная копия сохранена, её можно вернуть ниже."
@@ -945,7 +1103,7 @@ function Load-Startup {
     $entries = Get-StartupEntries
     if (-not $entries -or $entries.Count -eq 0) { $ui.StartupPanel.Children.Add((New-Text 'В автозагрузке ничего нет.')) | Out-Null; return }
     foreach ($e in $entries) {
-        $row = New-CheckRow "$($e.Name)   ($($e.Source))" $e.Command $e.Enabled $e
+        $row = New-CheckRow "$($e.Name)   ($(T $e.Source))" $e.Command $e.Enabled $e
         $row.Box.Add_Click({
             $entry = $this.Tag
             try { Set-ApprovedState $entry.Approved $entry.Name ([bool]$this.IsChecked); $state = if ($this.IsChecked) { 'включена' } else { 'отключена' }; Write-Log "Автозагрузка «$($entry.Name)» $state"; Set-Status "Автозагрузка «$($entry.Name)» $state. Подействует после перезагрузки." }
@@ -964,7 +1122,7 @@ $ui.BtnMem.Add_Click({
     foreach ($p in Get-Process) { try { [Sweep.Mem]::EmptyWorkingSet($p.Handle) | Out-Null } catch {} }
     Start-Sleep -Milliseconds 800
     $after = (Get-CimInstance Win32_OperatingSystem).FreePhysicalMemory * 1KB
-    $ui.MemText.Text = "Свободно сейчас: $(Format-Size $after)"; Set-Busy $false; Update-BigNumber 'NavBoost'
+    $ui.MemText.Text = ((T 'Свободно сейчас: {0}') -f (Format-Size $after)); Set-Busy $false; Update-BigNumber 'NavBoost'
     Set-Status "Память освобождена. Прибавилось: $(Format-Size ([math]::Max(0, $after - $before)))."
 })
 $ui.BtnDisk.Add_Click({
@@ -973,12 +1131,11 @@ $ui.BtnDisk.Add_Click({
         Set-Status "Оптимизирую диск $($v.DriveLetter): …"
         try { Optimize-Volume -DriveLetter $v.DriveLetter -ErrorAction Stop } catch { Write-Log "Диск $($v.DriveLetter): $($_.Exception.Message)" }
     }
-    $ui.DiskText.Text = 'Готово'; Set-Busy $false; Set-Status 'Диски оптимизированы.'; $ui.BtnDisk.IsEnabled = $true
+    $ui.DiskText.Text = (T 'Готово'); Set-Busy $false; Set-Status 'Диски оптимизированы.'; $ui.BtnDisk.IsEnabled = $true
 })
 $ui.BtnUpdate.Add_Click({ Start-Process 'ms-settings:windowsupdate' })
 
 # ----- Тема -----
-$SettingsFile = Join-Path $Root 'settings.json'
 $Themes = @{
     Dark  = @{ WinBg='#0D0B1A'; SideBg='#110E24'; CardBg='#181433'; CardBorder='#262052'; CardHover='#1E1940'; TextMain='#EDE9FE'; TextMuted='#8B86B0'; AccentSoft='#2A1F5E'; SoftBtn='#221C47'; StatusBg='#0A0816' }
     Light = @{ WinBg='#F5F3FF'; SideBg='#EDE9FE'; CardBg='#FFFFFF'; CardBorder='#DDD6FE'; CardHover='#F3F0FF'; TextMain='#1E1B3A'; TextMuted='#6B6790'; AccentSoft='#DDD6FE'; SoftBtn='#E4DEFA'; StatusBg='#1E1B3A' }
@@ -992,12 +1149,21 @@ function Apply-Theme([string]$name) {
             $brush = $BrushConv.ConvertFromString($Themes[$name][$k]); $brush.Freeze()
             $Window.Resources[$k] = $brush
         }
-        $ui.BtnTheme.Content = $(if ($name -eq 'Dark') { 'Светлая тема' } else { 'Тёмная тема' })
-        try { [IO.File]::WriteAllText($SettingsFile, (@{ theme = $name } | ConvertTo-Json), [Text.Encoding]::UTF8) } catch {}
+        $ui.BtnTheme.Content = T $(if ($name -eq 'Dark') { 'Светлая тема' } else { 'Тёмная тема' })
+        Save-Setting 'theme' $name
     } catch { Write-Log "Тема: $($_.Exception.Message)"; Set-Status "Не удалось переключить тему: $($_.Exception.Message)" }
 }
-try { if (Test-Path $SettingsFile) { $saved = (Get-Content $SettingsFile -Raw | ConvertFrom-Json).theme; if ($saved -eq 'Light') { Apply-Theme 'Light' } } } catch {}
+try { if ((Get-Settings).theme -eq 'Light') { Apply-Theme 'Light' } } catch {}
+$ui.BtnTheme.Content = T $(if ($script:theme -eq 'Dark') { 'Светлая тема' } else { 'Тёмная тема' })
 $ui.BtnTheme.Add_Click({ if ($script:theme -eq 'Dark') { Apply-Theme 'Light' } else { Apply-Theme 'Dark' } })
+$ui.BtnLang.Content = $(if ($script:Lang -eq 'en') { 'RU' } else { 'EN' })
+$ui.BtnLang.Add_Click({
+    Save-Setting 'lang' $(if ($script:Lang -eq 'en') { 'ru' } else { 'en' })
+    Set-Status (T 'Перезапуск для смены языка…')
+    $self = if ($PSCommandPath) { $PSCommandPath } else { [System.Diagnostics.Process]::GetCurrentProcess().MainModule.FileName }
+    if ($self -like '*.ps1') { Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$self`"" } else { Start-Process $self }
+    $Window.Close()
+})
 
 # ----- Диски -----
 $script:selectedDrive = $env:SystemDrive.TrimEnd(':')
@@ -1009,16 +1175,16 @@ function Load-Disks {
         $rb = New-Object System.Windows.Controls.RadioButton; $rb.GroupName = 'disks'; $rb.Tag = [string]$v.DriveLetter; $rb.Cursor = 'Hand'; $rb.Margin = '0,6'
         $rb.IsChecked = ($v.DriveLetter -eq $script:selectedDrive)
         $sp = New-Object System.Windows.Controls.StackPanel; $sp.Margin = '8,0,0,0'
-        $label = if ($v.FileSystemLabel) { "$($v.FileSystemLabel) ($($v.DriveLetter):)" } else { "Диск $($v.DriveLetter):" }
+        $label = if ($v.FileSystemLabel) { "$($v.FileSystemLabel) ($($v.DriveLetter):)" } else { (T 'Диск {0}:') -f $v.DriveLetter }
         $sp.Children.Add((New-Text $label 'TextMain' 14 $true)) | Out-Null
         $used = [long]($v.Size - $v.SizeRemaining); $pct = [math]::Round($used * 100 / $v.Size)
         $bar = New-Object System.Windows.Controls.Border; $bar.Height = 8; $bar.CornerRadius = '4'; $bar.Background = '#2F2A5A'; $bar.Margin = '0,6,0,4'; $bar.Width = 420; $bar.HorizontalAlignment = 'Left'
         $fill = New-Object System.Windows.Controls.Border; $fill.CornerRadius = '4'; $fill.HorizontalAlignment = 'Left'; $fill.Width = [math]::Max(4, 420 * $pct / 100)
         $fill.Background = $(if ($pct -ge 90) { '#EF4444' } elseif ($pct -ge 75) { '#FBBF24' } else { $Window.FindResource('AccentGrad') })
         $bar.Child = $fill; $sp.Children.Add($bar) | Out-Null
-        $sp.Children.Add((New-Text ("занято {0} из {1}  ·  свободно {2}  ·  {3}%" -f (Format-Size $used), (Format-Size ([long]$v.Size)), (Format-Size ([long]$v.SizeRemaining)), $pct) 'TextMuted' 12)) | Out-Null
+        $sp.Children.Add((New-Text ((T 'занято {0} из {1}  ·  свободно {2}  ·  {3}%') -f (Format-Size $used), (Format-Size ([long]$v.Size)), (Format-Size ([long]$v.SizeRemaining)), $pct) 'TextMuted' 12)) | Out-Null
         $rb.Content = $sp
-        $rb.Add_Checked({ $script:selectedDrive = [string]$this.Tag; Update-BigNumber 'NavDisk'; $ui.BigFilesTitle.Text = "Крупные файлы на диске $($this.Tag):" })
+        $rb.Add_Checked({ $script:selectedDrive = [string]$this.Tag; Update-BigNumber 'NavDisk'; $ui.BigFilesTitle.Text = ((T 'Крупные файлы на диске {0}:') -f $this.Tag) })
         $ui.DiskPanel.Children.Add($rb) | Out-Null
     }
 }
@@ -1077,9 +1243,9 @@ function Update-Health {
         $circ = [math]::PI * 96 / 9
         $ui.HealthRing.StrokeDashArray = New-Object System.Windows.Media.DoubleCollection(@([double]($circ * $score / 100), [double]999))
         $ui.HealthRing.Stroke = $(if ($score -ge 80) { '#34D399' } elseif ($score -ge 55) { '#FBBF24' } else { '#F87171' })
-        $ui.HealthTitle.Text = $(if ($score -ge 80) { 'Компьютер в хорошей форме' } elseif ($score -ge 55) { 'Есть что улучшить' } else { 'Компьютеру нужна забота' })
+        $ui.HealthTitle.Text = T $(if ($score -ge 80) { 'Компьютер в хорошей форме' } elseif ($score -ge 55) { 'Есть что улучшить' } else { 'Компьютеру нужна забота' })
         $ui.HealthTips.Children.Clear()
-        foreach ($t in ($tips | Select-Object -First 3)) { $ui.HealthTips.Children.Add((New-Text "• $t" 'TextMain' 12)) | Out-Null }
+        foreach ($t in ($tips | Select-Object -First 3)) { $ui.HealthTips.Children.Add((New-Text ('• ' + (T $t)) 'TextMain' 12)) | Out-Null }
         if (-not $tips) { $ui.HealthTips.Children.Add((New-Text '• Всё в порядке, так держать' 'Good' 12)) | Out-Null }
     } catch { Write-Log "Здоровье: $($_.Exception.Message)" }
 }
@@ -1160,8 +1326,8 @@ $TaskName = 'Sweep Auto Clean'
 function Get-SelfPath { if ($PSCommandPath) { return $PSCommandPath }; return [System.Diagnostics.Process]::GetCurrentProcess().MainModule.FileName }
 function Update-SchedText {
     $t = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
-    if ($t) { $info = Get-ScheduledTaskInfo -TaskName $TaskName -ErrorAction SilentlyContinue; $next = if ($info -and $info.NextRunTime) { $info.NextRunTime.ToString('d MMMM, HH:mm') } else { 'скоро' }; $ui.SchedText.Text = "Включено. Следующий запуск: $next"; $ui.SchedBox.IsChecked = $true }
-    else { $ui.SchedText.Text = 'Выключено'; $ui.SchedBox.IsChecked = $false }
+    if ($t) { $info = Get-ScheduledTaskInfo -TaskName $TaskName -ErrorAction SilentlyContinue; $next = if ($info -and $info.NextRunTime) { $info.NextRunTime.ToString('d MMMM, HH:mm') } else { (T 'скоро') }; $ui.SchedText.Text = ((T 'Включено. Следующий запуск: {0}') -f $next); $ui.SchedBox.IsChecked = $true }
+    else { $ui.SchedText.Text = (T 'Выключено'); $ui.SchedBox.IsChecked = $false }
 }
 $ui.SchedBox.Add_Click({
     try {
@@ -1185,22 +1351,22 @@ Update-SchedText
 # ----- Система -----
 $script:sysReport = ''
 function Add-SysRow([string]$label, [string]$value) {
-    if (-not $value) { $value = 'нет данных' }
+    if (-not $value) { $value = (T 'нет данных') }
     $g = New-Object System.Windows.Controls.Grid; $g.Margin = '0,5'
     $c1 = New-Object System.Windows.Controls.ColumnDefinition; $c1.Width = '200'; $c2 = New-Object System.Windows.Controls.ColumnDefinition; $c2.Width = '*'
     $g.ColumnDefinitions.Add($c1); $g.ColumnDefinitions.Add($c2)
-    $l = New-Text $label 'TextMuted' 13; $v = New-Text $value 'TextMain' 13 $true
+    $l = New-Text (T $label) 'TextMuted' 13; $v = New-Object System.Windows.Controls.TextBlock; $v.Text = $value; $v.FontSize = 13; $v.FontWeight = 'SemiBold'; $v.TextWrapping = 'Wrap'; $v.SetResourceReference([System.Windows.Controls.TextBlock]::ForegroundProperty, 'TextMain')
     [System.Windows.Controls.Grid]::SetColumn($l, 0); [System.Windows.Controls.Grid]::SetColumn($v, 1)
     $g.Children.Add($l) | Out-Null; $g.Children.Add($v) | Out-Null
     $ui.SysPanel.Children.Add($g) | Out-Null
-    $script:sysReport += "{0}: {1}`r`n" -f $label, $value
+    $script:sysReport += "{0}: {1}`r`n" -f (T $label), $value
 }
 function Add-SysHeader([string]$text) { $t = New-Text $text 'TextMain' 15 $true; $t.Margin = '0,14,0,4'; $ui.SysPanel.Children.Add($t) | Out-Null; $script:sysReport += "`r`n[$text]`r`n" }
 function Get-Temperatures {
     $out = @()
     try { foreach ($z in (Get-CimInstance -Namespace root/wmi -ClassName MSAcpi_ThermalZoneTemperature -ErrorAction Stop)) { $c = [math]::Round(($z.CurrentTemperature / 10) - 273.15, 1); if ($c -gt 0 -and $c -lt 130) { $out += "$c °C" } } } catch {}
     if ($out.Count -gt 0) { return ($out -join ', ') }
-    return 'недоступно без драйвера (датчики не отдаёт Windows)'
+    return (T 'недоступно без драйвера (датчики не отдаёт Windows)')
 }
 $ui.BtnSysInfo.Add_Click({
     $ui.BtnSysInfo.IsEnabled = $false; $ui.SysPanel.Children.Clear(); $script:sysReport = ''; Set-Busy $true
@@ -1210,22 +1376,22 @@ $ui.BtnSysInfo.Add_Click({
         Add-SysHeader 'Система'
         Add-SysRow 'Windows' "$($os.Caption) $($os.Version) (сборка $($os.BuildNumber))"
         Add-SysRow 'Компьютер' "$($cs.Manufacturer) $($cs.Model)"
-        $up = (Get-Date) - $os.LastBootUpTime; Add-SysRow 'Работает без перезагрузки' ('{0} д {1} ч {2} мин' -f $up.Days, $up.Hours, $up.Minutes)
+        $up = (Get-Date) - $os.LastBootUpTime; Add-SysRow 'Работает без перезагрузки' ((T '{0} д {1} ч {2} мин') -f $up.Days, $up.Hours, $up.Minutes)
         Add-SysHeader 'Процессор'
         foreach ($cpu in (Get-CimInstance Win32_Processor)) { Add-SysRow 'Модель' $cpu.Name.Trim(); Add-SysRow 'Ядра / потоки' "$($cpu.NumberOfCores) / $($cpu.NumberOfLogicalProcessors)"; Add-SysRow 'Частота' "$($cpu.MaxClockSpeed) МГц"; Add-SysRow 'Загрузка сейчас' "$($cpu.LoadPercentage) %" }
         Add-SysHeader 'Видеокарта'
-        foreach ($gpu in (Get-CimInstance Win32_VideoController)) { Add-SysRow 'Модель' $gpu.Name; if ($gpu.AdapterRAM -gt 0) { Add-SysRow 'Видеопамять' (Format-Size ([long]$gpu.AdapterRAM)) }; Add-SysRow 'Драйвер' "$($gpu.DriverVersion) от $($gpu.DriverDate.ToString('d'))" }
+        foreach ($gpu in (Get-CimInstance Win32_VideoController)) { Add-SysRow 'Модель' $gpu.Name; if ($gpu.AdapterRAM -gt 0) { Add-SysRow 'Видеопамять' (Format-Size ([long]$gpu.AdapterRAM)) }; Add-SysRow 'Драйвер' ((T '{0} от {1}') -f $gpu.DriverVersion, $gpu.DriverDate.ToString('d')) }
         Add-SysHeader 'Материнская плата'
         $mb = Get-CimInstance Win32_BaseBoard; Add-SysRow 'Модель' "$($mb.Manufacturer) $($mb.Product)"
-        $bios = Get-CimInstance Win32_BIOS; Add-SysRow 'BIOS' "$($bios.SMBIOSBIOSVersion) от $($bios.ReleaseDate.ToString('d'))"
+        $bios = Get-CimInstance Win32_BIOS; Add-SysRow 'BIOS' ((T '{0} от {1}') -f $bios.SMBIOSBIOSVersion, $bios.ReleaseDate.ToString('d'))
         Add-SysHeader 'Оперативная память'
         $mods = Get-CimInstance Win32_PhysicalMemory; $total = ($mods | Measure-Object -Property Capacity -Sum).Sum
-        Add-SysRow 'Всего' ("{0} ({1} план.)" -f (Format-Size ([long]$total)), $mods.Count)
-        foreach ($m in $mods) { Add-SysRow "Планка $($m.DeviceLocator)" ("{0}, {1} МГц, {2}" -f (Format-Size ([long]$m.Capacity)), $m.Speed, $m.Manufacturer) }
+        Add-SysRow 'Всего' ((T '{0} ({1} план.)') -f (Format-Size ([long]$total)), $mods.Count)
+        foreach ($m in $mods) { Add-SysRow ((T 'Планка {0}') -f $m.DeviceLocator) ("{0}, {1} МГц, {2}" -f (Format-Size ([long]$m.Capacity)), $m.Speed, $m.Manufacturer) }
         Add-SysRow 'Свободно сейчас' (Format-Size ([long]($os.FreePhysicalMemory * 1KB)))
         Add-SysHeader 'Диски'
         foreach ($d in (Get-PhysicalDisk -ErrorAction SilentlyContinue)) { Add-SysRow $d.FriendlyName ("{0}, {1}, {2}" -f (Format-Size ([long]$d.Size)), $d.MediaType, $d.BusType) }
-        foreach ($v in (Get-Volume | Where-Object { $_.DriveLetter -and $_.DriveType -eq 'Fixed' })) { Add-SysRow "Диск $($v.DriveLetter):" ("свободно {0} из {1}" -f (Format-Size ([long]$v.SizeRemaining)), (Format-Size ([long]$v.Size))) }
+        foreach ($v in (Get-Volume | Where-Object { $_.DriveLetter -and $_.DriveType -eq 'Fixed' })) { Add-SysRow ((T 'Диск {0}:') -f $v.DriveLetter) ((T 'свободно {0} из {1}') -f (Format-Size ([long]$v.SizeRemaining)), (Format-Size ([long]$v.Size))) }
         Add-SysHeader 'Температура'
         Add-SysRow 'Датчики' (Get-Temperatures)
         $ui.BtnSysCopy.IsEnabled = $true
@@ -1244,8 +1410,8 @@ function Load-Quarantine {
         $row = New-Object System.Windows.Controls.Grid; $row.Margin = '0,6'
         $c1 = New-Object System.Windows.Controls.ColumnDefinition; $c1.Width = '*'; $c2 = New-Object System.Windows.Controls.ColumnDefinition; $c2.Width = 'Auto'
         $row.ColumnDefinitions.Add($c1); $row.ColumnDefinitions.Add($c2)
-        $info = New-Text "Очистка $($s.Date)   $(Format-Size $s.Size)" 'TextMain' 14 $true; $info.VerticalAlignment = 'Center'
-        $btn = New-Object System.Windows.Controls.Button; $btn.Content = 'Вернуть'; $btn.Style = $Window.FindResource('BtnGood'); $btn.Tag = $s.Path; $btn.Margin = '0'
+        $info = New-Text ((T 'Очистка {0}   {1}') -f $s.Date, (Format-Size $s.Size)) 'TextMain' 14 $true; $info.VerticalAlignment = 'Center'
+        $btn = New-Object System.Windows.Controls.Button; $btn.Content = (T 'Вернуть'); $btn.Style = $Window.FindResource('BtnGood'); $btn.Tag = $s.Path; $btn.Margin = '0'
         $btn.Add_Click({ Set-Status 'Возвращаю файлы на место…'; $n = Restore-Session $this.Tag; Write-Log "Возвращено объектов: $n"; Set-Status "Возвращено объектов: $n."; Load-Quarantine; Update-BigNumber 'NavQ' })
         [System.Windows.Controls.Grid]::SetColumn($info, 0); [System.Windows.Controls.Grid]::SetColumn($btn, 1)
         $row.Children.Add($info) | Out-Null; $row.Children.Add($btn) | Out-Null
@@ -1254,10 +1420,10 @@ function Load-Quarantine {
 }
 $ui.BtnQRefresh.Add_Click({ Load-Quarantine; Update-BigNumber 'NavQ' })
 $ui.BtnQPurge.Add_Click({
-    if ($ui.BtnQPurge.Content -ne 'Точно удалить? Нажмите ещё раз') { $ui.BtnQPurge.Content = 'Точно удалить? Нажмите ещё раз'; return }
+    if ($ui.BtnQPurge.Content -ne (T 'Точно удалить? Нажмите ещё раз')) { $ui.BtnQPurge.Content = (T 'Точно удалить? Нажмите ещё раз'); return }
     Set-Status 'Удаляю карантин…'
     Get-ChildItem -Path $Quarantine -Directory -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
-    $ui.BtnQPurge.Content = 'Удалить весь карантин навсегда'; Write-Log 'Карантин удалён'
+    $ui.BtnQPurge.Content = (T 'Удалить весь карантин навсегда'); Write-Log 'Карантин удалён'
     Set-Status 'Карантин очищен, место освобождено окончательно.'; Load-Quarantine; Update-BigNumber 'NavQ'
 })
 
@@ -1265,7 +1431,7 @@ $ui.BtnQPurge.Add_Click({
 #  ОБНОВЛЕНИЯ через GitHub Releases. Репозиторий указывается в $UpdateRepo (например 'ivanov/sweep').
 #  Проверка идёт в фоне отдельным процессом, окно не замирает. Ничего, кроме номера версии, не отправляется.
 # =====================================================================
-$AppVersion = '0.7'
+$AppVersion = '0.8'
 $UpdateRepo = 'pabloescobarbl-ops/sweep'
 $UpdateDir  = Join-Path $env:TEMP 'Sweep-update'
 New-Item -ItemType Directory -Path $UpdateDir -Force | Out-Null
@@ -1294,7 +1460,7 @@ function Read-UpdateStatus {
     if ($info.error) { Set-Status "Проверка обновлений: $($info.error)"; return }
     if ((Compare-Version $info.tag $AppVersion) -gt 0 -and $info.url) {
         $script:updateInfo = $info
-        $ui.BtnUpdateApp.Content = "Обновить до $($info.tag)"; $ui.BtnUpdateApp.Visibility = 'Visible'
+        $ui.BtnUpdateApp.Content = ((T 'Обновить до {0}') -f $info.tag); $ui.BtnUpdateApp.Visibility = 'Visible'
         Set-Status "Доступна новая версия $($info.tag). Нажмите «Обновить до $($info.tag)»."
     } else { Set-Status "У вас последняя версия ($AppVersion)." }
 }
