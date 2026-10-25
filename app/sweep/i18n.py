@@ -184,7 +184,7 @@ STRINGS: dict[str, dict[str, str]] = {
     "admin.banner": {"ru": "Sweep запущен без прав администратора. Приватность, службы, автозагрузка Windows и часть очистки не сработают.", "en": "Sweep is running without administrator rights. Privacy, services, system startup items and part of the clean-up will not work."},
     "admin.grant": {"ru": "Дать права", "en": "Grant rights"},
     "admin.need": {"ru": "Нужны права администратора: нажмите «Дать права» вверху окна.", "en": "Administrator rights are needed: press Grant rights at the top of the window."},
-    "admin.denied": {"ru": "Windows не дала доступ даже администратору. Обычно так делает антивирус или групповая политика, подробности в журнале ProgramData\\Sweep\\log.txt.", "en": "Windows refused access even to an administrator. Usually an antivirus or group policy does this, details in ProgramData\\Sweep\\log.txt."},
+    "admin.denied": {"ru": "Windows не сохранила изменения даже с правами администратора. Обычно так делает антивирус, подробности в журнале ProgramData\\Sweep\\log.txt.", "en": "Windows did not keep the changes even with administrator rights. Usually an antivirus does this, details in ProgramData\\Sweep\\log.txt."},
     "admin.declined": {"ru": "Без прав администратора это действие не выполнить", "en": "This action needs administrator rights"},
     "set.autoupdate": {"ru": "Обновляться автоматически", "en": "Update automatically"},
     "set.autoupdate.hint": {"ru": "При запуске Sweep проверяет GitHub и, если вышла новая версия, тихо ставит её и перезапускается", "en": "On start Sweep checks GitHub and, when a new version is out, installs it silently and restarts"},

@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 IS_WINDOWS = sys.platform == "win32"
-APP_VERSION = "1.0.7"
+APP_VERSION = "1.0.8"
 UPDATE_REPO = "pabloescobarbl-ops/sweep"
 
 
@@ -149,3 +149,17 @@ def relaunch_elevated(extra: list[str] | None = None) -> bool:
 
 def is_access_denied(e: BaseException) -> bool:
     return isinstance(e, PermissionError) or getattr(e, "winerror", None) == 5 or "WinError 5" in str(e)
+
+
+def log_context() -> None:
+    """One line in the log describing how Sweep runs: helps when settings do not stick on a particular PC."""
+    if not IS_WINDOWS:
+        return
+    import platform as _pf
+    info = ps_json("$id=[Security.Principal.WindowsIdentity]::GetCurrent(); "
+                   "$av=@(Get-CimInstance -Namespace root/SecurityCenter2 -ClassName AntiVirusProduct -ErrorAction SilentlyContinue | % { $_.displayName }) -join ', '; "
+                   "$os=Get-CimInstance Win32_OperatingSystem; "
+                   "@{user=$id.Name; av=$av; os=[string]$os.Caption + ' ' + [string]$os.BuildNumber}", 40) or {}
+    log(f"context: Sweep {APP_VERSION}, admin={is_admin()}, {_pf.architecture()[0]}, user={info.get('user', '?')}, "
+        f"os={info.get('os', '?')}, antivirus={info.get('av') or 'none reported'}, exe={sys.executable}")
+

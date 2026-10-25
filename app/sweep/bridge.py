@@ -377,6 +377,7 @@ class App(QObject):
     # ---------- lifecycle ----------
     def boot(self):
         def work():
+            P.log_context()
             info = extras.system_info()
             return {"info": info, "services": self._load_services(), "startup": tweaks.startup_entries(), "schedule": tweaks.schedule_state()}
 

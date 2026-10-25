@@ -104,6 +104,19 @@ def _reg_exe(args: list[str]) -> bool:
         return False
 
 
+def _reg_exe_query(root: str, path: str, name: str) -> str:
+    """What another process sees for this value (to tell a silently dropped write from a sandboxed one)."""
+    import subprocess
+    si = subprocess.STARTUPINFO()
+    si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+    try:
+        r = subprocess.run(["reg.exe", "query", f"{root}\\{path}", "/v", name, "/reg:64"], capture_output=True, text=True, timeout=20, startupinfo=si)
+        line = next((l.strip() for l in r.stdout.splitlines() if name.lower() in l.lower() and "REG_" in l), "")
+        return line or "no value"
+    except Exception as e:
+        return f"error {e}"
+
+
 def reg_set(root: str, path: str, name: str, value):
     """Write a DWORD or binary value. Raises PermissionError when Windows refuses access."""
     if not P.IS_WINDOWS:
@@ -158,16 +171,23 @@ def set_privacy(p: Privacy, protect: bool) -> list[str]:
         return []
     failed: list[str] = []
     for r in p.reg:
+        key = f"{r.root}\\{r.path}\\{r.name}"
+        want = r.off if protect else r.on
         try:
-            if protect:
-                reg_set(r.root, r.path, r.name, r.off)
-            elif r.on is None:
+            if want is None:
                 reg_del(r.root, r.path, r.name)
             else:
-                reg_set(r.root, r.path, r.name, r.on)
+                reg_set(r.root, r.path, r.name, want)
         except OSError as e:
-            P.log(f"privacy {p.id}: {r.root}\\{r.path}\\{r.name}: {e}")
-            failed.append(f"{r.root}\\{r.path}\\{r.name}")
+            P.log(f"privacy {p.id}: {key}: {e}")
+            failed.append(key)
+            continue
+        got = reg_get(r.root, r.path, r.name)
+        if got != want:
+            # Windows said "done" but the value is not there: something (usually an antivirus) dropped the write
+            other = _reg_exe_query(r.root, r.path, r.name)
+            P.log(f"privacy {p.id}: {key}: wrote {want!r}, read back {got!r}; reg.exe sees: {other}")
+            failed.append(key)
     for s in p.services:
         set_service(s, not protect)
     for t in p.tasks:
