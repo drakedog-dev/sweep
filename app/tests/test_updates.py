@@ -70,6 +70,26 @@ def test_progress_noise_is_dropped():
     assert not any("\r" in ln or ("\u2588" in ln and "MB" not in ln) for ln in ls)
 
 
+def test_live_progress():
+    import re
+    events = []
+    p = U.Progress(lambda *a: events.append(a))
+    for part in re.split(r"[\r\n]", raw("winget-upgrade-one-en.txt").decode("utf-8")):
+        p.feed(part)
+    assert events[0][0] == "download"
+    assert events[-1][0] == "install" and abs(events[-1][2] - 1.58 * 2 ** 20) < 1024
+    events.clear()
+    p = U.Progress(lambda *a: events.append(a))
+    for seg in ["\u0417\u0430\u0433\u0440\u0443\u0437\u043a\u0430 https://x/y.exe", "  \u2588\u2588\u2592  1,2 \u041c\u0411 / 4,5 \u041c\u0411", "  \u2588\u2588\u2588  4,5 \u041c\u0411 / 4,5 \u041c\u0411"]:
+        p.feed(seg)
+    assert [e[0] for e in events] == ["download", "download", "install"]
+    assert events[1][1] == 1.2 * 2 ** 20
+    p = U.Progress(lambda *a: events.append(a))
+    p.feed("Downloading https://x/y.exe")
+    p.on_disk(500_000)
+    assert p.phase == "download" and p.got == 500_000
+
+
 def test_exit_codes():
     assert U.REASONS[0x8A15002B] == "uptodate" and "uptodate" in U.SUCCESS_REASONS
     assert U.REASONS[0x8A150011] == "hash"

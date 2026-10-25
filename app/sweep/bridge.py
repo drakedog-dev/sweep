@@ -125,7 +125,7 @@ class App(QObject):
         self._un: dict = {}            # uninstall wizard state
         self._un_cancel = False
         # program updates through winget
-        self._pu = {"checked": False, "checking": False, "winget": True, "running": False, "current": "", "done": 0, "total": 0, "when": ""}
+        self._pu = {"checked": False, "checking": False, "winget": True, "running": False, "current": "", "done": 0, "total": 0, "frac": 0.0, "when": ""}
         self._pu_items: list[dict] = []
         self._pu_cancel = False
         self._pu_pending: list[str] = []
@@ -1409,7 +1409,7 @@ class App(QObject):
     @Property("QVariantMap", notify=updatesChanged)
     def programUpdates(self):
         skip = set(self._pu_conf().get("skip", []))
-        items = [dict(it) for it in self._pu_items if it["id"] not in skip]
+        items = [{k: v for k, v in it.items() if not k.startswith("_")} for it in self._pu_items if it["id"] not in skip]
         open_ = [it for it in items if it.get("state") != "ok"]
         return dict(self._pu, items=items, count=len(open_), picked=sum(1 for it in open_ if it.get("picked")),
                     skipped=len(skip), auto=bool(self._pu_conf().get("auto")))
@@ -1484,8 +1484,15 @@ class App(QObject):
 
     @Slot(bool)
     def setAllUpdatePicks(self, on):
+        self.pickUpdates("all" if on else "none")
+
+    @Slot(str)
+    def pickUpdates(self, mode):
+        """Quick selection: "all", "none" or "minor" (everything except major upgrades)."""
+        if self._pu["running"]:
+            return
         for it in self._pu_open():
-            it["picked"] = on
+            it["picked"] = mode == "all" or (mode == "minor" and not it.get("major"))
         self.updatesChanged.emit()
 
     @Slot(str)
@@ -1520,6 +1527,23 @@ class App(QObject):
     def updateOne(self, pid):
         self._install_updates([it for it in self._pu_open() if it["id"] == pid])
 
+    def _pu_progress(self, it: dict, phase: str, got: float, total: float) -> None:
+        """Worker thread: live download numbers for the row and the overall bar, at most five redraws a second."""
+        import time
+        now = time.monotonic()
+        last_t, last_got = it.get("_t", 0.0), it.get("_g", 0.0)
+        if last_t and now > last_t and got >= last_got and total != 100.0:
+            inst = (got - last_got) / (now - last_t)
+            it["speed"] = inst if not it.get("speed") else it["speed"] * 0.6 + inst * 0.4
+        it.update(_t=now, _g=got)
+        changed = phase != it.get("phase")
+        it.update(phase=phase, got=float(got), total=float(total))
+        frac = 0.05 if phase == "prepare" else 0.85 if phase == "install" else 0.05 + 0.8 * (got / total if total else 0.0)
+        self._pu["frac"] = frac
+        if changed or now - it.get("_emit", 0.0) > 0.2:
+            it["_emit"] = now
+            self.updatesChanged.emit()
+
     @Slot()
     def cancelUpdates(self):
         self._pu_cancel = True
@@ -1531,8 +1555,8 @@ class App(QObject):
             return
         if self._need_admin("progupdates:" + "|".join(it["id"] for it in todo) + ":1", "apps"):
             return
-        for it in todo:
-            it.update(state="queued", reason="", code="")
+        for n, it in enumerate(todo):
+            it.update(state="queued", queue=n + 1, reason="", code="")
         self._pu.update(running=True, done=0, total=len(todo), current="")
         self._pu_cancel = False
         self.updatesChanged.emit()
@@ -1544,17 +1568,17 @@ class App(QObject):
                 if self._pu_cancel:
                     it["state"] = ""
                     continue
-                it["state"] = "working"
-                self._pu.update(current=it.get("title") or it["name"], done=n)
+                it.update(state="working", phase="prepare", got=0.0, total=0.0, speed=0.0)
+                self._pu.update(current=it.get("title") or it["name"], done=n, frac=0.0)
                 self.updatesChanged.emit()
-                r = UPD.upgrade(it["id"])
+                r = UPD.upgrade(it["id"], progress=lambda ph, got, total, it=it: self._pu_progress(it, ph, got, total))
                 it.update(state="ok" if r["ok"] else "failed", reason=r["reason"], code=f"{r['code']:#x}" if r["code"] else "")
                 ok += bool(r["ok"])
                 self.updatesChanged.emit()
             return ok
 
         def done(ok):
-            self._pu.update(running=False, current="", done=len(todo))
+            self._pu.update(running=False, current="", done=len(todo), frac=0.0)
             msg = self.i18n.t("pu.done", ok, len(todo))
             if any(it.get("reason") == "reboot" for it in todo):
                 msg += ". " + self.i18n.t("pu.r.reboot")

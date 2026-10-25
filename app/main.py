@@ -130,9 +130,40 @@ def main() -> int:
     if not engine.rootObjects():
         P.log("ui-test: Main.qml did not load: " + " | ".join(warnings))
         return 1
+    frame_title_bar(engine.rootObjects()[0], bridge)
     if ui_test:
         return run_ui_test(qt_app, engine.rootObjects()[0], bridge, warnings)
     return qt_app.exec()
+
+
+def frame_title_bar(root, bridge) -> None:
+    """Title bar in the theme's colours, repainted when the theme changes in Settings."""
+    import shiboken6
+    from PySide6.QtQuick import QQuickWindow
+
+    from sweep import winframe
+    try:
+        win = shiboken6.wrapInstance(shiboken6.getCppPointer(root)[0], QQuickWindow)
+    except Exception as e:  # noqa: BLE001
+        P.log(f"titlebar: {e}")
+        return
+    state = {"theme": None}
+
+    def paint():
+        if state["theme"] == bridge.theme:
+            return
+        state["theme"] = bridge.theme
+        try:
+            res = winframe.apply(int(win.winId()), bridge.theme)
+        except Exception as e:  # noqa: BLE001
+            P.log(f"titlebar: {e}")
+            return
+        if res:
+            P.log(f"titlebar {bridge.theme}: " + ", ".join(f"{k}={v:#x}" for k, v in res.items()))
+
+    paint()
+    bridge.langChanged.connect(paint)
+    win._sweep_paint = paint          # keep the closure alive with the window
 
 
 def run_ui_test(qt_app, root, bridge, warnings) -> int:

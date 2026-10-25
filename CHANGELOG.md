@@ -2,6 +2,13 @@
 
 All notable changes to Sweep. The newest version is at the top; the in-app update dialog and the GitHub release notes are built from this file.
 
+## 1.0.17
+- Program updates: a selection bar above the list with a select-all checkbox, "All", "All but major" and "None", and a counter of selected programs
+- Click anywhere on a program's row to tick or untick it
+- "Update selected" installs the ticked programs one after another, and each waiting program shows its place in the queue
+- Live progress for every update: a bar with the megabytes downloaded, the total size and the speed, then an installing stage, so it is always clear that Sweep is working
+- The window title bar follows Sweep's theme: dark in the dark theme and light in the light one (exact colours on Windows 11, a dark frame on Windows 10)
+
 ## 1.0.16
 - Program updates: a new Updates tab on the Programs page finds installed programs that have a newer version, using winget, the package manager built into Windows 10 and 11
 - Every update shows where the installer comes from (7-zip.org, videolan.org, github.com/notepad-plus-plus and so on) and is checked against its SHA-256 before it runs

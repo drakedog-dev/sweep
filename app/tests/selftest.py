@@ -242,11 +242,17 @@ if exe:
     check(all(i["id"] and "." in i["id"] and i["available"] and i["title"] for i in items), "every row has an id, a title and a new version")
     known = [i for i in items if i["host"] and i["sha256"]]
     check(len(known) >= max(1, len(items) * 0.8), f"vendor address and SHA-256 known for most packages ({len(known)}/{len(items)})")
-    pick = next((i for k in ("7zip.7zip", "GitHub.cli", "JRSoftware.InnoSetup", "Microsoft.PowerShell") for i in items if i["id"] == k), None)
+    pick = next((i for k in ("GitHub.cli", "7zip.7zip", "JRSoftware.InnoSetup", "Microsoft.PowerShell") for i in items if i["id"] == k), None)
     if pick:
         before = UPD.installed_version(pick["id"])
-        r = UPD.upgrade(pick["id"])
+        events: list[tuple] = []
+        r = UPD.upgrade(pick["id"], progress=lambda ph, got, total: events.append((ph, got, total)))
         after = UPD.installed_version(pick["id"])
+        downloads = [e for e in events if e[0] == "download" and e[1] > 0]
+        note(f"winget progress: {len(events)} events, {len(downloads)} with bytes, phases {sorted({e[0] for e in events})}, "
+             f"last {events[-1] if events else None}, winget counter seen={r.get('sized')}")
+        check(len(downloads) >= 1, "live download progress reached Sweep while winget was downloading")
+        check(any(e[0] == "install" for e in events), "install phase reported after the download")
         check(r["ok"], f"{pick['id']} updated {before} -> {after}: {r}")
         note(f"winget upgrade {pick['id']}: {before} -> {after}, {r}")
         check(bool(after) and after != before, f"installed version changed ({before} -> {after}, catalogue {pick['available']})")
@@ -256,6 +262,26 @@ if exe:
         check(pick["id"] not in [i["id"] for i in rest], "updated program left the list")
     else:
         print("     no small package to update on this machine: install step skipped")
+
+# ---------------- title bar in the theme's colours ----------------
+print("\n== title bar")
+from PySide6.QtWidgets import QApplication, QWidget  # noqa: E402
+
+from sweep import winframe  # noqa: E402
+
+qa = QApplication.instance() or QApplication([])
+w = QWidget()
+w.setWindowTitle("Sweep title bar test")
+w.show()
+qa.processEvents()
+build = int(sys.getwindowsversion().build)
+for theme in ("dark", "light"):
+    res = winframe.apply(int(w.winId()), theme)
+    note(f"title bar {theme} on build {build}: " + ", ".join(f"{k}={v:#x}" for k, v in res.items()))
+    check(res.get("dark") == 0, f"{theme}: dark/light frame accepted by Windows")
+    if build >= 22000:
+        check(res.get("caption") == 0 and res.get("text") == 0, f"{theme}: caption colours accepted by Windows 11")
+w.close()
 
 print()
 print("FAILED:" if fails else "ALL PASSED", *fails, sep="\n  ")

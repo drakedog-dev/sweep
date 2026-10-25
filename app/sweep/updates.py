@@ -267,20 +267,156 @@ def show(pid: str) -> dict:
     return parse_show(raw) if rc == 0 else {"name": "", "homepage": "", "installer": "", "sha256": False}
 
 
-def upgrade(pid: str, timeout: int = 1800) -> dict:
+# ---------------- live progress of one update ----------------
+_UNITS = {"b": 1, "kb": 1024, "mb": 1024 ** 2, "gb": 1024 ** 3, "tb": 1024 ** 4,
+          "\u0431": 1, "\u043a\u0431": 1024, "\u043c\u0431": 1024 ** 2, "\u0433\u0431": 1024 ** 3, "\u0442\u0431": 1024 ** 4}
+_SIZE = re.compile(r"(\d+(?:[.,]\d+)?)\s*([KMGT]?i?B|[\u041a\u041c\u0413\u0422]?\u0411)\s*/\s*(\d+(?:[.,]\d+)?)\s*([KMGT]?i?B|[\u041a\u041c\u0413\u0422]?\u0411)", re.I)
+_PCT = re.compile(r"(\d{1,3})\s*%")
+_BAR = ("\u2588", "\u2592", "\u2593")
+
+
+def _bytes(num: str, unit: str) -> float:
+    return float(num.replace(",", ".")) * _UNITS.get(unit.lower().replace("i", ""), 1)
+
+
+class Progress:
+    """Turns winget's console output into phases: "prepare", "download" (bytes so far and total) and "install".
+    winget redraws its progress bar with carriage returns, so every segment between \\r or \\n is one frame."""
+
+    def __init__(self, callback=None):
+        self.callback = callback
+        self.phase = "prepare"
+        self.got = 0.0
+        self.total = 0.0
+        self.sized = False          # winget printed "x MB / y MB" at least once
+
+    def _emit(self):
+        if self.callback:
+            self.callback(self.phase, self.got, self.total)
+
+    def feed(self, segment: str) -> None:
+        seg = _ANSI.sub("", segment).strip()
+        if not seg:
+            return
+        if self.phase == "prepare":
+            if re.search(r"https?://\S+", seg):          # "Downloading https://vendor/installer.exe"
+                self.phase = "download"
+                self._emit()
+            return
+        if self.phase != "download":
+            return
+        m = _SIZE.search(seg)
+        if m:
+            self.got, self.total, self.sized = _bytes(m[1], m[2]), _bytes(m[3], m[4]), True
+            if self.total and self.got >= self.total:
+                self.phase = "install"
+            self._emit()
+            return
+        m = _PCT.search(seg)
+        if m and any(ch in seg for ch in _BAR):
+            self.got, self.total = float(m[1]), 100.0
+            if self.got >= 100:
+                self.phase = "install"
+            self._emit()
+            return
+        if self.sized and not any(ch in seg for ch in _BAR) and not re.fullmatch(r"[-\\|/]", seg):
+            self.phase = "install"                       # "Successfully verified installer hash", "Starting package install"
+            self._emit()
+
+    def on_disk(self, size: float) -> None:
+        """Fallback when winget's own counter does not come through: bytes already in its download folder."""
+        if self.sized or self.phase == "install" or size <= self.got:
+            return
+        if self.phase == "prepare":
+            self.phase = "download"
+        self.got = size
+        self._emit()
+
+
+def _download_size(pid: str) -> float:
+    """Size of what winget has downloaded so far for this package (%TEMP%\\WinGet\\<id>.<version>)."""
+    try:
+        dirs = glob.glob(os.path.join(tempfile.gettempdir(), "WinGet", glob.escape(pid) + ".*"))
+        if not dirs:
+            return 0.0
+        d = max(dirs, key=os.path.getmtime)
+        return float(sum(e.stat().st_size for e in os.scandir(d) if e.is_file()))
+    except OSError:
+        return 0.0
+
+
+def _stream(args: list[str], timeout: int, prog: Progress, pid: str) -> tuple[int, bytes]:
+    """Run winget and read its output as it comes, so the interface can show the download live."""
+    import codecs
+    import threading
+    exe = winget_exe()
+    if not exe:
+        return -1, b""
+    si = subprocess.STARTUPINFO()
+    si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+    try:
+        proc = subprocess.Popen([exe] + args, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                startupinfo=si, creationflags=0x08000000)
+    except Exception as e:  # noqa: BLE001
+        P.log(f"winget {args[:3]}: {e}")
+        return -1, b""
+    chunks: list[bytes] = []
+
+    def reader():
+        dec = codecs.getincrementaldecoder("utf-8")("replace")
+        buf = ""
+        while True:
+            data = os.read(proc.stdout.fileno(), 4096)
+            if not data:
+                break
+            chunks.append(data)
+            buf += dec.decode(data)
+            parts = re.split(r"[\r\n]", buf)
+            buf = parts.pop()
+            for part in parts:
+                prog.feed(part)
+        if buf:
+            prog.feed(buf)
+
+    th = threading.Thread(target=reader, daemon=True)
+    th.start()
+    t0 = time.time()
+    while proc.poll() is None:
+        if time.time() - t0 > timeout:
+            proc.kill()
+            P.log(f"winget {args[:3]}: timed out after {timeout} s")
+            th.join(5)
+            return -2, b"".join(chunks)
+        prog.on_disk(_download_size(pid))
+        time.sleep(0.4)
+    th.join(10)
+    return proc.returncode, b"".join(chunks)
+
+
+def upgrade(pid: str, timeout: int = 1800, progress=None) -> dict:
     """Download the new version from the vendor, check its SHA-256 and install it silently.
+    progress(phase, got, total) is called from this thread as the download goes on.
     Returns {"ok": bool, "code": int, "reason": str}; ok includes "installed, restart to finish"."""
+    prog = Progress(progress)
     if not P.IS_WINDOWS:
-        time.sleep(1.5)
+        prog.phase = "download"
+        total = 6.5 * 2 ** 20
+        for i in range(1, 11):
+            time.sleep(0.15)
+            prog.got, prog.total = total * i / 10, total
+            prog._emit()
+        prog.phase = "install"
+        prog._emit()
+        time.sleep(0.6)
         return {"ok": True, "code": 0, "reason": ""}
     t0 = time.time()
-    rc, raw = _run(["upgrade", "--id", pid, "--exact", "--source", SOURCE, "--silent", "--accept-package-agreements"] + COMMON, timeout)
+    rc, raw = _stream(["upgrade", "--id", pid, "--exact", "--source", SOURCE, "--silent", "--accept-package-agreements"] + COMMON, timeout, prog, pid)
     code = rc & 0xFFFFFFFF
     reason = "" if rc == 0 else REASONS.get(code, "timeout" if rc == -2 else "code")
     ok = rc == 0 or reason in SUCCESS_REASONS
     tail = " | ".join(ln.strip() for ln in lines(raw) if ln.strip())[-300:]
-    P.log(f"updates: {pid} rc={code:#x} ok={ok} {time.time() - t0:.0f} s  {tail}")
-    return {"ok": ok, "code": code, "reason": reason}
+    P.log(f"updates: {pid} rc={code:#x} ok={ok} {time.time() - t0:.0f} s, progress {prog.phase} {prog.got:.0f}/{prog.total:.0f} sized={prog.sized}  {tail}")
+    return {"ok": ok, "code": code, "reason": reason, "sized": prog.sized}
 
 
 def installed_version(pid: str) -> str:
