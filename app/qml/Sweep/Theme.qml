@@ -115,7 +115,19 @@ QtObject {
         "x": "\ue1b2",
         "eye": "\ue0ba",
         "git-branch": "\ue0e2",
-        "heart": "\ue0f2"
+        "heart": "\ue0f2",
+        "package-plus": "\ue268",
+        "loader": "\ue109",
+        "hourglass": "\ue296",
+        "monitor-down": "\ue421",
+        "briefcase": "\ue062",
+        "gamepad-2": "\ue0df",
+        "messages-square": "\ue40d",
+        "clapperboard": "\ue29b",
+        "file-text": "\ue0cc",
+        "wrench": "\ue1b1",
+        "code": "\ue093",
+        "puzzle": "\ue29c"
     })
     function icon(name) { return icons[name] || "" }
 }

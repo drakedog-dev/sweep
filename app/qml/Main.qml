@@ -212,6 +212,18 @@ ApplicationWindow {
             AccentButton { text: tr("upd.skip"); primary: false; onClicked: app.skipVersion() } }
     }
 
+    // ---------- what is new in a program update (release notes from the winget catalogue) ----------
+    Modal { id: notesModal; open: app.releaseNotes["title"] !== undefined; icon: "sparkles"; boxWidth: 600
+        title: tr("pu.notes") + ": " + (app.releaseNotes["title"] || ""); subtitle: app.releaseNotes["version"] || ""
+        Rectangle { width: parent.width; height: Math.min(notesText.implicitHeight + 32, 320); radius: 14; color: Theme.cardAlt; border.color: Theme.border; clip: true
+            Flickable { anchors.fill: parent; anchors.margins: 16; contentHeight: notesText.implicitHeight; boundsBehavior: Flickable.StopAtBounds; clip: true
+                Txt { id: notesText; width: parent.width; font.pixelSize: 13; lineHeight: 1.15
+                      text: app.releaseNotes["text"] || tr("pu.notes.empty"); muted: !app.releaseNotes["text"] } } }
+        Row { spacing: 10
+            AccentButton { text: tr("pu.notes.close"); onClicked: app.closeNotes() }
+            AccentButton { visible: (app.releaseNotes["url"] || "") !== ""; text: tr("pu.notes.open"); primary: false; onClicked: app.openUrl(app.releaseNotes["url"]) } }
+    }
+
     Modal { open: confirmFn !== null; icon: "triangle-alert"; title: confirmTitle; boxWidth: 520
         Txt { text: confirmText; width: parent.width }
         Row { spacing: 10

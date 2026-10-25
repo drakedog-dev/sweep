@@ -135,6 +135,67 @@ def test_progress_survives_any_chunking():
         assert events[-1][0] == "install" and not any(e[0] == "install" for e in events[:-1]), events
 
 
+def test_show_publisher_and_release_notes():
+    d = U.parse_show(raw("winget-show-en.txt"))
+    assert (d["version"], d["publisher"]) == ("26.05", "Igor Pavlov")
+    assert d["notesUrl"] == "https://github.com/ip7z/7zip/releases/tag/26.05"
+    assert d["notes"].splitlines() == ["Improved code for unpacking Z archives and Mach-O files.", "Some bugs and vulnerabilities were fixed."]
+    assert U.owners(d["urls"]) == {"ip7z"}
+
+
+def test_search_table():
+    rows = U.parse_search(raw("winget-search-en.txt"))
+    ids = [r["id"] for r in rows]
+    assert ids == ["VideoLAN.VLC", "MPC-BE.MPC-BE", "clsid2.mpc-hc", "VideoLAN.VLC.Nightly"], ids   # store ids are left out
+    assert rows[0] == {"name": "VLC media player", "id": "VideoLAN.VLC", "version": "3.0.21"}
+    assert rows[2]["name"] == "Media Player Classic Home Cin" and rows[3]["version"] == "4.0.0-dev"
+
+
+def test_pseudo_console_screen():
+    """ConPTY draws with cursor moves and erases: the screen, not the raw text, holds the table."""
+    text = ("\x1b[?25l\x1b[2J\x1b[m\x1b[H\x1b]0;winget\x07   -\r   \\\r\x1b[K"
+            "Name\x1b[6CId\x1b[11CVersion\x1b[3CAvailable\r\n" + "-" * 44 + "\r\n"
+            "7-Zip\x1b[5C7zip.7zip\x1b[4C23.01\x1b[5C26.05\x1b[30X\r\n"
+            "Git\x1b[7CGit.Git\x1b[6C2.45.1\x1b[4C2.46.0\r\n\x1b[3;11HZZZ\x1b[3;11H7zi\x1b[?25h")
+    scr = U.vt_screen(text, cols=120, rows=40)
+    assert scr[0] == "Name      Id           Version   Available", scr
+    rows = U.parse_upgrades(scr)
+    assert [(r["name"], r["id"], r["version"], r["available"]) for r in rows] == [
+        ("7-Zip", "7zip.7zip", "23.01", "26.05"), ("Git", "Git.Git", "2.45.1", "2.46.0")], rows
+
+
+def test_screen_scrolls():
+    text = "".join(f"line {i}\r\n" for i in range(30)) + "\x1b[1;1Htop"
+    scr = U.vt_screen(text, cols=40, rows=10)
+    assert scr[0] == "line 0" and scr[-1] == "line 29" and "tope 21" in scr
+
+
+def test_fork_is_not_offered_as_an_update():
+    assert U.name_relation("FlClash X", "FlClash") == "edition"
+    assert U.name_relation("FlClashX", "FlClash") == "edition"
+    assert U.name_relation("PowerShell 7-x64", "PowerShell Preview") == "edition"
+    for a, b in [("7-Zip 23.01 (x64)", "7-Zip"), ("PowerShell 7-x64", "PowerShell"), ("Opera Stable 115.0", "Opera"),
+                 ("Mozilla Firefox (x64 ru)", "Mozilla Firefox"), ("Notepad++ (64-bit x64)", "Notepad++"), ("Python 3.12.4 (64-bit)", "Python 3.12")]:
+        assert U.name_relation(a, b) == "same", (a, b)
+    assert U.name_relation("Adobe Acrobat (64-bit)", "Adobe Acrobat Reader DC") == "partial"
+    rows = [{"name": "FlClash X", "id": "chen08209.FlClash", "version": "0.3.2", "catName": "FlClash",
+             "urls": ["https://github.com/chen08209/FlClash", "https://github.com/chen08209/FlClash/releases/download/x.exe"]},
+            {"name": "PowerShell 7-x64", "id": "Microsoft.PowerShell", "version": "7.6.6.0", "catName": "PowerShell",
+             "urls": ["https://github.com/PowerShell/PowerShell"]},
+            {"name": "Python Launcher", "id": "Python.Launcher", "version": "< 3.14.7", "catName": "Python Launcher", "urls": []},
+            {"name": "Some Tool", "id": "Someone.Tool", "version": "1.0", "catName": "Some Tool", "urls": ["https://github.com/someone/tool"]}]
+    progs = [{"name": "FlClash X", "publisher": "pluralplay", "version": "0.3.2", "urls": []},
+             {"name": "PowerShell 7-x64", "publisher": "Microsoft Corporation", "version": "7.6.6.0", "urls": ["https://github.com/PowerShell/PowerShell"]},
+             {"name": "Python Launcher", "publisher": "Python Software Foundation", "version": "3.12.10", "urls": []},
+             {"name": "Some Tool", "publisher": "x", "version": "1.0", "urls": ["https://github.com/someone-else/tool"]}]
+    U.match_installed(rows, progs)
+    for r in rows:
+        U.check_identity(r)
+    assert [(r["suspect"], r["why"]) for r in rows] == [(True, "edition"), (False, ""), (False, ""), (True, "owner")]
+    assert rows[2]["current"] == "3.12.10", "Windows knows the real number when winget only says '< 3.14.7'"
+    assert rows[1]["current"] == "7.6.6.0"
+
+
 def test_exit_codes():
     assert U.REASONS[0x8A15002B] == "uptodate" and "uptodate" in U.SUCCESS_REASONS
     assert U.REASONS[0x8A150011] == "hash"

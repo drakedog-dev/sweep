@@ -180,11 +180,14 @@ def run_ui_test(qt_app, root, bridge, warnings) -> int:
             warnings.append("ui-test: appsPage not found")
 
     steps = [lambda i=i: root.setProperty("current", i) for i in range(len(keys))] + [bridge.scanPrograms, bridge.scanBoot]
-    steps += [lambda: root.setProperty("current", keys.index("apps")), lambda: apps_tab(2), lambda: apps_tab(1), lambda: apps_tab(2), lambda: apps_tab(0)]
+    steps += [lambda: root.setProperty("current", keys.index("apps")), lambda: apps_tab(2), lambda: apps_tab(3), lambda: bridge.searchCatalog("vlc"),
+              lambda: bridge.pickPreset("basics"), lambda: bridge.showNotes((bridge.programUpdates.get("items") or [{}])[0].get("id", "")),
+              bridge.closeNotes, lambda: bridge.clearInstallPicks(), lambda: apps_tab(1), lambda: apps_tab(2), lambda: apps_tab(0)]
     result = {"code": 0}
 
     def step(n=0):
-        if bridge.busy or bridge.programUpdates.get("checking"):
+        ins = bridge.installData
+        if bridge.busy or bridge.programUpdates.get("checking") or ins.get("loading") or ins.get("searching"):
             QTimer.singleShot(300, lambda: step(n))
             return
         if n < len(steps):
@@ -193,8 +196,11 @@ def run_ui_test(qt_app, root, bridge, warnings) -> int:
             return
         progs = bridge.programCount
         pu = bridge.programUpdates
+        ins = bridge.installData
         P.log(f"ui-test: pages {len(keys)}, programs {progs}, boots {len(bridge.bootData.get('boots', []))}, "
-              f"updates {pu.get('count')} (winget={pu.get('winget')}, checked={pu.get('checked')}), QML warnings {len(warnings)}")
+              f"updates {pu.get('count')} (winget={pu.get('winget')}, checked={pu.get('checked')}, suspect {sum(1 for i in pu.get('items', []) if i.get('suspect'))}), "
+              f"install picks {sum(len(c['items']) for c in ins.get('cats', []))} (installed {sum(1 for c in ins.get('cats', []) for i in c['items'] if i['installed'])}), "
+              f"search {len(ins.get('results', []))}, QML warnings {len(warnings)}")
         for w in warnings[:20]:
             P.log(f"ui-test QML: {w}")
         result["code"] = 1 if warnings or progs == 0 else 0

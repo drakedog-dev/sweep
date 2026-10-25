@@ -6,7 +6,7 @@
 
 3. Removed files go to a quarantine folder first, registry keys are backed up before cleaning and every switch can be turned back, so almost everything can be undone. Creating a Windows restore point before big changes is a good idea.
 
-4. Sweep collects and sends no personal data and no telemetry. It contacts GitHub (api.github.com, github.com) to check for and download Sweep updates; this can be turned off in Settings. When you check for or install program updates, Windows Package Manager (winget) contacts the Microsoft package catalogue and downloads installers from the vendors' own sites; this happens only when you ask for it or turn on the daily check.
+4. Sweep collects and sends no personal data and no telemetry. It contacts GitHub (api.github.com, github.com) to check for and download Sweep updates; this can be turned off in Settings. When you check for or install program updates, or search for and install programs, Windows Package Manager (winget) contacts the Microsoft package catalogue and downloads installers from the vendors' own sites; this happens only when you ask for it or turn on the daily check.
 
 5. Sweep can be removed at any time with the standard uninstaller (Windows Settings, Apps).
 

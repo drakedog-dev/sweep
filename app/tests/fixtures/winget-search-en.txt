@@ -1,0 +1,7 @@
+   -    \                                                                                                                         Name                          Id                              Version      Match           Source
+------------------------------------------------------------------------------------------------------
+VLC media player              VideoLAN.VLC                    3.0.21       Moniker: vlc    winget
+VLC UWP                       9NBLGGH4VVNH                    Unknown                      msstore
+MPC-BE                        MPC-BE.MPC-BE                   1.8.4        Tag: vlc        winget
+Media Player Classic Home Cin… clsid2.mpc-hc                   2.4.1        Tag: vlc        winget
+VLC Nightly                   VideoLAN.VLC.Nightly            4.0.0-dev                    winget

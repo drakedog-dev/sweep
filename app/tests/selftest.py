@@ -265,6 +265,69 @@ if exe:
         check(pick["id"] not in [i["id"] for i in rest], "updated program left the list")
     else:
         print("     no small package to update on this machine: install step skipped")
+
+    # the table read from the wide pseudo console matches the one read through a pipe (no names or ids cut short)
+    rc_p, raw_p = UPD._run(["upgrade", "--source", "winget"] + UPD.COMMON, 300)
+    rc_c, scr, how_c = UPD._capture(["upgrade", "--source", "winget"] + UPD.COMMON, 300)
+    pipe_rows = {r["id"]: r for r in UPD._repair_ids(UPD.parse_upgrades(raw_p))}
+    con_rows = {r["id"]: r for r in UPD.parse_upgrades(scr)}
+    note(f"upgrade table via {how_c}: {len(con_rows)} rows, pipe {len(pipe_rows)} rows; only pipe {sorted(set(pipe_rows) - set(con_rows))[:6]}, "
+         f"only console {sorted(set(con_rows) - set(pipe_rows))[:6]}")
+    check(how_c == "conpty", f"tables are read from a pseudo console ({how_c})")
+    check(set(con_rows) == set(pipe_rows) and len(con_rows) > 0, "pseudo console and pipe list the same packages")
+    check(all(con_rows[i]["version"] == pipe_rows[i]["version"] and con_rows[i]["available"] == pipe_rows[i]["available"] for i in con_rows if i in pipe_rows),
+          "same versions in both")
+    check(not any(r["name"].endswith(("\u2026", "...")) or r["id"].endswith(("\u2026", "...")) for r in con_rows.values()), "nothing shortened in the wide console")
+    if any(not r.get("_arp") for r in items):
+        note("not matched to Installed apps: " + ", ".join(r["id"] for r in items if not r.get("_arp"))[:400])
+    check(sum(1 for r in items if r.get("_arp")) >= len(items) * 0.7, f"rows matched to Installed apps ({sum(1 for r in items if r.get('_arp'))}/{len(items)})")
+    sus = [r for r in items if r.get("suspect")]
+    note("look-alikes: " + (", ".join(f"{r['id']} ({r['why']}: {r.get('installedName')} / {r.get('catName')})" for r in sus) or "none"))
+    check(len(sus) <= 2, f"almost no package marked as another program ({len(sus)})")
+    with_notes = [r["id"] for r in items if r.get("notes") or r.get("notesUrl")]
+    note(f"release notes known for {len(with_notes)}/{len(items)}: {with_notes[:8]}")
+
+    # "install over the old version", the route taken when winget does not pick the installed program for an upgrade
+    rest_items = UPD.scan(details=False)["items"]
+    over = next((i for k in ("7zip.7zip", "Git.Git", "StrawberryPerl.StrawberryPerl", "ShiningLight.OpenSSL.Dev") for i in rest_items if i["id"] == k), None)
+    if over:
+        before = UPD.installed_version(over["id"])
+        ev: list[tuple] = []
+        r = UPD.install(over["id"], progress=lambda ph, got, total: ev.append(ph))
+        after = UPD.installed_version(over["id"])
+        note(f"install over {over['id']}: {before} -> {after}, {r}, phases {sorted(set(ev))}")
+        check(r["ok"] and after and after != before, f"installing over the old version updates it ({over['id']} {before} -> {after})")
+        again = UPD.upgrade(over["id"], before=after)
+        note(f"upgrade after install-over: {again}")
+        check(again["ok"] and again["reason"] in ("uptodate", "nochange"), f"nothing left to update afterwards ({again['reason']})")
+
+    # search the whole catalogue
+    found = UPD.search("vlc")
+    note("search vlc: " + ", ".join(f"{r['id']} {r['version']}" for r in found[:8]))
+    check(any(r["id"] == "VideoLAN.VLC" for r in found), "search finds VideoLAN.VLC")
+    check(all(r["id"] and not r["id"].endswith(("\u2026", "...")) for r in found), "search ids are complete")
+
+    # every program Sweep offers to install exists in the catalogue
+    from concurrent.futures import ThreadPoolExecutor
+
+    from sweep import catalog as CAT
+    with ThreadPoolExecutor(max_workers=4) as ex:
+        shown = dict(zip([p[0] for p in CAT.PROGRAMS], ex.map(lambda p: UPD.show(p[0]), CAT.PROGRAMS), strict=True))
+    missing = [pid for pid, d in shown.items() if not (d["name"] and d["installer"])]
+    missing = [pid for pid in missing if not (UPD.show(pid)["installer"])]      # one quiet retry
+    note(f"catalogue picks: {len(CAT.PROGRAMS) - len(missing)}/{len(CAT.PROGRAMS)} found" + (f", missing {missing}" if missing else ""))
+    check(not missing, f"every program offered for installing is in the catalogue {missing}")
+    note("pick sources: " + ", ".join(f"{pid}@{UPD.host(d['installer'])}" for pid, d in list(shown.items())[:46] if d["installer"])[:900])
+
+    # a real install of a small program, then it shows up as installed
+    target = "SumatraPDF.SumatraPDF"
+    had = target in UPD.installed_ids()
+    ev2: list[tuple] = []
+    r = UPD.install(target, progress=lambda ph, got, total: ev2.append((ph, int(got), int(total))))
+    note(f"install {target}: {r}, had it before: {had}, events {len(ev2)}: {ev2[:4]} ... {ev2[-2:]}")
+    check(r["ok"], f"{target} installed: {r}")
+    check(target in UPD.installed_ids(), f"{target} is listed as installed afterwards")
+    check(any(e[0] == "download" for e in ev2) or had, "install reports download progress")
     # a big download (installer only, nothing installed) to see the progress arrive while it is still running
     import time as _time
     dest = Path(tempfile.gettempdir()) / "sweep-dl-test"

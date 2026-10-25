@@ -51,9 +51,15 @@ _DEMO = [
     {"name": "Microsoft Visual C++ 2015-2022 Redistributable (x64)", "publisher": "Microsoft Corporation", "version": "14.44.35211", "size": 20 * 2**20, "date": "2025-07-08", "location": "", "quiet": True, "msi": True},
     {"name": "Zoom Workplace", "publisher": "Zoom Communications, Inc.", "version": "6.5.12", "size": 340 * 2**20, "date": "2025-10-19", "location": r"C:\Users\Alex\AppData\Roaming\Zoom\bin", "quiet": False, "msi": False},
     {"name": "Kaspersky Total Security", "publisher": "АО «Лаборатория Касперского»", "version": "21.19.7.527", "size": 980 * 2**20, "date": "2026-01-15", "location": r"C:\Program Files (x86)\Kaspersky Lab\Kaspersky Total Security 21.19", "quiet": False, "msi": False},
+    {"name": "FlClash X", "publisher": "pluralplay", "version": "0.3.2", "size": 96 * 2**20, "date": "2026-09-02", "location": r"C:\Program Files\FlClashX", "quiet": True, "msi": False,
+     "urls": ["https://github.com/pluralplay/FlClashX"]},
+    {"name": "PowerShell 7-x64", "publisher": "Microsoft Corporation", "version": "7.6.6.0", "size": 210 * 2**20, "date": "2026-07-30", "location": r"C:\Program Files\PowerShell\7", "quiet": True, "msi": True,
+     "urls": ["https://github.com/PowerShell/PowerShell"]},
+    {"name": "Python Launcher", "publisher": "Python Software Foundation", "version": "3.12.10", "size": 2 * 2**20, "date": "2025-04-09", "location": "", "quiet": True, "msi": True},
 ]
 for _i, _d in enumerate(_DEMO):
     _d.update(id=f"demo:{_i}", icon="", uninstall="uninst.exe", exists=True, system=False)
+    _d.setdefault("urls", [])
 
 
 # ---------------- registry helpers ----------------
@@ -127,6 +133,7 @@ def list_programs() -> list[dict]:
                             "location": loc if loc and os.path.isdir(loc) else "", "icon": _icon_path(_val(k, "DisplayIcon")),
                             "uninstall": str(un or ""), "quietCmd": str(quiet or ""), "quiet": bool(quiet) or msi or bool(re.search(r"unins\d{3}\.exe", str(un or ""), re.I)),
                             "msi": msi, "key": sub, "noRemove": _val(k, "NoRemove") == 1, "exists": True,
+                            "urls": [str(u) for u in (_val(k, "URLInfoAbout"), _val(k, "HelpLink"), _val(k, "URLUpdateInfo")) if u],
                         })
                 except OSError:
                     continue

@@ -49,7 +49,7 @@ Most cleaners delete first and ask later. Sweep is built the other way round:
 <td valign="top"><b>Programs</b><br>Thorough uninstaller: runs the program's own uninstaller, then finds leftovers in folders, registry, tasks and services.</td>
 </tr>
 <tr>
-<td valign="top"><b>Updates</b><br>Finds outdated programs and updates the ones you tick from the vendors' official sites, each file verified by SHA-256.</td>
+<td valign="top"><b>Updates and installs</b><br>Updates outdated programs and installs new ones in one click from the vendors' official sites, each file verified by SHA-256.</td>
 <td valign="top"><b>Startup and services</b><br>What launches with Windows and which background services you can safely pause, all reversible.</td>
 <td valign="top"><b>Boost and disks</b><br>Free RAM, TRIM or defrag, visual-effects and power presets, junk on every drive, weekly silent auto-clean.</td>
 </tr>
@@ -75,7 +75,9 @@ Most cleaners delete first and ask later. Sweep is built the other way round:
 
 **Programs.** Every installed program with its icon, size and date. Sweep runs the program's own uninstaller, then finds what it left behind (program folders, AppData, ProgramData, registry keys, shortcuts, Run entries, scheduled tasks, services) and shows the list before removing anything. Force mode handles programs whose uninstaller is broken; locked files are removed at the next restart.
 
-**Updates.** Sweep asks winget, the package manager built into Windows, which installed programs have a newer version. Each one shows where the installer comes from (7-zip.org, videolan.org, github.com/notepad-plus-plus and so on). Tick what you want and Sweep updates them one by one, silently; winget refuses to run any file whose SHA-256 differs from the catalogue. Major upgrades are not ticked by default, and any program can be hidden from the list.
+**Updates.** Sweep asks winget, the package manager built into Windows, which installed programs have a newer version, with a progress bar while it looks. Each one shows where the installer comes from (7-zip.org, videolan.org, github.com/notepad-plus-plus and so on) and what is new in the version. Nothing is ticked by itself: tick what you want or press Update all, and Sweep updates them one by one, silently, with the download in megabytes and a percentage for every program; winget refuses to run any file whose SHA-256 differs from the catalogue. Afterwards Sweep reads the installed version again, so "updated" always means the new version is really there. Forks and look-alikes that winget mistakes for the original program (FlClash X for FlClash, say) are flagged and never updated by accident.
+
+**Install.** Popular free programs in one click, by category (browsers, messaging, video and music, documents, utilities, passwords, games, development, components), plus ready-made sets for a fresh Windows, gaming or work, and a search through the whole winget catalogue. Programs already on the PC are marked; the rest install one after another from the vendors' sites, with the same live progress and SHA-256 check.
 
 **Built-in apps.** Removes pre-installed Microsoft and partner apps (Xbox, Solitaire, News, Candy Crush and so on); any of them can be reinstalled from Microsoft Store.
 
