@@ -157,6 +157,28 @@ class App(QObject):
     def accent(self):
         return self.settings.get("accent", "violet")
 
+    @Property(str, notify=langChanged)
+    def renderer(self):
+        return self.settings.get("renderer", "gpu")
+
+    @Slot(str)
+    def setRenderer(self, mode):
+        self.settings["renderer"] = mode
+        P.save_settings(self.settings)
+        self.langChanged.emit()
+        self._set_status(self.i18n.t("set.renderer.restart"))
+
+    @Slot()
+    def restartApp(self):
+        import subprocess
+        exe = sys.executable if getattr(sys, "frozen", False) else None
+        if exe:
+            subprocess.Popen([exe])
+        else:
+            subprocess.Popen([sys.executable, os.path.abspath(sys.argv[0])])
+        from PySide6.QtWidgets import QApplication
+        QApplication.quit()
+
     @Property(bool, notify=langChanged)
     def animations(self):
         return bool(self.settings.get("animations", True))

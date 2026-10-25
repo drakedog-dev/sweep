@@ -46,10 +46,12 @@ def main() -> int:
         return 0
     ensure_admin()
     os.environ.setdefault("QT_QUICK_CONTROLS_STYLE", "Basic")
-    if P.IS_WINDOWS:
+    renderer = P.load_settings().get("renderer", "gpu")
+    if "--software" in sys.argv or renderer == "cpu":
+        os.environ["QT_QUICK_BACKEND"] = "software"      # no GPU involvement at all
+    elif P.IS_WINDOWS:
         os.environ.setdefault("QSG_RHI_BACKEND", "d3d11")
-        if "--software" in sys.argv:
-            os.environ["QT_QUICK_BACKEND"] = "software"
+        os.environ.setdefault("QSG_RENDER_LOOP", "basic")  # single-threaded render loop, calmer frame pacing
     from PySide6.QtGui import QIcon
     from PySide6.QtQml import QQmlApplicationEngine
     from PySide6.QtWidgets import QApplication

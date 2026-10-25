@@ -33,6 +33,14 @@ Page {
             Toggle { checked: Theme.anim; onToggled: v => app.setAnimations(v) } }
     } }
     Card { Column { width: parent.width; spacing: 10
+        Txt { text: tr("set.renderer"); font.pixelSize: 15; bold: true }
+        Txt { text: tr("set.renderer.hint"); muted: true; width: parent.width }
+        Row { spacing: 8
+            Chip { label: tr("set.renderer.gpu"); on: app.renderer === "gpu"; onPick: app.setRenderer("gpu") }
+            Chip { label: tr("set.renderer.cpu"); on: app.renderer === "cpu"; onPick: app.setRenderer("cpu") }
+            AccentButton { text: tr("set.restart"); compact: true; primary: false; onClicked: app.restartApp() } }
+    } }
+    Card { Column { width: parent.width; spacing: 10
         Txt { text: tr("set.updates"); font.pixelSize: 15; bold: true }
         Txt { text: tr("set.about"); muted: true; width: parent.width }
         Row { spacing: 10
