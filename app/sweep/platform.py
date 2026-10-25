@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 IS_WINDOWS = sys.platform == "win32"
-APP_VERSION = "1.0.9"
+APP_VERSION = "1.0.10"
 UPDATE_REPO = "pabloescobarbl-ops/sweep"
 
 
@@ -151,6 +151,15 @@ def is_access_denied(e: BaseException) -> bool:
     return isinstance(e, PermissionError) or getattr(e, "winerror", None) == 5 or "WinError 5" in str(e)
 
 
+ANTIVIRUS = ""   # filled by log_context(): names reported by Windows Security Center
+
+
+def third_party_av() -> str:
+    """Antivirus other than Microsoft Defender, e.g. 'Kaspersky Total Security' (empty if none)."""
+    names = [n.strip() for n in ANTIVIRUS.split(",") if n.strip()]
+    return ", ".join(n for n in names if "defender" not in n.lower())
+
+
 def log_context() -> None:
     """One line in the log describing how Sweep runs: helps when settings do not stick on a particular PC."""
     if not IS_WINDOWS:
@@ -165,6 +174,8 @@ def log_context() -> None:
         info = None
     if not isinstance(info, dict):
         info = {}
+    global ANTIVIRUS
+    ANTIVIRUS = str(info.get("av") or "")
     log(f"context: Sweep {APP_VERSION}, admin={is_admin()}, {_pf.architecture()[0]}, user={info.get('user', '?')}, "
         f"os={info.get('os', '?')}, antivirus={info.get('av') or 'none reported'}, exe={sys.executable}")
 

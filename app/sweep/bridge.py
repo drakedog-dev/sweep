@@ -52,6 +52,7 @@ class App(QObject):
         self._lang_counter = 0
         # data
         self._admin = P.is_admin() and "--limited" not in sys.argv
+        self._priv_hint: tuple[str, str] | None = None   # why privacy changes did not stick
         self._start_page = self._arg("--page")
         self._pending = self._arg("--do")
         self.categories = cleaner.CATEGORIES
@@ -530,15 +531,40 @@ class App(QObject):
 
     # ---------- privacy ----------
     def _apply_privacy(self, items, protect: bool = True) -> list:
-        """Runs in a worker thread. Applies every item even if some fail, then re-reads the real state."""
+        """Runs in a worker thread. Applies every item even if some fail, then re-reads the real state.
+        An item that was written fine but is off again a moment later (an antivirus rolled it back) also counts as failed."""
         failed = [p for p in items if tweaks.set_privacy(p, protect)]
         self.privacy_state = {p.id: tweaks.privacy_state(p) for p in tweaks.PRIVACY}
+        if protect:
+            for p in items:
+                if p not in failed and not self.privacy_state[p.id]:
+                    P.log(f"privacy {p.id}: written, but switched back right after")
+                    failed.append(p)
         return failed
+
+    @Property(str, notify=changed)
+    def privacyHint(self):
+        if not self._priv_hint:
+            return ""
+        key, arg = self._priv_hint
+        return self.i18n.t(key, arg)
 
     def _privacy_report(self, failed: list) -> None:
         self._compute_health()
         self.changed.emit()
         ok, total = self.privacyOn, len(tweaks.PRIVACY)
+        av = P.third_party_av()
+        if not failed:
+            self._priv_hint = None
+        elif "kaspersky" in av.lower():
+            self._priv_hint = ("priv.blocked.kaspersky", av)
+        elif av:
+            self._priv_hint = ("priv.blocked.av", av)
+        elif self._admin:
+            self._priv_hint = ("priv.blocked.generic", "")
+        else:
+            self._priv_hint = None
+        self.changed.emit()
         if failed:
             names = ", ".join(self._loc(p.name) for p in failed[:3]) + ("…" if len(failed) > 3 else "")
             self._set_status(self.i18n.t("priv.partial", ok, total, names) + " " + (self.i18n.t("admin.denied") if self._admin else self.i18n.t("admin.need")))

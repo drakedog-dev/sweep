@@ -5,6 +5,13 @@ import "../components"
 Page {
     title: tr("nav.privacy"); subtitle: tr("hdr.privacy"); hint: tr("priv.hint")
     bigLabel: tr("priv.disabled"); bigValue: app.privacyOn + " " + tr("common.of") + " " + app.privacy.length
+    Rectangle {
+        width: parent.width; visible: app.privacyHint !== ""; height: visible ? hintCol.implicitHeight + 30 : 0; radius: 14
+        color: Theme.dark ? "#3A2A12" : "#FEF3C7"; border.color: Theme.warn
+        Column { id: hintCol; anchors.left: parent.left; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; anchors.leftMargin: 18; anchors.rightMargin: 18; spacing: 6
+            Txt { text: "\u26A0  " + tr("priv.blocked.title"); bold: true; font.pixelSize: 14; width: parent.width; color: Theme.warn }
+            Txt { text: app.privacyHint; width: parent.width; font.pixelSize: 13; wrapMode: Text.WordWrap } }
+    }
     Card { pad: 10
         Column { width: parent.width
             Repeater { model: app.privacy
