@@ -456,9 +456,16 @@ def _delete_on_reboot(path: str) -> None:
     ctypes.windll.kernel32.MoveFileExW(path, None, MOVEFILE_DELAY_UNTIL_REBOOT)
 
 
+def _hidden() -> dict:
+    """No console window flashing for reg.exe and sc.exe."""
+    si = subprocess.STARTUPINFO()
+    si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+    return {"startupinfo": si, "creationflags": 0x08000000}
+
+
 def _reg_export(path: str, session: str, n: int) -> None:
     f = P.REG_BACKUP / f"{session}_uninstall_{n:03d}.reg"
-    subprocess.run(["reg.exe", "export", path, str(f), "/y", "/reg:64"], capture_output=True, timeout=60)
+    subprocess.run(["reg.exe", "export", path, str(f), "/y", "/reg:64"], capture_output=True, timeout=60, **_hidden())
 
 
 def remove_leftovers(items: list[dict], session: str, label: str) -> dict:
@@ -485,7 +492,20 @@ def remove_leftovers(items: list[dict], session: str, label: str) -> dict:
                         m.write(f"{target}|{path}\n")
                     res["freed"] += it.get("size", 0)
                 except OSError:
-                    _delete_on_reboot(path)       # locked by a running service or driver: gone after restart
+                    # locked by a running service or driver: a copy goes to quarantine, the original is removed at
+                    # the next restart; when even a copy is impossible, nothing is deleted
+                    try:
+                        if os.path.isdir(path):
+                            shutil.copytree(path, str(target), symlinks=True, dirs_exist_ok=True)
+                        else:
+                            shutil.copy2(path, str(target))
+                    except OSError as e:
+                        P.log(f"uninstall leftover {path}: locked and cannot be copied, left in place: {e}")
+                        res["failed"].append(path)
+                        continue
+                    with manifest.open("a", encoding="utf-8") as m:
+                        m.write(f"{target}|{path}\n")
+                    _delete_on_reboot(path)
                     res["reboot"] += 1
                     continue
                 parent = os.path.dirname(path)      # empty Publisher folder left behind
@@ -496,25 +516,26 @@ def remove_leftovers(items: list[dict], session: str, label: str) -> dict:
                     pass
             elif kind == "reg":
                 _reg_export(path, session, n)
-                r = subprocess.run(["reg.exe", "delete", path, "/f", "/reg:64"], capture_output=True, timeout=60)
+                r = subprocess.run(["reg.exe", "delete", path, "/f", "/reg:64"], capture_output=True, timeout=60, **_hidden())
                 if r.returncode != 0:
                     raise OSError((r.stderr or r.stdout or b"").decode("cp866", "replace").strip())
             elif kind == "run":
                 key, _, value = path.rpartition("\\")
                 _reg_export(key, session, n)
-                r = subprocess.run(["reg.exe", "delete", key, "/v", value, "/f", "/reg:64"], capture_output=True, timeout=60)
+                r = subprocess.run(["reg.exe", "delete", key, "/v", value, "/f", "/reg:64"], capture_output=True, timeout=60, **_hidden())
                 if r.returncode != 0:
                     raise OSError("reg delete failed")
             elif kind == "task":
                 bdir = str(P.REG_BACKUP).replace("'", "''")
                 tp, _, tn = path.rpartition("\\")
+                tp, tn = tp.replace("'", "''"), tn.replace("'", "''")
                 P.powershell(f"$t=Get-ScheduledTask -TaskName '{tn}' -TaskPath '{tp}\\' -EA Stop; "
                              f"Export-ScheduledTask -TaskName '{tn}' -TaskPath '{tp}\\' | Set-Content -Path (Join-Path '{bdir}' '{session}_task_{n:03d}.xml') -Encoding Unicode; "
                              f"Unregister-ScheduledTask -TaskName '{tn}' -TaskPath '{tp}\\' -Confirm:$false", 60)
             elif kind == "service":
                 _reg_export(f"HKLM\\SYSTEM\\CurrentControlSet\\Services\\{path}", session, n)
-                subprocess.run(["sc.exe", "stop", path], capture_output=True, timeout=60)
-                r = subprocess.run(["sc.exe", "delete", path], capture_output=True, timeout=60)
+                subprocess.run(["sc.exe", "stop", path], capture_output=True, timeout=60, **_hidden())
+                r = subprocess.run(["sc.exe", "delete", path], capture_output=True, timeout=60, **_hidden())
                 if r.returncode != 0:
                     raise OSError("sc delete failed")
             res["removed"] += 1

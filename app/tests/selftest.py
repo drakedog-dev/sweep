@@ -53,22 +53,24 @@ check(tweaks.privacy_state(next(p for p in tweaks.PRIVACY if p.id == "copilot"))
 
 # ---------- startup ----------
 RUN = r"Software\Microsoft\Windows\CurrentVersion\Run"
+TEST_RUN = "SweepSelfTest Тест"          # a Cyrillic name: PowerShell must hand it over in UTF-8, not in the console code page
 for hive, root in ((winreg.HKEY_CURRENT_USER, "User"), (winreg.HKEY_LOCAL_MACHINE, "System")):
     with winreg.CreateKeyEx(hive, RUN, 0, winreg.KEY_SET_VALUE | winreg.KEY_WOW64_64KEY) as k:
-        winreg.SetValueEx(k, "SweepSelfTest", 0, winreg.REG_SZ, r"C:\Windows\notepad.exe")
-    e = next((x for x in tweaks.startup_entries() if x["name"] == "SweepSelfTest" and x["source"] == root), None)
+        winreg.SetValueEx(k, TEST_RUN, 0, winreg.REG_SZ, r"C:\Windows\notepad.exe /Проверка")
+    e = next((x for x in tweaks.startup_entries() if x["name"] == TEST_RUN and x["source"] == root), None)
     check(e is not None, f"startup entry listed ({root})")
+    check(e is not None and e["command"].endswith("/Проверка"), f"Cyrillic name and command read correctly ({root})")
     if e:
         tweaks.set_startup(e, False)
-        e2 = next(x for x in tweaks.startup_entries() if x["name"] == "SweepSelfTest" and x["source"] == root)
+        e2 = next(x for x in tweaks.startup_entries() if x["name"] == TEST_RUN and x["source"] == root)
         check(e2["enabled"] is False, f"startup disabled ({root})")
         tweaks.set_startup(e2, True)
-        e3 = next(x for x in tweaks.startup_entries() if x["name"] == "SweepSelfTest" and x["source"] == root)
+        e3 = next(x for x in tweaks.startup_entries() if x["name"] == TEST_RUN and x["source"] == root)
         check(e3["enabled"] is True, f"startup enabled again ({root})")
         root_s, path = tweaks._split_ps_path(e["approved"])
-        tweaks.reg_del(root_s, path, "SweepSelfTest")
+        tweaks.reg_del(root_s, path, TEST_RUN)
     with winreg.OpenKey(hive, RUN, 0, winreg.KEY_SET_VALUE | winreg.KEY_WOW64_64KEY) as k:
-        winreg.DeleteValue(k, "SweepSelfTest")
+        winreg.DeleteValue(k, TEST_RUN)
 
 # ---------- browser history ----------
 la, ra = Path(os.environ["LOCALAPPDATA"]), Path(os.environ["APPDATA"])
@@ -229,6 +231,30 @@ if prog:
     check((P.QUARANTINE / session / "manifest.txt").exists(), "files are in quarantine")
     n = cleaner.restore(str(P.QUARANTINE / session))
     check((Path(os.environ["APPDATA"]) / "SweepTestApp").exists(), f"restore from quarantine works ({n} items)")
+    from sweep import extras
+    check(any(b["session"] == session for b in extras.reg_backups()), "the uninstall backup is listed on the Registry page")
+    nr = extras.reg_restore(session)
+    check(P.powershell("if(Get-ScheduledTask -TaskName 'SweepTestApp Update' -EA SilentlyContinue){'yes'}", 30).strip() == "yes",
+          f"scheduled task restored from the backup ({nr} files)")
+    check(tweaks.reg_get("HKCU", r"Software\Microsoft\Windows\CurrentVersion\Run", "SweepTestApp") is not None, "Run entry restored from the backup")
+    check(not any(b["session"] == session for b in extras.reg_backups()), "the restored backup is gone from the list")
+    # tidy up what the restore brought back
+    P.powershell("Unregister-ScheduledTask -TaskName 'SweepTestApp Update' -Confirm:$false -EA SilentlyContinue", 30)
+    subprocess.run(["sc.exe", "delete", "SweepTestAppSvc"], capture_output=True)
+    for k in (r"HKCU\Software\SweepTestApp", r"HKLM\SOFTWARE\WOW6432Node\SweepTestApp", r"HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\SweepTestApp"):
+        subprocess.run(["reg.exe", "delete", k, "/f", "/reg:64"], capture_output=True)
+    tweaks.reg_del("HKCU", r"Software\Microsoft\Windows\CurrentVersion\Run", "SweepTestApp")
+
+# restoring never loses a file that cannot go back (here: its place is taken)
+keep = P.QUARANTINE / "selftest_keep"
+keep.mkdir(parents=True, exist_ok=True)
+(keep / "a.txt").write_text("quarantined copy", "utf-8")
+taken = Path(tempfile.gettempdir()) / "sweep-selftest-taken.txt"
+taken.write_text("new file in the same place", "utf-8")
+(keep / "manifest.txt").write_text(f"{keep / 'a.txt'}|{taken}\n", "utf-8")
+check(cleaner.restore(str(keep)) == 0 and (keep / "a.txt").exists(), "a file that cannot be restored stays in quarantine")
+shutil.rmtree(keep, ignore_errors=True)
+taken.unlink(missing_ok=True)
 
 # ---------------- program updates through winget: real catalogue, real download, real install ----------------
 print("\n== program updates (winget)")

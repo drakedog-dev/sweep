@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import re
 import time
 from dataclasses import dataclass
 from datetime import datetime
@@ -80,7 +81,7 @@ $done'''
 
 def reg_backups() -> list[dict]:
     groups: dict[str, int] = {}
-    for f in P.REG_BACKUP.glob("*.reg"):
+    for f in list(P.REG_BACKUP.glob("*.reg")) + list(P.REG_BACKUP.glob("*_task_*.xml")):
         groups[f.name[:15]] = groups.get(f.name[:15], 0) + 1
     out = []
     for s, n in sorted(groups.items(), reverse=True):
@@ -95,10 +96,36 @@ def reg_backups() -> list[dict]:
 def reg_restore(session: str) -> int:
     n = 0
     for f in P.REG_BACKUP.glob(f"{session}*.reg"):
-        P.powershell(f"reg.exe import '{f}' 2>&1 | Out-Null", 60)
+        fq = str(f).replace("'", "''")
+        P.powershell(f"reg.exe import '{fq}' 2>&1 | Out-Null", 60)
         f.unlink(missing_ok=True)
         n += 1
+    for f in P.REG_BACKUP.glob(f"{session}_task_*.xml"):     # scheduled tasks removed with a program
+        if _restore_task(f):
+            f.unlink(missing_ok=True)
+            n += 1
     return n
+
+
+def _restore_task(f) -> bool:
+    try:
+        xml = f.read_text("utf-16")
+    except (OSError, UnicodeError):
+        try:
+            xml = f.read_text("utf-8")
+        except OSError:
+            return False
+    m = re.search(r"<URI>([^<]+)</URI>", xml)
+    if not m:
+        P.log(f"task restore {f.name}: no task name in the file")
+        return False
+    tp, _, tn = m.group(1).rpartition("\\")
+    fq, tn, tp = str(f).replace("'", "''"), tn.replace("'", "''"), (tp + "\\").replace("'", "''")
+    out = P.powershell(f"try {{ Register-ScheduledTask -Xml (Get-Content -LiteralPath '{fq}' -Raw) -TaskName '{tn}' -TaskPath '{tp}' -Force -EA Stop | Out-Null; 'ok' }} "
+                       f"catch {{ 'fail: ' + $_.Exception.Message }}", 60).strip()
+    if not out.endswith("ok"):
+        P.log(f"task restore {m.group(1)}: {out or 'no answer'}")
+    return out.endswith("ok")
 
 
 # ---------------- disks ----------------
@@ -175,6 +202,7 @@ def drive_junk(letter: str) -> dict:
     for dp, dns, fs in os.walk(root):
         if dp == root:
             dns[:] = [d for d in dns if d.lower() not in skip_names]
+        dns[:] = [d for d in dns if not _is_link(os.path.join(dp, d))]
         low = os.path.basename(dp).lower()
         if low.startswith("found.") and low[6:].isdigit():
             total = 0
@@ -330,6 +358,14 @@ class Monitor:
         return {"cpu": cpu, "ram": mem.percent, "ram_used": mem.used, "ram_total": mem.total, "disk_mbps": round(mbps, 1)}
 
 
+def _is_link(path: str) -> bool:
+    """A symbolic link or a junction: following it would leave the folder or loop."""
+    try:
+        return os.path.islink(path) or (hasattr(os.path, "isjunction") and os.path.isjunction(path))
+    except OSError:
+        return True
+
+
 # ---------------- restore point ----------------
 def create_restore_point(description: str) -> bool:
     """Windows restore point before big changes. Skipped (False) when System Protection is off on the system drive.
@@ -338,14 +374,25 @@ def create_restore_point(description: str) -> bool:
         import time
         time.sleep(0.6)
         return True
+    from . import tweaks
     desc = description.replace("'", "")
-    out = P.powershell(
-        "$k='HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\SystemRestore'; "
-        "$old=(Get-ItemProperty $k -Name SystemRestorePointCreationFrequency -ErrorAction SilentlyContinue).SystemRestorePointCreationFrequency; "
-        "Set-ItemProperty $k -Name SystemRestorePointCreationFrequency -Value 0 -Type DWord -ErrorAction SilentlyContinue; "
-        f"try {{ Checkpoint-Computer -Description '{desc}' -RestorePointType MODIFY_SETTINGS -ErrorAction Stop; 'ok' }} catch {{ 'fail: ' + $_.Exception.Message }}; "
-        "if ($null -eq $old) { Remove-ItemProperty $k -Name SystemRestorePointCreationFrequency -ErrorAction SilentlyContinue } "
-        "else { Set-ItemProperty $k -Name SystemRestorePointCreationFrequency -Value $old -Type DWord }", 240).strip()
+    key, name = r"SOFTWARE\Microsoft\Windows NT\CurrentVersion\SystemRestore", "SystemRestorePointCreationFrequency"
+    old = tweaks.reg_get("HKLM", key, name)
+    try:
+        tweaks.reg_set("HKLM", key, name, 0)
+    except Exception as e:  # noqa: BLE001
+        P.log(f"restore point: frequency limit not lifted: {e}")
+    try:
+        out = P.powershell(f"try {{ Checkpoint-Computer -Description '{desc}' -RestorePointType MODIFY_SETTINGS -ErrorAction Stop; 'ok' }} "
+                           "catch { 'fail: ' + $_.Exception.Message }", 240).strip()
+    finally:
+        try:
+            if old is None:
+                tweaks.reg_del("HKLM", key, name)
+            else:
+                tweaks.reg_set("HKLM", key, name, old)
+        except Exception as e:  # noqa: BLE001
+            P.log(f"restore point: frequency limit not put back: {e}")
     P.log(f"restore point '{desc}': {out or 'no answer'}")
     return out.endswith("ok")
 

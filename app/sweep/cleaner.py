@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import glob
+import ntpath
 import os
+import re
 import shutil
 import time
 from dataclasses import dataclass, field
@@ -65,9 +67,19 @@ CATEGORIES: list[Category] = [
 DEMO_SIZES = {"history": 212 * 2**20, "temp": 1.8 * 2**30, "bin": 612 * 2**20, "thumbs": 140 * 2**20, "wu": 1.1 * 2**30, "dumps": 96 * 2**20, "logs": 38 * 2**20, "cache": 1.5 * 2**30, "cookies": 24 * 2**20}
 
 
+def _safe_pattern(pat: str) -> bool:
+    """Only patterns inside a real folder at least two levels deep, never a drive root or a relative path."""
+    base = re.split(r"[*?\[]", pat, maxsplit=1)[0].rstrip("\\/")
+    drive, rest = ntpath.splitdrive(base)
+    return bool(drive) and len([x for x in re.split(r"[\\/]", rest) if x]) >= 2
+
+
 def _items(cat: Category) -> list[Path]:
     out: list[Path] = []
     for pat in cat.paths:
+        if P.IS_WINDOWS and not _safe_pattern(pat):
+            P.log(f"junk: pattern skipped, its folder is unknown: {pat}")
+            continue
         for p in glob.glob(pat):
             out.append(Path(p))
     if cat.older_than_days:
@@ -280,11 +292,16 @@ def restore(session_path: str) -> int:
     if not manifest.exists():
         return 0
     n = 0
+    left: list[str] = []          # lines that could not be restored stay in the quarantine, nothing is lost
     for line in manifest.read_text("utf-8").splitlines():
         if "|" not in line:
             continue
         src, dst = line.split("|", 1)
         if not Path(src).exists():
+            continue
+        if Path(dst).exists():        # moving onto an existing folder would put the copy inside it
+            P.log(f"restore {dst}: already exists, kept in quarantine")
+            left.append(line)
             continue
         try:
             Path(dst).parent.mkdir(parents=True, exist_ok=True)
@@ -292,7 +309,11 @@ def restore(session_path: str) -> int:
             n += 1
         except Exception as e:
             P.log(f"restore {dst}: {e}")
-    shutil.rmtree(d, ignore_errors=True)
+            left.append(line)
+    if left:
+        manifest.write_text("\n".join(left) + "\n", "utf-8")
+    else:
+        shutil.rmtree(d, ignore_errors=True)
     return n
 
 

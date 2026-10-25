@@ -129,4 +129,4 @@ def verdict(seconds: float) -> str:
 def restart_now() -> None:
     if P.IS_WINDOWS:
         import subprocess
-        subprocess.Popen(["shutdown.exe", "/r", "/t", "5", "/c", "Sweep: restart to measure boot time"])
+        subprocess.Popen(["shutdown.exe", "/r", "/t", "5", "/c", "Sweep: restart to measure boot time"], creationflags=0x08000000)

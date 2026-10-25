@@ -55,6 +55,11 @@ def save_settings(d: dict) -> None:
         log(f"settings: {e}")
 
 
+# Windows PowerShell 5.1 writes its output to a pipe in the console code page (cp866 on Russian Windows), which turns
+# Cyrillic names and paths (startup entries, a user folder like C:\\Users\\Алексей) into garbage. Ask it for UTF-8 first.
+_UTF8 = "try { [Console]::OutputEncoding = [Text.Encoding]::UTF8 } catch {}; "
+
+
 def powershell(script: str, timeout: int = 120) -> str:
     """Run a PowerShell snippet hidden and return stdout. Windows only."""
     if not IS_WINDOWS:
@@ -63,7 +68,7 @@ def powershell(script: str, timeout: int = 120) -> str:
     si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
     try:
         r = subprocess.run(
-            ["powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script],
+            ["powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", _UTF8 + script],
             capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout, startupinfo=si,
         )
         return r.stdout
