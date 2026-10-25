@@ -2,6 +2,13 @@
 
 All notable changes to Sweep. The newest version is at the top; the in-app update dialog and the GitHub release notes are built from this file.
 
+## 1.0.19
+- Store apps (App Installer, Teams, ChatGPT, Claude and others) show their own logo in the updates list
+- An "open" badge on programs that are running right now: an open program often cannot be replaced by its installer
+- When an update leaves the version unchanged, the row says why (for example, the program was open), stays in the list and can be updated again with one click
+- The update counter and the badges count only updates that surely belong to your programs; look-alikes are shown but not counted
+- Look-alikes are named without the version: "FlClashX" instead of "FlClashX, версия 0.4.2"
+
 ## 1.0.18
 - Program updates: nothing is ticked by itself any more. Tick what you want and press "Update selected", or take everything with "Update all"
 - A progress bar with a percentage while Sweep looks for updates, in three steps: the winget catalogue, the sources, the final check

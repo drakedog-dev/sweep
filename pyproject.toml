@@ -1,6 +1,6 @@
 [project]
 name = "sweep"
-version = "1.0.18"
+version = "1.0.19"
 description = "Free, open-source Windows 10/11 cleaner and optimiser with a Qt Quick interface"
 readme = "README.md"
 license = { text = "MIT" }
