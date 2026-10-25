@@ -299,8 +299,8 @@ def restore(session_path: str) -> int:
         src, dst = line.split("|", 1)
         if not Path(src).exists():
             continue
-        if Path(dst).exists():        # moving onto an existing folder would put the copy inside it
-            P.log(f"restore {dst}: already exists, kept in quarantine")
+        if Path(src).is_dir() and Path(dst).exists():   # a folder moved onto an existing one would land inside it
+            P.log(f"restore {dst}: the folder exists again, kept in quarantine")
             left.append(line)
             continue
         try:

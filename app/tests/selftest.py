@@ -245,16 +245,17 @@ if prog:
         subprocess.run(["reg.exe", "delete", k, "/f", "/reg:64"], capture_output=True)
     tweaks.reg_del("HKCU", r"Software\Microsoft\Windows\CurrentVersion\Run", "SweepTestApp")
 
-# restoring never loses a file that cannot go back (here: its place is taken)
+# restoring never loses what cannot go back (here: the folder exists again, moving would nest the copy inside it)
 keep = P.QUARANTINE / "selftest_keep"
-keep.mkdir(parents=True, exist_ok=True)
-(keep / "a.txt").write_text("quarantined copy", "utf-8")
-taken = Path(tempfile.gettempdir()) / "sweep-selftest-taken.txt"
-taken.write_text("new file in the same place", "utf-8")
-(keep / "manifest.txt").write_text(f"{keep / 'a.txt'}|{taken}\n", "utf-8")
-check(cleaner.restore(str(keep)) == 0 and (keep / "a.txt").exists(), "a file that cannot be restored stays in quarantine")
+(keep / "dir").mkdir(parents=True, exist_ok=True)
+(keep / "dir" / "a.txt").write_text("quarantined copy", "utf-8")
+taken = Path(tempfile.gettempdir()) / "sweep-selftest-taken"
+taken.mkdir(exist_ok=True)
+(keep / "manifest.txt").write_text(f"{keep / 'dir'}|{taken}\n", "utf-8")
+check(cleaner.restore(str(keep)) == 0 and (keep / "dir" / "a.txt").exists() and not (taken / "dir").exists(),
+      "a folder that cannot be restored stays in quarantine")
 shutil.rmtree(keep, ignore_errors=True)
-taken.unlink(missing_ok=True)
+shutil.rmtree(taken, ignore_errors=True)
 
 # ---------------- program updates through winget: real catalogue, real download, real install ----------------
 print("\n== program updates (winget)")
