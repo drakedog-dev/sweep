@@ -14,7 +14,7 @@ Sweep is a free, open-source (MIT) Windows 10/11 cleaner and optimiser: Python 3
 |---|---|
 | `app/main.py` | Entry point: UAC, `--auto`, `--guard`, `--ui-test`, themed title bar |
 | `app/sweep/bridge.py` | `App` QObject: every property and slot QML uses; `_run` (busy) and `_bg` (not busy) workers |
-| `app/sweep/*.py` | One module per feature: `cleaner`, `tweaks` (privacy, services, startup), `uninstall`, `updates` (winget), `conpty` (pseudo console for live winget progress), `guard`, `boot`, `extras`, `winframe` |
+| `app/sweep/*.py` | One module per feature: `cleaner`, `tweaks` (privacy, services, startup), `uninstall`, `updates` (winget: scan, look-alike check, upgrade, install, search), `catalog` (programs offered on the Install tab), `conpty` (pseudo console for live winget progress), `guard`, `boot`, `extras`, `winframe` |
 | `app/sweep/i18n.py` | All UI strings, `ru` and `en` |
 | `app/qml/` | `Main.qml`, `pages/`, `components/`, `Sweep/Theme.qml` (colours, Lucide icon map) |
 | `app/tests/` | `test_updates.py` (runs anywhere), `selftest.py` (Windows only, changes and restores real settings) |
@@ -60,4 +60,7 @@ git notes --ref=lint show HEAD         # Linux: ruff, unit tests, demo UI test
 - The repository was renamed from `pabloescobarbl-ops/sweep`. Versions up to 1.0.16 check for updates at the old address and rely on GitHub's redirect, so that name must never be used again.
 - Kaspersky puts unsigned programs into a restricted group and silently blocks their registry writes; Sweep detects this and shows a hint.
 - winget holds back its progress bar when its output goes to a pipe; `conpty.py` runs it in a hidden pseudo console so the download progress arrives live.
+- winget tables (upgrade, search, show, list) are read from a 512-column pseudo console through `updates.vt_screen`, so nothing is shortened with "…"; the pipe is only the fallback.
+- winget sometimes links a fork to the original (FlClash X to chen08209.FlClash). `updates.check_identity` compares the installed name and GitHub author with the catalogue; suspect rows cannot be ticked until the user presses "Same program".
+- When `winget upgrade` answers NO_APPLICATIONS_FOUND, `updates.upgrade` installs over the old version (only if Windows still lists the program) and then reads the installed version again.
 - Open questions: a paid Pro tier (the leaning is open code with a licence key, to stay eligible for SignPath) and the SignPath application.
