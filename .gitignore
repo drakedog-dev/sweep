@@ -10,3 +10,5 @@ app/*.spec
 legacy/Sweep.exe
 legacy/Output/
 app/version_info.txt
+!docs/**/*.png
+!docs/*.png
