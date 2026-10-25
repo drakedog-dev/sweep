@@ -36,15 +36,16 @@ ApplicationWindow {
 
     property int current: 0
     property var visited: ({})
-    onCurrentChanged: {
-        app.setMonitorActive(current === 0)
+    // the first visit of a page starts its scan; while Sweep is busy with something else it waits for it to finish
+    function firstVisit() {
         var key = navKeys[current]
-        if (!visited[key]) {
-            var v = visited; v[key] = true; visited = v
-            if (key === "registry") app.regScan()
-            else if (key === "apps") app.scanPrograms()
-        }
+        if (visited[key] || app.busy || (key !== "registry" && key !== "apps")) return
+        var v = visited; v[key] = true; visited = v
+        if (key === "registry") app.regScan()
+        else app.scanPrograms()
     }
+    onCurrentChanged: { app.setMonitorActive(current === 0); firstVisit() }
+    Connections { target: app; function onBusyChanged() { if (!app.busy) win.firstVisit() } }
     readonly property var navKeys: ["overview", "junk", "privacy", "guard", "boot", "startup", "services", "registry", "boost", "disks", "apps", "system", "quarantine", "settings"]
     readonly property var navIcons: ["layout-dashboard", "trash-2", "shield-check", "radar", "timer", "power", "server", "database", "rocket", "hard-drive", "package", "cpu", "archive", "settings"]
     function go(key) { var i = navKeys.indexOf(key); if (i >= 0) current = i }

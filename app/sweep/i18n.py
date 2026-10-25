@@ -42,6 +42,7 @@ STRINGS: dict[str, dict[str, str]] = {
     "common.free": {"ru": "свободно", "en": "free"},
     "common.of": {"ru": "из", "en": "of"},
     "common.working": {"ru": "Работаю…", "en": "Working…"},
+    "common.busy": {"ru": "Sweep занят, дождитесь конца текущего действия", "en": "Sweep is busy, wait for the current task to finish"},
     "common.ready": {"ru": "Готово к работе", "en": "Ready"},
     "common.error": {"ru": "Ошибка: {0}", "en": "Error: {0}"},
     "common.demo": {"ru": "Демо-режим: данные условные, система не меняется", "en": "Demo mode: sample data, nothing is changed"},

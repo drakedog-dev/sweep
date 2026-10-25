@@ -216,6 +216,15 @@ class App(QObject):
         return True
 
     def _run(self, fn, on_done=None, status: str | None = None, on_fail=None):
+        if self._busy:              # one change at a time: a second click while Sweep works must not start a parallel job
+            self.toast.emit(self.i18n.t("common.busy"))
+            if on_fail:
+                try:
+                    on_fail(None)
+                except Exception:  # noqa: BLE001
+                    P.log(traceback.format_exc())
+            self.changed.emit()
+            return
         if status:
             self._set_status(status)
         self._set_busy(True)
