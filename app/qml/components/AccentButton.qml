@@ -20,13 +20,11 @@ Button {
         text: btn.text; font: btn.font; color: primary ? "white" : Theme.text
         horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; renderType: Text.NativeRendering
     }
-    background: Rectangle {
-        radius: Theme.radiusSm
-        gradient: primary ? grad : null
-        color: primary ? "transparent" : (btn.hovered ? Theme.softHover : Theme.soft)
-        Behavior on color { ColorAnimation { duration: Theme.dur } }
-        Gradient { id: grad; orientation: Gradient.Horizontal
-            GradientStop { position: 0; color: danger ? "#DC2626" : Theme.accent }
-            GradientStop { position: 1; color: danger ? "#F87171" : Theme.accent2 } }
+    background: Item {
+        Rectangle { anchors.fill: parent; radius: Theme.radiusSm; visible: !primary; color: btn.hovered ? Theme.softHover : Theme.soft; Behavior on color { ColorAnimation { duration: Theme.dur } } }
+        Rectangle { anchors.fill: parent; radius: Theme.radiusSm; visible: primary
+            gradient: Gradient { orientation: Gradient.Horizontal
+                GradientStop { position: 0; color: danger ? "#DC2626" : Theme.accent }
+                GradientStop { position: 1; color: danger ? "#F87171" : Theme.accent2 } } }
     }
 }
