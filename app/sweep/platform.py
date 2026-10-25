@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 IS_WINDOWS = sys.platform == "win32"
-APP_VERSION = "1.0.8"
+APP_VERSION = "1.0.9"
 UPDATE_REPO = "pabloescobarbl-ops/sweep"
 
 
@@ -156,10 +156,15 @@ def log_context() -> None:
     if not IS_WINDOWS:
         return
     import platform as _pf
-    info = ps_json("$id=[Security.Principal.WindowsIdentity]::GetCurrent(); "
+    try:
+        info = ps_json("$id=[Security.Principal.WindowsIdentity]::GetCurrent(); "
                    "$av=@(Get-CimInstance -Namespace root/SecurityCenter2 -ClassName AntiVirusProduct -ErrorAction SilentlyContinue | % { $_.displayName }) -join ', '; "
                    "$os=Get-CimInstance Win32_OperatingSystem; "
-                   "@{user=$id.Name; av=$av; os=[string]$os.Caption + ' ' + [string]$os.BuildNumber}", 40) or {}
+                   "@{user=$id.Name; av=$av; os=[string]$os.Caption + ' ' + [string]$os.BuildNumber}", 40)
+    except Exception:
+        info = None
+    if not isinstance(info, dict):
+        info = {}
     log(f"context: Sweep {APP_VERSION}, admin={is_admin()}, {_pf.architecture()[0]}, user={info.get('user', '?')}, "
         f"os={info.get('os', '?')}, antivirus={info.get('av') or 'none reported'}, exe={sys.executable}")
 

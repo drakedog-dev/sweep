@@ -972,6 +972,17 @@ class App(QObject):
 
         self._run(work, done, self.i18n.t("set.downloading", info["tag"]))
 
+    @Slot()
+    def openLog(self):
+        """Open ProgramData\\Sweep\\log.txt in Notepad (the folder is hidden, people cannot find it)."""
+        if not P.LOG_FILE.exists():
+            P.log("log opened")
+        if P.IS_WINDOWS:
+            import subprocess
+            subprocess.Popen(["notepad.exe", str(P.LOG_FILE)])
+        else:
+            self._set_status(str(P.LOG_FILE))
+
     @Slot(str)
     def openUrl(self, url):
         QDesktopServices.openUrl(QUrl(url))

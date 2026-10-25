@@ -177,6 +177,8 @@ STRINGS: dict[str, dict[str, str]] = {
     "set.theme.dark": {"ru": "Тёмная", "en": "Dark"}, "set.theme.light": {"ru": "Светлая", "en": "Light"},
     "set.accent": {"ru": "Акцентный цвет", "en": "Accent colour"},
     "set.anim": {"ru": "Анимации интерфейса", "en": "Interface animations"},
+    "common.log": {"ru": "Открыть журнал", "en": "Open log"},
+    "set.log": {"ru": "Журнал работы: что Sweep изменил и что не получилось", "en": "Activity log: what Sweep changed and what failed"},
     "set.rights": {"ru": "Права администратора", "en": "Administrator rights"},
     "set.rights.yes": {"ru": "Есть: все функции работают", "en": "Granted: everything works"},
     "set.rights.no": {"ru": "Нет: приватность, службы и часть очистки не применятся", "en": "Missing: privacy, services and part of the clean-up will not apply"},

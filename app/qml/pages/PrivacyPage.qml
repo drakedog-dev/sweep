@@ -14,5 +14,8 @@ Page {
                 } }
         }
     }
-    footer: [ AccentButton { text: tr("priv.all"); enabled: !app.busy; onClicked: app.allPrivacy() } ]
+    footer: [
+        AccentButton { text: tr("priv.all"); enabled: !app.busy; onClicked: app.allPrivacy() },
+        AccentButton { text: tr("common.log"); primary: false; onClicked: app.openLog() }
+    ]
 }

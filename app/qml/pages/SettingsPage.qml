@@ -39,6 +39,12 @@ Page {
             Txt { text: app.isAdmin ? tr("set.rights.yes") : tr("set.rights.no"); muted: true; width: parent.width } }
         AccentButton { id: grant; visible: !app.isAdmin; text: tr("admin.grant"); compact: true; anchors.verticalCenter: parent.verticalCenter; onClicked: app.requestAdmin("settings") }
     } }
+    Card { Row { width: parent.width; spacing: 12
+        Column { width: parent.width - logBtn.width - 12; spacing: 2; anchors.verticalCenter: parent.verticalCenter
+            Txt { text: tr("set.log"); font.pixelSize: 15; bold: true }
+            Txt { text: "C:\\ProgramData\\Sweep\\log.txt"; muted: true; width: parent.width } }
+        AccentButton { id: logBtn; text: tr("common.log"); compact: true; primary: false; anchors.verticalCenter: parent.verticalCenter; onClicked: app.openLog() }
+    } }
     Card { Column { width: parent.width; spacing: 10
         Txt { text: tr("set.updates"); font.pixelSize: 15; bold: true }
         Row { width: parent.width; spacing: 14
