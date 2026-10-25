@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 IS_WINDOWS = sys.platform == "win32"
-APP_VERSION = "1.0.5"
+APP_VERSION = "1.0.6"
 UPDATE_REPO = "pabloescobarbl-ops/sweep"
 
 

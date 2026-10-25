@@ -80,6 +80,8 @@ class App(QObject):
         self._timer.start()
         self._set_status(self.i18n.t("common.ready"))
         QTimer.singleShot(300, self.boot)
+        if self.settings.get("autoUpdate", True) and P.IS_WINDOWS:
+            QTimer.singleShot(8000, self.autoUpdateCheck)
 
     # ---------- helpers ----------
     @staticmethod
@@ -178,6 +180,39 @@ class App(QObject):
             subprocess.Popen([sys.executable, os.path.abspath(sys.argv[0])])
         from PySide6.QtWidgets import QApplication
         QApplication.quit()
+
+    @Property(bool, notify=langChanged)
+    def autoUpdate(self):
+        return bool(self.settings.get("autoUpdate", True))
+
+    @Slot(bool)
+    def setAutoUpdate(self, on):
+        self.settings["autoUpdate"] = on
+        P.save_settings(self.settings)
+        self.langChanged.emit()
+
+    @Slot()
+    def autoUpdateCheck(self):
+        """Silent start-up check; installs the newest version automatically when enabled."""
+        if self._busy:
+            QTimer.singleShot(5000, self.autoUpdateCheck)
+            return
+
+        def work():
+            return self._fetch_release()
+
+        def done(info):
+            self.update_info = info
+            self.changed.emit()
+            if info.get("newer") and info.get("url"):
+                self.toast.emit(self.i18n.t("set.autoinstalling", info["tag"]))
+                QTimer.singleShot(1500, self.installUpdate)
+
+        w = Worker(work, self)
+        self._workers.append(w)
+        w.done.connect(lambda r: (self._workers.remove(w), done(r)))
+        w.failed.connect(lambda m: (self._workers.remove(w), P.log(f"auto update: {m}")))
+        w.start()
 
     @Property(bool, notify=langChanged)
     def animations(self):
@@ -770,17 +805,19 @@ class App(QObject):
         P.save_settings(self.settings)
         self.langChanged.emit()
 
+    def _fetch_release(self) -> dict:
+        import json
+        import urllib.request
+        req = urllib.request.Request(f"https://api.github.com/repos/{P.UPDATE_REPO}/releases/latest", headers={"User-Agent": f"Sweep/{P.APP_VERSION}"})
+        with urllib.request.urlopen(req, timeout=20) as r:
+            rel = json.loads(r.read().decode("utf-8"))
+        tag = rel.get("tag_name", "").lstrip("v")
+        asset = next((a for a in rel.get("assets", []) if a["name"].startswith("Sweep-Setup") and a["name"].endswith(".exe")), None)
+        return {"tag": tag, "url": asset["browser_download_url"] if asset else "", "newer": self._newer(tag, P.APP_VERSION)}
+
     @Slot()
     def checkUpdates(self):
-        def work():
-            import json
-            import urllib.request
-            req = urllib.request.Request(f"https://api.github.com/repos/{P.UPDATE_REPO}/releases/latest", headers={"User-Agent": f"Sweep/{P.APP_VERSION}"})
-            with urllib.request.urlopen(req, timeout=20) as r:
-                rel = json.loads(r.read().decode("utf-8"))
-            tag = rel.get("tag_name", "").lstrip("v")
-            asset = next((a for a in rel.get("assets", []) if a["name"].startswith("Sweep-Setup") and a["name"].endswith(".exe")), None)
-            return {"tag": tag, "url": asset["browser_download_url"] if asset else "", "newer": self._newer(tag, P.APP_VERSION)}
+        work = self._fetch_release
 
         def done(info):
             self.update_info = info
