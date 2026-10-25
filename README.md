@@ -2,6 +2,8 @@
 
 Clean, de-bloat and speed up Windows in one click. Free, open source, works offline.
 
+**Version 1.0** is a full rewrite: a native-feeling Qt interface with smooth animations, live CPU, memory and disk monitors, a **PC profile** that adapts recommendations to weak, mid-range and powerful machines, Windows visual-effects and power-plan presets, English and Russian, dark and light themes with five accent colours.
+
 Windows 10 and 11. Sweep never connects to the internet except when you press "Check for updates".
 
 [Русская версия](README.ru.md)
@@ -14,7 +16,7 @@ Windows SmartScreen may warn about an unknown publisher because the build is not
 
 ## What it does
 
-**Overview.** A health index (0 to 100) with concrete tips, disk and memory at a glance, and a one-click quick clean.
+**Overview.** A health index (0 to 100) with concrete tips, your PC profile with one-click recommendations, live CPU and memory graphs, disk and startup at a glance, and a quick clean button.
 
 **Junk.** Shows how much space each category takes and removes only what you tick:
 temp folders, Recycle Bin, thumbnail cache, Windows Update cache, crash dumps and error reports, old Windows logs, browser caches (Chrome, Edge, Yandex, Brave, Vivaldi, Opera, Firefox) and, optionally, cookies.
@@ -27,7 +29,7 @@ temp folders, Recycle Bin, thumbnail cache, Windows Update cache, crash dumps an
 
 **Startup.** What launches with Windows, with a switch per entry. Nothing is deleted.
 
-**Boost.** Free RAM, optimise drives (TRIM for SSD, defrag for HDD), open Windows Update, and a weekly **scheduled auto-clean** that runs silently.
+**Boost.** Free RAM, optimise drives (TRIM for SSD, defrag for HDD), Windows visual-effects presets (performance, balanced, appearance), power plan, Windows Update, and a weekly **scheduled auto-clean** that runs silently.
 
 **Disks.** Usage bar per drive and a finder for the largest files outside system folders, with one-click move to quarantine.
 
@@ -37,7 +39,7 @@ temp folders, Recycle Bin, thumbnail cache, Windows Update cache, crash dumps an
 
 **Quarantine.** Nothing is deleted outright. Files are moved to `ProgramData\Sweep\Quarantine`, and **Restore** puts them back. Purge the quarantine yourself when you are sure.
 
-Dark and light themes, English and Russian interface (switch in the sidebar). Resizable, full-screen friendly.
+**Settings.** English or Russian, dark or light theme, five accent colours, animations on or off, update check.
 
 ## Safety rules
 
@@ -49,15 +51,15 @@ Dark and light themes, English and Russian interface (switch in the sidebar). Re
 
 ## Building from source
 
-Releases are built automatically by GitHub Actions on every `v*` tag (see `.github/workflows/release.yml`): `Sweep.exe` via ps2exe and the installer via Inno Setup.
+The app lives in `app/`: Python 3.12, PySide6 (Qt 6) with a QML interface, psutil. Run it from source with `python app/main.py` (on Linux or macOS it starts in demo mode with sample data, which is how the interface is developed and screenshotted).
 
-To build locally on Windows: run `build-exe.bat`, then install [Inno Setup 6](https://jrsoftware.org/isdl.php) and run `build-setup.bat`. See `INSTRUCTIONS.md`.
+Releases are built automatically by GitHub Actions on every push to `main` (see `.github/workflows/release.yml`): PyInstaller produces `dist/Sweep`, Inno Setup packs the installer, and a tag is created from `APP_VERSION` in `app/sweep/platform.py`.
 
-To run without building: `Start.bat` (asks for administrator rights). `Debug.bat` keeps the console open to show errors.
+The original PowerShell version (0.x) is kept in `legacy/`.
 
 ## Command line
 
-`Sweep.exe -auto` runs a silent clean with default categories and exits. This is what the scheduled task uses.
+`Sweep.exe --auto` runs a silent clean with default categories and exits. This is what the scheduled task uses.
 
 ## License
 

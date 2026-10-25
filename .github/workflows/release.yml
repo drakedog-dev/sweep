@@ -1,12 +1,12 @@
 name: Build Sweep
 
-# Релиз создаётся автоматически: при каждом изменении на main читается версия из Sweep.ps1,
-# и если тега с такой версией ещё нет, собираются Sweep.exe и установщик и публикуется релиз.
+# Automatic release: on every push to main the version is read from app/sweep/platform.py.
+# If no tag with that version exists, the app is built with PyInstaller, packed with Inno Setup and published.
 
 on:
   push:
     branches: [main]
-    paths: ['Sweep.ps1', 'Sweep.iss', 'sweep.ico', '.github/workflows/release.yml']
+    paths: ['app/**', '.github/workflows/release.yml']
   workflow_dispatch:
 
 permissions:
@@ -15,43 +15,61 @@ permissions:
 jobs:
   build:
     runs-on: windows-latest
+    defaults: { run: { shell: pwsh } }
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+        with: { fetch-depth: 0 }
 
-      - name: Read version from Sweep.ps1
+      - name: Read version
         id: ver
-        shell: pwsh
         run: |
-          $m = [regex]::Match((Get-Content .\Sweep.ps1 -Raw), "\`$AppVersion = '([\d\.]+)'")
-          if (-not $m.Success) { throw 'AppVersion not found in Sweep.ps1' }
+          $m = [regex]::Match((Get-Content app/sweep/platform.py -Raw), 'APP_VERSION = "([\d\.]+)"')
+          if (-not $m.Success) { throw 'APP_VERSION not found' }
           $ver = $m.Groups[1].Value
           $exists = (git tag -l "v$ver").Length -gt 0
           "version=$ver" >> $env:GITHUB_OUTPUT
           "exists=$exists" >> $env:GITHUB_OUTPUT
           Write-Host "Version $ver, tag exists: $exists"
 
-      - name: Build Sweep.exe (ps2exe)
+      - uses: actions/setup-python@v5
         if: steps.ver.outputs.exists == 'False'
-        shell: pwsh
-        run: |
-          Install-Module ps2exe -Scope CurrentUser -Force -AllowClobber
-          Import-Module ps2exe
-          $ver = '${{ steps.ver.outputs.version }}'
-          $v4 = ($ver.Split('.') + @('0','0','0'))[0..3] -join '.'
-          Invoke-ps2exe -inputFile .\Sweep.ps1 -outputFile .\Sweep.exe -iconFile .\sweep.ico -noConsole -STA -requireAdmin -x64 `
-            -title 'Sweep' -description 'Clean, de-bloat and speed up Windows' -company 'Sweep' -product 'Sweep' -version $v4 -copyright 'MIT'
-          (Get-Content .\Sweep.iss) -replace '#define AppVersion ".*"', "#define AppVersion `"$ver`"" | Set-Content .\Sweep.iss -Encoding UTF8
+        with: { python-version: '3.12' }
 
-      - name: Build installer (Inno Setup)
+      - name: Install dependencies
         if: steps.ver.outputs.exists == 'False'
-        shell: cmd
-        run: '"%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe" Sweep.iss'
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r app/requirements.txt pyinstaller==6.11.1
+
+      - name: Build with PyInstaller
+        if: steps.ver.outputs.exists == 'False'
+        working-directory: app
+        run: |
+          $ex = @('QtWebEngineCore','QtWebEngineWidgets','QtWebEngineQuick','QtPdf','QtPdfWidgets','QtMultimedia','QtMultimediaWidgets','Qt3DCore','Qt3DRender','Qt3DInput','Qt3DLogic','Qt3DAnimation','Qt3DExtras','QtCharts','QtDataVisualization','QtGraphs','QtQuick3D','QtBluetooth','QtNfc','QtPositioning','QtLocation','QtSensors','QtSerialPort','QtSerialBus','QtSql','QtTest','QtDesigner','QtHelp','QtRemoteObjects','QtScxml','QtStateMachine','QtTextToSpeech','QtWebChannel','QtWebSockets','QtWebView','QtSpatialAudio','QtHttpServer','QtOpenGLWidgets','QtSvgWidgets','QtUiTools','QtXml','QtDBus','QtNetworkAuth','QtQuickWidgets') | % { "--exclude-module=PySide6.$_" }
+          pyinstaller --noconfirm --clean --onedir --windowed --name Sweep --icon sweep.ico --uac-admin `
+            --add-data "qml;qml" --add-data "sweep.ico;." `
+            --hidden-import PySide6.QtQuick --hidden-import PySide6.QtQml --hidden-import PySide6.QtQuickControls2 --hidden-import PySide6.QtWidgets `
+            $ex main.py
+          # prune Qt modules that the exclude list cannot reach (DLLs pulled by QML plugins)
+          $prune = 'Qt6WebEngine*','Qt6Pdf*','Qt6Multimedia*','Qt63D*','Qt6Charts*','Qt6DataVis*','Qt6Graphs*','Qt6Quick3D*','Qt6Bluetooth*','Qt6Nfc*','Qt6Positioning*','Qt6Location*','Qt6Sensors*','Qt6Serial*','Qt6Sql*','Qt6Test*','Qt6Designer*','Qt6Help*','Qt6RemoteObjects*','Qt6Scxml*','Qt6StateMachine*','Qt6TextToSpeech*','Qt6WebChannel*','Qt6WebSockets*','Qt6WebView*','Qt6SpatialAudio*','Qt6HttpServer*','Qt6ShaderTools*','Qt6VirtualKeyboard*','Qt6Labs*','opengl32sw.dll','d3dcompiler_47.dll'
+          foreach ($p in $prune) { Get-ChildItem dist/Sweep -Recurse -Filter $p -EA SilentlyContinue | Remove-Item -Recurse -Force -EA SilentlyContinue }
+          foreach ($d in 'QtWebEngine','QtMultimedia','Qt3D','QtCharts','QtDataVisualization','QtGraphs','Qt5Compat','QtQuick3D','QtLocation','QtPositioning','QtSensors','QtWebView','QtWebChannel','QtRemoteObjects','QtScxml','QtTextToSpeech','QtSpatialAudio','QtVirtualKeyboard') { Get-ChildItem dist/Sweep -Recurse -Directory -Filter $d -EA SilentlyContinue | Remove-Item -Recurse -Force -EA SilentlyContinue }
+          Get-ChildItem dist/Sweep -Recurse -File | Measure-Object Length -Sum | % { "Size: {0:N0} MB" -f ($_.Sum/1MB) }
+
+      - name: Smoke test
+        if: steps.ver.outputs.exists == 'False'
+        working-directory: app
+        run: |
+          Start-Process -FilePath dist/Sweep/Sweep.exe -ArgumentList '--auto','--no-elevate' -Wait -NoNewWindow
+          if (Test-Path "$env:ProgramData\Sweep\log.txt") { Get-Content "$env:ProgramData\Sweep\log.txt" | Select-Object -Last 3 }
+
+      - name: Build installer
+        if: steps.ver.outputs.exists == 'False'
+        working-directory: app
+        run: '& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "/DAppVersion=${{ steps.ver.outputs.version }}" Sweep.iss'
 
       - name: Create tag
         if: steps.ver.outputs.exists == 'False'
-        shell: pwsh
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -64,7 +82,5 @@ jobs:
         with:
           tag_name: v${{ steps.ver.outputs.version }}
           name: Sweep ${{ steps.ver.outputs.version }}
-          files: |
-            Output/Sweep-Setup-*.exe
-            Sweep.exe
+          files: app/Output/Sweep-Setup-*.exe
           generate_release_notes: true
