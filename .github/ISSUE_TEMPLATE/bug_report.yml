@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for taking the time to report this. Security problems go to the [private report form](https://github.com/pabloescobarbl-ops/sweep/security/advisories/new) instead.
+        Thanks for taking the time to report this. Security problems go to the [private report form](https://github.com/drakedog-dev/sweep/security/advisories/new) instead.
         Можно писать по-русски.
   - type: input
     id: version

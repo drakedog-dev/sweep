@@ -13,8 +13,8 @@ Windows releases of Sweep (`Sweep.exe` and `Sweep-Setup-x.y.z.exe`) are being pr
 
 | Role | Members |
 |---|---|
-| Committers and reviewers | [Alex (Drakedog), GitHub: pabloescobarbl-ops](https://github.com/pabloescobarbl-ops) |
-| Approvers | [Alex (Drakedog), GitHub: pabloescobarbl-ops](https://github.com/pabloescobarbl-ops) |
+| Committers and reviewers | [Alex (Drakedog), GitHub: drakedog-dev](https://github.com/drakedog-dev) |
+| Approvers | [Alex (Drakedog), GitHub: drakedog-dev](https://github.com/drakedog-dev) |
 
 Multi-factor authentication is enabled for all team members on GitHub and SignPath.
 

@@ -190,7 +190,7 @@ ApplicationWindow {
                 Txt { text: tr(modelData); width: parent.width - 30 } } }
         Row { spacing: 10; topPadding: 6
             AccentButton { text: tr("terms.accept"); onClicked: app.acceptTerms() }
-            AccentButton { text: tr("terms.licence"); primary: false; onClicked: app.openUrl("https://github.com/pabloescobarbl-ops/sweep/blob/main/LICENSE") }
+            AccentButton { text: tr("terms.licence"); primary: false; onClicked: app.openUrl("https://github.com/drakedog-dev/sweep/blob/main/LICENSE") }
             AccentButton { text: tr("terms.decline"); primary: false; onClicked: app.declineTerms() } }
     }
 

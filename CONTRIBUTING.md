@@ -14,7 +14,7 @@ Sweep changes real Windows systems, so every contribution follows the same four 
 ## Getting started
 
 ```powershell
-git clone https://github.com/pabloescobarbl-ops/sweep.git
+git clone https://github.com/drakedog-dev/sweep.git
 cd sweep
 pip install -r app/requirements.txt
 python app/main.py

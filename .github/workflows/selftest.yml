@@ -7,6 +7,9 @@ on:
     paths: ['app/sweep/**', 'app/tests/**', '.github/workflows/selftest.yml']
   workflow_dispatch:
 
+permissions:
+  contents: write     # only to attach the report to the commit as a git note
+
 jobs:
   test:
     runs-on: windows-latest
@@ -20,12 +23,20 @@ jobs:
       - name: Unit tests (winget output parser)
         run: python app/tests/test_updates.py
       - name: Self test
-        run: python app/tests/selftest.py
+        run: |
+          [Console]::OutputEncoding = [Text.Encoding]::UTF8; $env:PYTHONIOENCODING = 'utf-8'
+          python app/tests/selftest.py *> "$env:RUNNER_TEMP\selftest.txt"
+          $code = $LASTEXITCODE
+          Get-Content "$env:RUNNER_TEMP\selftest.txt"
+          exit $code
       - name: UI test (every page, real data)
         run: |
           $p = Start-Process -FilePath python -ArgumentList 'app/main.py','--ui-test','--no-elevate' -Wait -PassThru -NoNewWindow
-          Get-Content "$env:ProgramData\Sweep\log.txt" | Select-String 'ui-test' | Select-Object -Last 25
+          Get-Content "$env:ProgramData\Sweep\log.txt" | Select-String 'ui-test|titlebar' | Select-Object -Last 25 | Tee-Object -FilePath "$env:RUNNER_TEMP\ui.txt"
           if ($p.ExitCode -ne 0) { throw "UI test failed with exit code $($p.ExitCode)" }
       - name: Log
         if: always()
         run: if (Test-Path "$env:ProgramData\Sweep\log.txt") { Get-Content "$env:ProgramData\Sweep\log.txt" -Tail 40 }
+      - name: Report
+        if: always()
+        run: python tools/ci_report.py selftest ${{ job.status }} "$env:RUNNER_TEMP\selftest.txt" "$env:RUNNER_TEMP\ui.txt" "$env:ProgramData\Sweep\log.txt"

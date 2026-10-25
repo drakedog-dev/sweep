@@ -4,13 +4,13 @@ Sweep runs with administrator rights and changes system settings, so security re
 
 ## Supported versions
 
-Only the [latest release](https://github.com/pabloescobarbl-ops/sweep/releases/latest) receives fixes. Sweep offers new versions by itself when it starts.
+Only the [latest release](https://github.com/drakedog-dev/sweep/releases/latest) receives fixes. Sweep offers new versions by itself when it starts.
 
 ## Reporting a vulnerability
 
 Please **do not** open a public issue for a security problem.
 
-Report it privately through GitHub: [**Report a vulnerability**](https://github.com/pabloescobarbl-ops/sweep/security/advisories/new). Include the Sweep version, your Windows version, the steps to reproduce and what an attacker could achieve.
+Report it privately through GitHub: [**Report a vulnerability**](https://github.com/drakedog-dev/sweep/security/advisories/new). Include the Sweep version, your Windows version, the steps to reproduce and what an attacker could achieve.
 
 What to expect:
 

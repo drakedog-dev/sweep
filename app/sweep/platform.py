@@ -10,7 +10,7 @@ from pathlib import Path
 
 IS_WINDOWS = sys.platform == "win32"
 APP_VERSION = "1.0.16"
-UPDATE_REPO = "pabloescobarbl-ops/sweep"
+UPDATE_REPO = "drakedog-dev/sweep"
 
 
 def data_root() -> Path:

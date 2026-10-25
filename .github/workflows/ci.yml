@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write     # only to attach the report to the commit as a git note (pushes to main)
 
 jobs:
   check:
@@ -31,3 +31,6 @@ jobs:
         run: |
           python app/main.py --ui-test --no-elevate
           grep 'ui-test' ~/.local/share/Sweep/log.txt | tail -5
+      - name: Report
+        if: always() && github.event_name == 'push'
+        run: python tools/ci_report.py lint ${{ job.status }} ~/.local/share/Sweep/log.txt

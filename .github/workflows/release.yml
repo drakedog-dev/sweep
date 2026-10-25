@@ -79,7 +79,7 @@ jobs:
           Start-Process -FilePath dist/Sweep/Sweep.exe -ArgumentList '--auto','--no-elevate' -Wait -NoNewWindow
           # open every page of the built app, load the real program list, fail on any QML warning
           $ui = Start-Process -FilePath dist/Sweep/Sweep.exe -ArgumentList '--ui-test','--no-elevate' -Wait -PassThru
-          if (Test-Path "$env:ProgramData\Sweep\log.txt") { Get-Content "$env:ProgramData\Sweep\log.txt" | Select-String 'ui-test' | Select-Object -Last 25 }
+          if (Test-Path "$env:ProgramData\Sweep\log.txt") { Get-Content "$env:ProgramData\Sweep\log.txt" | Select-String 'ui-test|titlebar' | Select-Object -Last 25 }
           if ($ui.ExitCode -ne 0) { throw "UI test failed with exit code $($ui.ExitCode)" }
           if (Test-Path "$env:ProgramData\Sweep\log.txt") { Get-Content "$env:ProgramData\Sweep\log.txt" | Select-Object -Last 3 }
 
@@ -198,3 +198,10 @@ jobs:
             app/Output/Sweep-Setup-*.exe
             app/Output/SHA256SUMS.txt
           body_path: release-notes.md
+
+      - name: Report
+        if: always()
+        run: |
+          "version ${{ steps.ver.outputs.version }}, tag existed before: ${{ steps.ver.outputs.exists }}" | Out-File "$env:RUNNER_TEMP\build.txt"
+          if (Test-Path release-notes.md) { Get-Content release-notes.md | Out-File -Append "$env:RUNNER_TEMP\build.txt" }
+          python tools/ci_report.py build ${{ job.status }} "$env:RUNNER_TEMP\build.txt" "$env:ProgramData\Sweep\log.txt"

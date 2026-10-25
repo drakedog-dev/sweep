@@ -8,8 +8,8 @@ requires-python = ">=3.12"
 authors = [{ name = "Alex (Drakedog)" }]
 
 [project.urls]
-Homepage = "https://github.com/pabloescobarbl-ops/sweep"
-Changelog = "https://github.com/pabloescobarbl-ops/sweep/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/drakedog-dev/sweep"
+Changelog = "https://github.com/drakedog-dev/sweep/blob/main/CHANGELOG.md"
 
 [tool.ruff]
 line-length = 160

@@ -75,9 +75,9 @@ Page {
         Txt { text: tr("about.star"); width: parent.width }
         Txt { text: tr("about.issues"); width: parent.width }
         Row { spacing: 10; topPadding: 4
-            AccentButton { text: "\u2605  " + tr("about.star.btn"); compact: true; onClicked: app.openUrl("https://github.com/pabloescobarbl-ops/sweep") }
-            AccentButton { text: tr("about.issues.btn"); compact: true; primary: false; onClicked: app.openUrl("https://github.com/pabloescobarbl-ops/sweep/issues/new") }
-            AccentButton { text: tr("about.source"); compact: true; primary: false; onClicked: app.openUrl("https://github.com/pabloescobarbl-ops/sweep") }
-            AccentButton { text: tr("about.licence"); compact: true; primary: false; onClicked: app.openUrl("https://github.com/pabloescobarbl-ops/sweep/blob/main/LICENSE") } }
+            AccentButton { text: "\u2605  " + tr("about.star.btn"); compact: true; onClicked: app.openUrl("https://github.com/drakedog-dev/sweep") }
+            AccentButton { text: tr("about.issues.btn"); compact: true; primary: false; onClicked: app.openUrl("https://github.com/drakedog-dev/sweep/issues/new") }
+            AccentButton { text: tr("about.source"); compact: true; primary: false; onClicked: app.openUrl("https://github.com/drakedog-dev/sweep") }
+            AccentButton { text: tr("about.licence"); compact: true; primary: false; onClicked: app.openUrl("https://github.com/drakedog-dev/sweep/blob/main/LICENSE") } }
     } }
 }

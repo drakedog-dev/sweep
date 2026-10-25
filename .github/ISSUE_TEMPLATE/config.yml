@@ -1,8 +1,8 @@
 blank_issues_enabled: true
 contact_links:
   - name: Security problem
-    url: https://github.com/pabloescobarbl-ops/sweep/security/advisories/new
+    url: https://github.com/drakedog-dev/sweep/security/advisories/new
     about: Report vulnerabilities privately, not as a public issue
   - name: Download Sweep
-    url: https://github.com/pabloescobarbl-ops/sweep/releases/latest
+    url: https://github.com/drakedog-dev/sweep/releases/latest
     about: The latest installer and what changed

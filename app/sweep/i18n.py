@@ -372,7 +372,7 @@ STRINGS: dict[str, dict[str, str]] = {
     "set.available": {"ru": "Доступна версия {0}", "en": "Version {0} is available"},
     "set.install": {"ru": "Обновить до {0}", "en": "Update to {0}"},
     "set.downloading": {"ru": "Скачиваю {0}…", "en": "Downloading {0}…"},
-    "set.about": {"ru": "В интернет Sweep выходит только для проверки обновлений на GitHub. Открытый код: github.com/pabloescobarbl-ops/sweep", "en": "Sweep goes online only to check GitHub for updates. Open source: github.com/pabloescobarbl-ops/sweep"},
+    "set.about": {"ru": "В интернет Sweep выходит, только чтобы проверить свои обновления на GitHub и, по вашей команде, обновления программ через winget. Открытый код: github.com/drakedog-dev/sweep", "en": "Sweep goes online only to check GitHub for its own updates and, when you ask, program updates through winget. Open source: github.com/drakedog-dev/sweep"},
     "set.version": {"ru": "Версия", "en": "Version"},
     # about
     "about.title": {"ru": "О программе", "en": "About"},

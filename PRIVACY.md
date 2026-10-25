@@ -31,7 +31,7 @@ Uninstalling Sweep removes the program and its scheduled tasks. The `ProgramData
 
 ## Contact
 
-Questions about privacy: [open an issue](https://github.com/pabloescobarbl-ops/sweep/issues/new/choose).
+Questions about privacy: [open an issue](https://github.com/drakedog-dev/sweep/issues/new/choose).
 
 ---
 

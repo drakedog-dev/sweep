@@ -8,11 +8,11 @@
 
 Free and open source · no ads · no telemetry · every change can be undone
 
-[![Latest release](https://img.shields.io/github/v/release/pabloescobarbl-ops/sweep?style=flat-square&color=7C3AED&label=release)](../../releases/latest)
-[![Downloads](https://img.shields.io/github/downloads/pabloescobarbl-ops/sweep/total?style=flat-square&color=2563EB)](../../releases)
-[![Build](https://img.shields.io/github/actions/workflow/status/pabloescobarbl-ops/sweep/release.yml?branch=main&style=flat-square&label=build)](../../actions/workflows/release.yml)
-[![Windows self-test](https://img.shields.io/github/actions/workflow/status/pabloescobarbl-ops/sweep/selftest.yml?branch=main&style=flat-square&label=windows%20self-test)](../../actions/workflows/selftest.yml)
-[![CI](https://img.shields.io/github/actions/workflow/status/pabloescobarbl-ops/sweep/ci.yml?branch=main&style=flat-square&label=lint%20%26%20tests)](../../actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/drakedog-dev/sweep?style=flat-square&color=7C3AED&label=release)](../../releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/drakedog-dev/sweep/total?style=flat-square&color=2563EB)](../../releases)
+[![Build](https://img.shields.io/github/actions/workflow/status/drakedog-dev/sweep/release.yml?branch=main&style=flat-square&label=build)](../../actions/workflows/release.yml)
+[![Windows self-test](https://img.shields.io/github/actions/workflow/status/drakedog-dev/sweep/selftest.yml?branch=main&style=flat-square&label=windows%20self-test)](../../actions/workflows/selftest.yml)
+[![CI](https://img.shields.io/github/actions/workflow/status/drakedog-dev/sweep/ci.yml?branch=main&style=flat-square&label=lint%20%26%20tests)](../../actions/workflows/ci.yml)
 <br>
 ![Windows 10 | 11](https://img.shields.io/badge/Windows-10%20%7C%2011-0EA5E9?style=flat-square)
 ![Python 3.12](https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python&logoColor=white)
@@ -209,7 +209,7 @@ Every push runs three pipelines:
 ## Building from source
 
 ```powershell
-git clone https://github.com/pabloescobarbl-ops/sweep.git
+git clone https://github.com/drakedog-dev/sweep.git
 cd sweep
 pip install -r app/requirements.txt
 python app/main.py
