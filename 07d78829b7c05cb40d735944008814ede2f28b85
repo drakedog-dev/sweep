@@ -1,0 +1,30 @@
+build: success
+run: https://github.com/drakedog-dev/sweep/actions/runs/40205275757
+commit: 07d78829b7c05cb40d735944008814ede2f28b85
+
+--- build.txt (last 18 of 18 lines)
+version 1.0.17, tag existed before: False
+- Program updates: a selection bar above the list with a select-all checkbox, "All", "All but major" and "None", and a counter of selected programs
+- Click anywhere on a program's row to tick or untick it
+- "Update selected" installs the ticked programs one after another, and each waiting program shows its place in the queue
+- Live progress for every update: a bar with the megabytes downloaded, the total size and the speed, then an installing stage, so it is always clear that Sweep is working. winget now runs inside a hidden pseudo console, the only way it reports its download as it happens
+- The window title bar follows Sweep's theme: dark in the dark theme and light in the light one (exact colours on Windows 11, a dark frame on Windows 10)
+- The project moved to github.com/drakedog-dev/sweep; Sweep checks for its own updates at the new address
+- Build tools updated (GitHub Actions on Node 24)
+
+### Download
+
+| File | Size | SHA-256 |
+|---|---|---|
+| [Sweep-Setup-1.0.17.exe](https://github.com/drakedog-dev/sweep/releases/download/v1.0.17/Sweep-Setup-1.0.17.exe) | 34.8 MB | `022e7bfc1e8f60e4e02993a5a5973c0160bbb83f0e98b9ecc391e2e274ceffb7` |
+
+Windows 10 and 11, 64-bit. Installer not signed yet. Check the file in PowerShell: `Get-FileHash .\Sweep-Setup-1.0.17.exe`
+
+Sweep offers this update by itself when it starts. Full list of commits: [v1.0.16...v1.0.17](https://github.com/drakedog-dev/sweep/compare/v1.0.16...v1.0.17)
+
+--- log.txt (last 5 of 5 lines)
+2026-10-25 15:06:28  auto clean 20261025_150622: freed 441730054
+2026-10-25 15:06:30  titlebar dark: dark=0x80070006, caption=0x80070006, border=0x80070006, text=0x80070006
+2026-10-25 15:06:31  context: Sweep 1.0.17, admin=True, 64bit, user=runnervmdaln5\runneradmin, os=Microsoft Windows Server 2025 Datacenter 26100, antivirus=none reported, exe=D:\a\sweep\sweep\app\dist\Sweep\Sweep.exe
+2026-10-25 15:07:05  updates: winget upgrade rc=0x0, 24 updates, 3 s
+2026-10-25 15:07:13  ui-test: pages 14, programs 59, boots 0, updates 24 (winget=True, checked=True), QML warnings 0
