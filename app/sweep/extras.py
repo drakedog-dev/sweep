@@ -330,3 +330,24 @@ class Monitor:
             mbps = ((io.read_bytes - self._last_disk.read_bytes) + (io.write_bytes - self._last_disk.write_bytes)) / dt / 2**20
         self._last_disk, self._last_t = io, now
         return {"cpu": cpu, "ram": mem.percent, "ram_used": mem.used, "ram_total": mem.total, "disk_mbps": round(mbps, 1)}
+
+
+# ---------------- restore point ----------------
+def create_restore_point(description: str) -> bool:
+    """Windows restore point before big changes. Skipped (False) when System Protection is off on the system drive.
+    Windows allows one point per 24 h by default, so the frequency limit is lifted for this call only."""
+    if not P.IS_WINDOWS:
+        import time
+        time.sleep(0.6)
+        return True
+    desc = description.replace("'", "")
+    out = P.powershell(
+        "$k='HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\SystemRestore'; "
+        "$old=(Get-ItemProperty $k -Name SystemRestorePointCreationFrequency -ErrorAction SilentlyContinue).SystemRestorePointCreationFrequency; "
+        "Set-ItemProperty $k -Name SystemRestorePointCreationFrequency -Value 0 -Type DWord -ErrorAction SilentlyContinue; "
+        f"try {{ Checkpoint-Computer -Description '{desc}' -RestorePointType MODIFY_SETTINGS -ErrorAction Stop; 'ok' }} catch {{ 'fail: ' + $_.Exception.Message }}; "
+        "if ($null -eq $old) { Remove-ItemProperty $k -Name SystemRestorePointCreationFrequency -ErrorAction SilentlyContinue } "
+        "else { Set-ItemProperty $k -Name SystemRestorePointCreationFrequency -Value $old -Type DWord }", 240).strip()
+    P.log(f"restore point '{desc}': {out or 'no answer'}")
+    return out.endswith("ok")
+

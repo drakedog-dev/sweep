@@ -11,7 +11,7 @@ from datetime import datetime
 from PySide6.QtCore import Property, QObject, QThread, QTimer, QUrl, Signal, Slot
 from PySide6.QtGui import QDesktopServices
 
-from . import cleaner, extras, platform as P, tweaks
+from . import boot as bootx, cleaner, extras, guard, platform as P, tweaks
 from .i18n import I18n
 
 TERMS_VERSION = 1   # raise when the terms of use change: everyone is asked to accept them again
@@ -87,6 +87,8 @@ class App(QObject):
         saved = self.settings.get("junk", {})
         self.checked = {c.id: bool(saved.get(c.id, c.default)) for c in self.categories}
         self.privacy_state = {p.id: tweaks.privacy_state(p) for p in tweaks.PRIVACY}
+        guard.init_baseline(self.settings, self.privacy_state)
+        self.boot_data: dict = {}
         self.services = []
         self.startup = []
         self.reg_backups = []
@@ -353,6 +355,10 @@ class App(QObject):
     def t1(self, key, a):
         return self.i18n.t(key, a)
 
+    @Slot(str, str, str, result=str)
+    def t2(self, key, a, b):
+        return self.i18n.t(key, a, b)
+
     @Slot(float, result=str)
     def size(self, n):
         return self.i18n.size(n)
@@ -484,7 +490,12 @@ class App(QObject):
         def work():
             P.log_context()
             info = extras.system_info()
-            return {"info": info, "services": self._load_services(), "startup": tweaks.startup_entries(), "schedule": tweaks.schedule_state()}
+            try:
+                bd = bootx.analyse(bootx.read_events())
+            except Exception as e:  # noqa: BLE001
+                P.log(f"boot x-ray: {e}")
+                bd = {}
+            return {"info": info, "services": self._load_services(), "startup": tweaks.startup_entries(), "schedule": tweaks.schedule_state(), "boot": bd}
 
         def done(res):
             self.sysinfo = res["info"]
@@ -492,6 +503,7 @@ class App(QObject):
             self.services = res["services"]
             self.startup = res["startup"]
             self.schedule = res["schedule"]
+            self.boot_data = res.get("boot") or {}
             self.changed.emit()
             self.scan()
             if self._pending:
@@ -512,6 +524,8 @@ class App(QObject):
             self.allPrivacy()
         elif kind == "applyRecommendations":
             self.applyRecommendations()
+        elif kind == "guardFix":
+            self.guardFix()
         elif kind == "clean":
             self.clean()
         elif kind == "quickClean":
@@ -571,6 +585,12 @@ class App(QObject):
             score -= 15; tips.append(self.i18n.t("ov.tip.privacy"))
         elif pr < 8:
             score -= 6; tips.append(self.i18n.t("ov.tip.privacy2"))
+        last_boot = float(self.boot_data.get("last") or 0)
+        if last_boot >= 60:
+            score -= 8; tips.append(self.i18n.t("ov.tip.boot", f"{last_boot:.0f}"))
+        pend = guard.state(self.settings).get("pending") or {}
+        if pend.get("privacy") or pend.get("apps"):
+            tips.insert(0, self.i18n.t("ov.tip.guard", len(pend.get("privacy", [])) + len(pend.get("apps", []))))
         up_days = int(self.sysinfo.get("uptime", 0) // 86400)
         if up_days > 14:
             score -= 8; tips.append(self.i18n.t("ov.tip.uptime", up_days))
@@ -634,6 +654,34 @@ class App(QObject):
         self.clean()
 
     # ---------- privacy ----------
+    def _restore_point_due(self) -> bool:
+        if not self.settings.get("restorePoint", True):
+            return False
+        last = self.settings.get("lastRestorePoint", "")
+        try:
+            return (datetime.now() - datetime.fromisoformat(last)).total_seconds() > 24 * 3600
+        except Exception:
+            return True
+
+    def _restore_point(self, what: str) -> None:
+        """Worker thread: Windows restore point before a big change, at most once a day."""
+        if self._restore_point_due() and extras.create_restore_point(f"Sweep: {what}"):
+            self.settings["lastRestorePoint"] = datetime.now().isoformat(timespec="seconds")
+            P.save_settings(self.settings)
+
+    def _working_text(self) -> str:
+        return self.i18n.t("rp.creating") if self._restore_point_due() else self.i18n.t("common.working")
+
+    @Property(bool, notify=langChanged)
+    def restorePoint(self):
+        return bool(self.settings.get("restorePoint", True))
+
+    @Slot(bool)
+    def setRestorePoint(self, on):
+        self.settings["restorePoint"] = on
+        P.save_settings(self.settings)
+        self.langChanged.emit()
+
     def _apply_privacy(self, items, protect: bool = True) -> list:
         """Runs in a worker thread. Applies every item even if some fail, then re-reads the real state.
         An item that was written fine but is off again a moment later (an antivirus rolled it back) also counts as failed."""
@@ -645,6 +693,10 @@ class App(QObject):
                 if p not in failed and not self.privacy_state[p.id]:
                     P.log(f"privacy {p.id}: written, but switched back right after")
                     failed.append(p)
+        for p in items:      # Guard watches exactly what the user chose
+            if self.privacy_state[p.id] == protect:
+                guard.remember_privacy(self.settings, p.id, protect)
+        P.save_settings(self.settings)
         return failed
 
     @Property(str, notify=changed)
@@ -701,7 +753,143 @@ class App(QObject):
     def allPrivacy(self):
         if self._need_admin("allPrivacy", "privacy"):
             return
-        self._run(lambda: self._apply_privacy(tweaks.PRIVACY, True), self._privacy_report, self.i18n.t("common.working"))
+        status = self._working_text()
+        self._run(lambda: (self._restore_point("disable tracking"), self._apply_privacy(tweaks.PRIVACY, True))[1], self._privacy_report, status)
+
+    # ---------- boot x-ray ----------
+    @Property("QVariantMap", notify=changed)
+    def bootData(self):
+        d = dict(self.boot_data or {})
+        if not d:
+            return {}
+        rows = []
+        for c in d.get("culprits", []):
+            idx, on = -1, False
+            f = (c.get("file") or "").lower()
+            if c["kind"] == "app" and f:
+                for i, e in enumerate(self.startup):
+                    if f in (e.get("command") or "").lower() or f.rsplit(".", 1)[0] == e.get("name", "").lower():
+                        idx, on = i, bool(e.get("enabled"))
+                        break
+            rows.append(dict(c, kindText=self.i18n.t("boot.kind." + c["kind"]), startupIndex=idx, startupOn=on))
+        d["culprits"] = rows
+        d["verdict"] = bootx.verdict(d.get("last", 0))
+        d["boots"] = [dict(b, label=self._when(b["t"], short=True)) for b in d.get("boots", [])]
+        return d
+
+    @Slot()
+    def scanBoot(self):
+        def done(bd):
+            self.boot_data = bd
+            self._compute_health()
+            self.changed.emit()
+            self._set_status(self.i18n.t("boot.scanned", f"{bd.get('last', 0):.1f}") if bd.get("boots") else self.i18n.t("boot.empty.short"))
+
+        self._run(lambda: bootx.analyse(bootx.read_events()), done, self.i18n.t("common.working"))
+
+    @Slot()
+    def restartForBoot(self):
+        bootx.restart_now()
+        self._set_status(self.i18n.t("boot.restarting"))
+
+    def _when(self, iso: str, short: bool = False) -> str:
+        try:
+            t = datetime.fromisoformat(iso)
+        except Exception:
+            return ""
+        days = (datetime.now().date() - t.date()).days
+        if days == 0:
+            day = self.i18n.t("when.today")
+        elif days == 1:
+            day = self.i18n.t("when.yesterday")
+        else:
+            day = t.strftime("%d.%m")
+        return day if short and days > 1 else f"{day} {t:%H:%M}"
+
+    # ---------- guard ----------
+    @Property("QVariantMap", notify=changed)
+    def guardState(self):
+        g = guard.state(self.settings)
+        names = {p.id: self._loc(p.name) for p in tweaks.PRIVACY}
+        apps = {i: n for i, n, _ in extras.BLOAT}
+        pend = g.get("pending") or {}
+        return {
+            "enabled": bool(g["enabled"]), "auto": bool(g["auto"]),
+            "watched": [names[i] for i in (g["privacy"] or []) if i in names] + [apps.get(a, a) for a in g["apps"]],
+            "watchedPrivacy": len(g["privacy"] or []), "watchedApps": len(g["apps"]),
+            "lastRun": self._when(g["lastRun"]) if g["lastRun"] else "", "build": g["lastBuild"] or guard.windows_build(),
+            "pending": [names.get(i, i) for i in pend.get("privacy", [])] + [apps.get(a, a) for a in pend.get("apps", [])],
+            "events": [{"when": self._when(e["t"]), "build": e.get("build", ""), "afterUpdate": bool(e.get("buildChanged")),
+                        "items": ", ".join([names.get(i, i) for i in e.get("privacy", [])] + [apps.get(a, a) for a in e.get("apps", [])]),
+                        "fixed": bool(e.get("fixed"))} for e in g["events"][:8]],
+        }
+
+    @Slot(bool)
+    def setGuard(self, on):
+        g = guard.state(self.settings)
+        if on and self._need_admin("", "guard"):
+            self.changed.emit()
+            return
+        g["enabled"] = on
+        P.save_settings(self.settings)
+        self.changed.emit()
+        exe = sys.executable if getattr(sys, "frozen", False) else os.path.abspath(sys.argv[0])
+
+        def done(_):
+            self._set_status(self.i18n.t("guard.on" if on else "guard.off"))
+            if on:
+                self.guardCheck()
+
+        self._run(lambda: guard.set_task(on, exe), done)
+
+    @Slot(bool)
+    def setGuardAuto(self, on):
+        guard.state(self.settings)["auto"] = on
+        P.save_settings(self.settings)
+        self.changed.emit()
+
+    @Slot()
+    def guardCheck(self):
+        def work():
+            found = guard.check(self.settings)
+            guard.record(self.settings, found, False)
+            P.save_settings(self.settings)
+            return found
+
+        def done(found):
+            self.privacy_state = {p.id: tweaks.privacy_state(p) for p in tweaks.PRIVACY}
+            self._compute_health()
+            self.changed.emit()
+            n = len(found["privacy"]) + len(found["apps"])
+            self._set_status(self.i18n.t("guard.found", n) if n else self.i18n.t("guard.clean"))
+
+        self._run(work, done, self.i18n.t("common.working"))
+
+    @Slot()
+    def guardFix(self):
+        if self._need_admin("guardFix", "guard"):
+            return
+        pend = dict(guard.state(self.settings).get("pending") or {})
+
+        def work():
+            failed = guard.fix(pend)
+            found = guard.check(self.settings)
+            guard.record(self.settings, found, not failed and not (found["privacy"] or found["apps"]))
+            g = guard.state(self.settings)
+            if g["events"] and not failed:
+                g["events"][0]["fixed"] = True
+            P.save_settings(self.settings)
+            return failed
+
+        def done(failed):
+            self.privacy_state = {p.id: tweaks.privacy_state(p) for p in tweaks.PRIVACY}
+            self._compute_health()
+            self.changed.emit()
+            self._set_status(self.i18n.t("guard.fixed") if not failed else self.i18n.t("guard.fixfail", len(failed)))
+            if not failed:
+                self.toast.emit(self.i18n.t("guard.fixed"))
+
+        self._run(work, done, self.i18n.t("common.working"))
 
     # ---------- registry ----------
     @Slot()
@@ -721,6 +909,7 @@ class App(QObject):
         cats = [c for c in extras.REG_CATEGORIES if c.id in ids]
 
         def work():
+            self._restore_point("registry cleaning")
             return sum(extras.reg_clean(c, session) for c in cats)
 
         def done(n):
@@ -854,7 +1043,10 @@ class App(QObject):
             return
         cls = self.profile.get("class", "mid")
 
+        status = self._working_text()
+
         def work():
+            self._restore_point("recommendations")
             self._apply_privacy(tweaks.PRIVACY, True)
             if cls in ("weak", "mid"):
                 for s in self.services:
@@ -872,7 +1064,7 @@ class App(QObject):
             self.changed.emit()
             self._set_status(self.i18n.t("common.done"))
 
-        self._run(work, done, self.i18n.t("common.working"))
+        self._run(work, done, status)
 
     # ---------- disks ----------
     @Slot(str)
@@ -946,8 +1138,11 @@ class App(QObject):
         ids = set(ids)
 
         def work():
+            self._restore_point("remove apps")
             for i in ids:
                 extras.remove_app(i)
+            guard.remember_apps(self.settings, ids)
+            P.save_settings(self.settings)
             return len(ids)
 
         self._run(work, lambda n: (setattr(self, "apps", [a for a in self.apps if a["id"] not in ids]), self.changed.emit(), self._set_status(self.i18n.t("common.done"))), self.i18n.t("common.working"))

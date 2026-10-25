@@ -32,6 +32,10 @@ Page {
             Txt { text: tr("set.anim"); font.pixelSize: 15; bold: true; anchors.verticalCenter: parent.verticalCenter }
             Toggle { checked: Theme.anim; anchors.verticalCenter: parent.verticalCenter; onToggled: v => app.setAnimations(v) } }
     } }
+    Card { pad: 10
+        Column { width: parent.width
+            Txt { text: tr("set.safety"); font.pixelSize: 15; bold: true; leftPadding: 12; topPadding: 8; bottomPadding: 4 }
+            ToggleRow { icon: "life-buoy"; title: tr("set.rp"); hint: tr("set.rp.hint"); checked: app.restorePoint; onToggled: v => app.setRestorePoint(v) } } }
     Card { Row { width: parent.width; spacing: 12
         Rectangle { width: 12; height: 12; radius: 6; anchors.verticalCenter: parent.verticalCenter; color: app.isAdmin ? Theme.good : Theme.warn }
         Column { width: parent.width - 24 - (grant.visible ? grant.width + 12 : 0); spacing: 2; anchors.verticalCenter: parent.verticalCenter

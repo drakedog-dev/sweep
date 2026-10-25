@@ -7,7 +7,7 @@ import "pages"
 ApplicationWindow {
     id: win
     width: 1160; height: 760
-    minimumWidth: 960; minimumHeight: 640
+    minimumWidth: 980; minimumHeight: 680
     visible: true
     title: "Sweep"
     color: Theme.bg
@@ -25,6 +25,13 @@ ApplicationWindow {
     property int langTick: 0            // bump to re-evaluate translated texts
     function tr(key) { return langTick, app.t(key) }
     function tr1(key, a) { return langTick, app.t1(key, a) }
+    function tr2(key, a, b) { return langTick, app.t2(key, a, b) }
+    // confirmation dialog for actions that cannot wait (restart and the like)
+    property var confirmFn: null
+    property string confirmTitle: ""
+    property string confirmText: ""
+    property string confirmOk: ""
+    function ask(title, text, okText, fn) { confirmTitle = title; confirmText = text; confirmOk = okText; confirmFn = fn }
 
     property int current: 0
     property var visited: ({})
@@ -37,8 +44,8 @@ ApplicationWindow {
             else if (key === "apps") app.scanApps()
         }
     }
-    readonly property var navKeys: ["overview", "junk", "privacy", "registry", "services", "startup", "boost", "disks", "apps", "system", "quarantine", "settings"]
-    readonly property var navIcons: ["layout-dashboard", "trash-2", "shield-check", "database", "server", "power", "rocket", "hard-drive", "package", "cpu", "archive", "settings"]
+    readonly property var navKeys: ["overview", "junk", "privacy", "guard", "boot", "startup", "services", "registry", "boost", "disks", "apps", "system", "quarantine", "settings"]
+    readonly property var navIcons: ["layout-dashboard", "trash-2", "shield-check", "radar", "timer", "power", "server", "database", "rocket", "hard-drive", "package", "cpu", "archive", "settings"]
     function go(key) { var i = navKeys.indexOf(key); if (i >= 0) current = i }
 
     // ---------- sidebar ----------
@@ -61,16 +68,16 @@ ApplicationWindow {
 
         // sliding indicator
         Rectangle {
-            id: indicator; x: 12; width: side.width - 24; height: 40; radius: 12
+            id: indicator; x: 12; width: side.width - 24; height: 36; radius: 11
             color: Theme.dark ? "#2A1F5E" : "#DDD6FE"
-            y: navCol.y + current * 44
+            y: navCol.y + current * 40
             Behavior on y { NumberAnimation { duration: Theme.dur + 80; easing.type: Easing.OutCubic } }
             Behavior on color { ColorAnimation { duration: Theme.dur } }
         }
         Column {
             id: navCol; anchors.top: logo.bottom; anchors.topMargin: 18; anchors.left: parent.left; anchors.right: parent.right; spacing: 4
             Repeater { model: navKeys.length
-                Item { width: side.width; height: 40
+                Item { width: side.width; height: 36
                     Row { anchors.fill: parent; anchors.leftMargin: 26; spacing: 12
                         Icon { name: navIcons[index]; size: 18; color: current === index ? Theme.accent2 : Theme.muted; anchors.verticalCenter: parent.verticalCenter
                             Behavior on color { ColorAnimation { duration: Theme.dur } } }
@@ -83,8 +90,9 @@ ApplicationWindow {
             }
         }
 
-        // PC profile badge
+        // PC profile badge (hidden when the window is too short for it)
         Rectangle {
+            visible: navCol.y + navCol.height + 16 < y
             anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom; anchors.margins: 16; anchors.bottomMargin: 18
             height: badgeCol.implicitHeight + 24; radius: 14; color: Theme.card; border.color: Theme.border
             Behavior on color { ColorAnimation { duration: Theme.dur } }
@@ -121,8 +129,8 @@ ApplicationWindow {
         StackLayout_ { id: stack; anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom
             anchors.top: adminBar.visible ? adminBar.bottom : parent.top; anchors.topMargin: adminBar.visible ? 14 : 0
             currentIndex: current
-            OverviewPage {} JunkPage {} PrivacyPage {} RegistryPage {} ServicesPage {} StartupPage {}
-            BoostPage {} DisksPage {} AppsPage {} SystemPage {} QuarantinePage {} SettingsPage {}
+            OverviewPage {} JunkPage {} PrivacyPage {} GuardPage {} BootPage {} StartupPage {} ServicesPage {}
+            RegistryPage {} BoostPage {} DisksPage {} AppsPage {} SystemPage {} QuarantinePage {} SettingsPage {}
         }
     }
 
@@ -197,5 +205,12 @@ ApplicationWindow {
             AccentButton { text: tr("upd.install"); enabled: !app.busy; onClicked: app.acceptUpdate() }
             AccentButton { text: tr("upd.later"); primary: false; onClicked: app.remindLater() }
             AccentButton { text: tr("upd.skip"); primary: false; onClicked: app.skipVersion() } }
+    }
+
+    Modal { open: confirmFn !== null; icon: "triangle-alert"; title: confirmTitle; boxWidth: 520
+        Txt { text: confirmText; width: parent.width }
+        Row { spacing: 10
+            AccentButton { text: confirmOk; onClicked: { var f = confirmFn; confirmFn = null; if (f) f() } }
+            AccentButton { text: tr("common.cancel"); primary: false; onClicked: confirmFn = null } }
     }
 }

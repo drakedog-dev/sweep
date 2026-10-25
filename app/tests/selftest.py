@@ -116,6 +116,35 @@ c = sqlite3.connect(fx / "places.sqlite")
 check(c.execute("SELECT COUNT(*) FROM moz_historyvisits").fetchone()[0] == 500, "firefox history restored")
 c.close()
 
+# ---------- boot x-ray ----------
+from sweep import boot as bootx, extras, guard  # noqa: E402
+ev = bootx.read_events()
+check(isinstance(ev, list), f"boot diagnostics log readable ({len(ev)} events)")
+r = bootx.analyse(ev)
+print("     boots:", len(r["boots"]), "last:", r["last"], "culprits:", [c["name"] for c in r["culprits"]][:5])
+
+# ---------- guard ----------
+gs: dict = {}
+guard.init_baseline(gs, {p.id: tweaks.privacy_state(p) for p in tweaks.PRIVACY})
+adid = next(p for p in tweaks.PRIVACY if p.id == "adid")
+tweaks.set_privacy(adid, True)
+guard.remember_privacy(gs, "adid", True)
+tweaks.set_privacy(adid, False)            # a "Windows update" switches it back on
+found = guard.check(gs)
+check("adid" in found["privacy"], "guard notices a setting Windows switched back on")
+check(not guard.fix(found) and tweaks.privacy_state(adid), "guard puts it back")
+check(bool(found["build"]), f"windows build read: {found['build']}")
+guard.set_task(True, sys.executable)
+check(guard.task_exists(), "guard scheduled task registered")
+guard.set_task(False, sys.executable)
+check(not guard.task_exists(), "guard scheduled task removed")
+
+# ---------- restore point (skipped by Windows when System Protection is off) ----------
+try:
+    print("     restore point created:", extras.create_restore_point("Sweep self-test"))
+except Exception as e:  # noqa: BLE001
+    check(False, f"restore point raised {e}")
+
 print()
 print("FAILED:" if fails else "ALL PASSED", *fails, sep="\n  ")
 sys.exit(1 if fails else 0)

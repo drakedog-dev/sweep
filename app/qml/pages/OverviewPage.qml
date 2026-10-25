@@ -54,10 +54,14 @@ Page {
             property var v: { var vs = app.volumeList; for (var i = 0; i < vs.length; i++) if (vs[i].letter === app.selectedDrive) return vs[i]; return vs[0] || {} }
             value: app.size(v.free || 0); sub: tr("common.free") + " " + tr("common.of") + " " + app.size(v.total || 0)
             bar: v.total ? 1 - (v.free || 0) / v.total : -1; alarm: true }
-        Tile { width: parent.w; icon: "power"; label: tr("ov.startup")
-            property int on: { var n = 0; var l = app.startupList; for (var i = 0; i < l.length; i++) if (l[i].enabled) n++; return n }
-            value: on; sub: tr("ov.startup.sub"); sparkColor: Theme.accent2
-            bar: app.startupList.length ? on / app.startupList.length : -1 }
+        Tile { width: parent.w; icon: "timer"; label: tr("ov.boot")
+            property var b: app.bootData
+            property bool has: b["boots"] !== undefined && b["boots"].length > 0
+            value: has ? tr1("boot.sec", Number(b["last"]).toFixed(1)) : "…"
+            sub: has ? tr1("ov.boot.sub", Number(b["avg"]).toFixed(0)) : tr("ov.boot.none")
+            sparkColor: !has ? Theme.accent2 : b["last"] < 30 ? Theme.good : b["last"] < 60 ? Theme.warn : Theme.bad
+            bar: has ? Math.min(1, b["last"] / 90) : -1
+            MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: go("boot") } }
     }
 
     // Quick actions
@@ -82,7 +86,8 @@ Page {
     Row { width: parent.width; spacing: 14
         property real w: (width - 14 * 2) / 3
         ActionCard { width: parent.w; icon: "shield-check"; title: tr("ov.qa.privacy")
-            sub: tr1("ov.qa.privacy.sub", app.privacyOn + " " + tr("common.of") + " " + app.privacy.length); onClicked: go("privacy") }
+            sub: tr1("ov.qa.privacy.sub", app.privacyOn + " " + tr("common.of") + " " + app.privacy.length) + (app.guardState["enabled"] ? "  ·  " + tr("ov.qa.guard.on") : "")
+            onClicked: go("privacy") }
         ActionCard { width: parent.w; icon: "memory-stick"; title: tr("ov.qa.ram")
             sub: tr1("ov.qa.ram.sub", Math.round(app.mon["ram"] || 0) + "%"); onClicked: if (!app.busy) app.freeRam() }
         ActionCard { width: parent.w; icon: "hard-drive"; title: tr("ov.qa.disks"); sub: tr("ov.qa.disks.sub")

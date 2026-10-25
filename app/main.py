@@ -36,7 +36,62 @@ def run_auto() -> None:
     P.log(f"auto clean {session}: freed {freed}")
 
 
+def run_guard() -> None:
+    """Scheduled Guard check (no window). Puts things back when allowed, otherwise asks with a notification."""
+    from sweep import guard
+    from sweep.i18n import I18n
+    settings = P.load_settings()
+    g = guard.state(settings)
+    if not g["enabled"]:
+        return
+    found = guard.check(settings)
+    drift = bool(found["privacy"] or found["apps"])
+    fixed = False
+    if drift and g["auto"] and P.is_admin():
+        failed = guard.fix(found)
+        fixed = not failed
+    guard.record(settings, found, fixed)
+    P.save_settings(settings)
+    P.log(f"guard: build {found['build']}, reverted {found['privacy']}, apps back {found['apps']}, fixed={fixed}")
+    if not drift:
+        return
+    t = I18n(settings.get("lang") or "ru")
+    n = len(found["privacy"]) + len(found["apps"])
+    text = t.t("guard.toast.fixed" if fixed else "guard.toast.ask", n)
+    if found["buildChanged"]:
+        text = t.t("guard.toast.after", found["build"]) + " " + text
+    notify(t.t("guard.toast.title"), text)
+
+
+def notify(title: str, text: str) -> None:
+    """Windows notification from the tray; a click opens Sweep on the Guard page."""
+    import subprocess
+    from PySide6.QtCore import QTimer
+    from PySide6.QtGui import QIcon
+    from PySide6.QtWidgets import QApplication, QSystemTrayIcon
+    app = QApplication(sys.argv[:1])
+    app.setQuitOnLastWindowClosed(False)
+    tray = QSystemTrayIcon(QIcon(str(HERE / "sweep.ico")))
+    tray.setToolTip("Sweep")
+
+    def open_sweep(*_):
+        cmd = [sys.executable] if getattr(sys, "frozen", False) else [sys.executable, str(Path(__file__).resolve())]
+        subprocess.Popen(cmd + ["--page", "guard"])
+        tray.hide()
+        app.quit()
+
+    tray.messageClicked.connect(open_sweep)
+    tray.activated.connect(open_sweep)
+    tray.show()
+    QTimer.singleShot(800, lambda: tray.showMessage(title, text, QSystemTrayIcon.MessageIcon.Information, 30000))
+    QTimer.singleShot(5 * 60 * 1000, app.quit)      # the tray icon stays a few minutes so the message can be clicked
+    app.exec()
+
+
 def main() -> int:
+    if "--guard" in sys.argv:
+        run_guard()      # never asks for UAC in the background; the scheduled task already runs elevated
+        return 0
     if "--auto" in sys.argv:
         ensure_admin()
         run_auto()

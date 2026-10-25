@@ -95,7 +95,20 @@ QtObject {
         "brush": "\ue1d3",
         "list-checks": "\ue1d0",
         "undo-2": "\ue2a1",
-        "search": "\ue151"
+        "search": "\ue151",
+        "timer": "\ue1e0",
+        "radar": "\ue497",
+        "shield-alert": "\ue1fe",
+        "bell-ring": "\ue224",
+        "rotate-ccw": "\ue148",
+        "app-window": "\ue426",
+        "layers": "\ue529",
+        "circle-alert": "\ue077",
+        "trending-down": "\ue190",
+        "arrow-right": "\ue049",
+        "life-buoy": "\ue101",
+        "users": "\ue1a4",
+        "user-cog": "\ue342"
     })
     function icon(name) { return icons[name] || "" }
 }

@@ -30,6 +30,7 @@ Windows SmartScreen may warn about an unknown publisher because the build is not
 | | |
 |---|---|
 | ![Overview](docs/screens/en-overview.png) | ![Junk](docs/screens/en-junk.png) |
+| ![Boot X-ray](docs/screens/en-boot.png) | ![Guard](docs/screens/en-guard.png) |
 | ![Disks](docs/screens/en-disks.png) | ![Light theme](docs/screens/en-light.png) |
 
 ## What it does
@@ -40,6 +41,10 @@ Windows SmartScreen may warn about an unknown publisher because the build is not
 temp folders, Recycle Bin, thumbnail cache, Windows Update cache, crash dumps and error reports, old Windows logs, browser caches (Chrome, Edge, Yandex, Brave, Vivaldi, Opera, Firefox), browser history and, optionally, cookies. History cleaning removes visited sites, the downloads list and address bar suggestions in every browser; passwords, bookmarks, autofill and open tabs are never touched. In Firefox, where history and bookmarks share one database, only visits are removed and a copy of the database goes to quarantine first. Your ticks are remembered.
 
 **Privacy.** 17 switches that work like Windows Settings (on means the feature is active, off means it is disabled) in three groups: data collection (telemetry, advertising ID, activity history, error reporting), ads and suggestions (Start menu, lock screen, Explorer, search box, news and widgets, "what's new" screen), Microsoft assistants (Cortana, Copilot, Edge telemetry). Every switch can be flipped back.
+
+**Guard.** Big Windows updates quietly switch telemetry and ads back on and reinstall promoted apps. Guard remembers what you switched off or removed, checks after you sign in and once a day, and either notifies you or puts everything back by itself. Every finding is kept in a history.
+
+**Boot X-ray.** How long Windows takes to start, split into "until the desktop" and "after sign-in", a chart of your recent boots and the apps, services and drivers that slow them down, in seconds. The numbers come from Windows' own diagnostics log, not guesses. Remove a culprit from startup in one click, restart, and the new bar shows what you saved.
 
 **Registry.** Safe categories only: recent-file lists, MuiCache, App Paths and Run entries pointing to deleted programs. Every key is exported to a `.reg` file before it is touched, and a **Restore** button imports it back.
 

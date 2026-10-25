@@ -2,6 +2,13 @@
 
 All notable changes to Sweep. The newest version is at the top; the in-app update dialog and the GitHub release notes are built from this file.
 
+## 1.0.14
+- Boot X-ray: how long Windows takes to start, split into "until the desktop" and "after sign-in", a chart of recent boots and what slows them down in seconds, straight from Windows' own diagnostics log
+- Remove a boot culprit from startup in one click, then restart and watch the new bar show the seconds you saved
+- Guard: big Windows updates often switch tracking back on and reinstall promoted apps; Guard checks after sign-in and once a day, notifies you or puts everything back by itself, and keeps a history
+- A Windows restore point is created before big changes (at most once a day; can be turned off in Settings)
+- Overview shows the last boot time; confirmation before restarting the PC
+
 ## 1.0.13
 - Privacy switches now work like Windows Settings: on means the Windows feature (tracking, ads, suggestions) is active, off means it is disabled
 - New version reminder that lists what changed, with Update, Remind me later and Skip this version
