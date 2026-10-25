@@ -56,7 +56,7 @@ jobs:
           $ex = @('QtWebEngineCore','QtWebEngineWidgets','QtWebEngineQuick','QtPdf','QtPdfWidgets','QtMultimedia','QtMultimediaWidgets','Qt3DCore','Qt3DRender','Qt3DInput','Qt3DLogic','Qt3DAnimation','Qt3DExtras','QtCharts','QtDataVisualization','QtGraphs','QtQuick3D','QtBluetooth','QtNfc','QtPositioning','QtLocation','QtSensors','QtSerialPort','QtSerialBus','QtSql','QtTest','QtDesigner','QtHelp','QtRemoteObjects','QtScxml','QtStateMachine','QtTextToSpeech','QtWebChannel','QtWebSockets','QtWebView','QtSpatialAudio','QtHttpServer','QtOpenGLWidgets','QtSvgWidgets','QtUiTools','QtXml','QtDBus','QtNetworkAuth','QtQuickWidgets') | % { "--exclude-module=PySide6.$_" }
           python tools/make_version_file.py version_info.txt
           pyinstaller --noconfirm --clean --onedir --windowed --name Sweep --icon sweep.ico --uac-admin --version-file version_info.txt `
-            --add-data "qml;qml" --add-data "sweep.ico;." `
+            --add-data "qml;qml" --add-data "sweep.ico;." --add-data "..\CHANGELOG.md;." `
             --hidden-import PySide6.QtQuick --hidden-import PySide6.QtQml --hidden-import PySide6.QtQuickControls2 --hidden-import PySide6.QtWidgets `
             $ex main.py
           # prune Qt modules that the exclude list cannot reach (DLLs pulled by QML plugins)
@@ -157,6 +157,17 @@ jobs:
           git tag "v${{ steps.ver.outputs.version }}"
           git push origin "v${{ steps.ver.outputs.version }}"
 
+      - name: Release notes from CHANGELOG.md
+        if: steps.ver.outputs.exists == 'False'
+        run: |
+          $v = '${{ steps.ver.outputs.version }}'
+          $text = Get-Content CHANGELOG.md -Raw
+          $m = [regex]::Match($text, "(?ms)^## v?$([regex]::Escape($v))[ \t]*\r?\n(.*?)(?=^## |\z)")
+          $body = if ($m.Success) { $m.Groups[1].Value.Trim() } else { "Sweep $v" }
+          $body += "`n`n**Download:** Sweep-Setup-$v.exe below. Sweep also offers this update by itself when it starts."
+          Set-Content -Path release-notes.md -Value $body -Encoding utf8
+          Get-Content release-notes.md
+
       - name: Publish release
         if: steps.ver.outputs.exists == 'False'
         uses: softprops/action-gh-release@v2
@@ -164,4 +175,4 @@ jobs:
           tag_name: v${{ steps.ver.outputs.version }}
           name: Sweep ${{ steps.ver.outputs.version }}
           files: app/Output/Sweep-Setup-*.exe
-          generate_release_notes: true
+          body_path: release-notes.md

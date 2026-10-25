@@ -23,7 +23,7 @@ Multi-factor authentication is enabled for all team members on GitHub and SignPa
 Sweep does not collect, store or send personal data, usage statistics or telemetry.
 
 The only network connections Sweep makes are to `api.github.com` and `github.com`, to check for and download new Sweep releases:
-- automatically on start-up, which can be turned off in **Settings → Updates → Update automatically**;
+- on start-up, which can be turned off in **Settings → Updates → New versions → Do not check**;
 - when you press **Check for updates**.
 
 This program will not transfer any other information to other networked systems unless specifically requested by the user or the person installing or operating it.

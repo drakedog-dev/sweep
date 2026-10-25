@@ -47,11 +47,12 @@ Page {
     } }
     Card { Column { width: parent.width; spacing: 10
         Txt { text: tr("set.updates"); font.pixelSize: 15; bold: true }
-        Row { width: parent.width; spacing: 14
-            Column { width: parent.width - 70; spacing: 2
-                Txt { text: tr("set.autoupdate"); bold: true }
-                Txt { text: tr("set.autoupdate.hint"); muted: true; font.pixelSize: 12; width: parent.width } }
-            Toggle { anchors.verticalCenter: parent.verticalCenter; checked: app.autoUpdate; onToggled: v => app.setAutoUpdate(v) } }
+        Txt { text: tr("set.updmode"); bold: true }
+        Row { spacing: 8
+            Chip { label: tr("set.updmode.ask"); on: app.updateMode === "ask"; onPick: app.setUpdateMode("ask") }
+            Chip { label: tr("set.updmode.auto"); on: app.updateMode === "auto"; onPick: app.setUpdateMode("auto") }
+            Chip { label: tr("set.updmode.off"); on: app.updateMode === "off"; onPick: app.setUpdateMode("off") } }
+        Txt { text: tr("set.updmode." + app.updateMode + ".hint"); muted: true; font.pixelSize: 12; width: parent.width }
         Txt { text: tr("set.about"); muted: true; width: parent.width }
         Row { spacing: 10
             AccentButton { text: tr("set.check"); primary: false; compact: true; enabled: !app.busy; onClicked: app.checkUpdates() }

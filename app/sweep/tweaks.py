@@ -72,6 +72,30 @@ _ALT = {
 for _p in PRIVACY:
     _p.alt = _ALT.get(_p.id, [])
 
+# The switch shows whether the Windows feature works (on) or is disabled (off), like Windows Settings,
+# so each hint says what the feature does.
+_HINTS = {
+    "telemetry": {"ru": "Windows отправляет в Microsoft данные об использовании: служба DiagTrack и задания сбора данных", "en": "Windows sends usage data to Microsoft: DiagTrack service and data collection tasks"},
+    "adid": {"ru": "По нему приложения показывают рекламу по вашим интересам", "en": "Lets apps show ads based on your interests"},
+    "activity": {"ru": "Windows запоминает, что вы открывали, и отправляет это в облако", "en": "Windows records what you open and uploads it"},
+    "feedback": {"ru": "Windows время от времени спрашивает «Как вам Windows?»", "en": "Windows asks how you like it from time to time"},
+    "wer": {"ru": "Сведения о сбоях программ уходят в Microsoft", "en": "Crash details are sent to Microsoft"},
+    "trackprogs": {"ru": "Windows запоминает, какие программы вы запускаете, для подсказок в Пуске", "en": "Windows tracks the apps you launch for Start menu suggestions"},
+    "tips": {"ru": "Предложения приложений, советы и тихая установка рекламных приложений", "en": "App suggestions, tips and silent installs of promoted apps"},
+    "lockscreen": {"ru": "Факты и советы поверх картинки экрана блокировки", "en": "Fun facts and tips over the lock screen picture"},
+    "welcome": {"ru": "Приветствие и предложения Microsoft после каждого обновления", "en": "Welcome screen and Microsoft offers after every update"},
+    "explorerads": {"ru": "Баннеры OneDrive и Microsoft 365 в окнах папок", "en": "OneDrive and Microsoft 365 banners in folder windows"},
+    "startrec": {"ru": "Раздел «Рекомендуем» подсовывает сайты и приложения", "en": "The Recommended section pushes sites and apps"},
+    "searchhl": {"ru": "В поле поиска на панели задач картинки дня и новости", "en": "Daily pictures and news in the taskbar search box"},
+    "search": {"ru": "Всё, что вы набираете в Пуске, уходит в Bing", "en": "Everything you type in Start is sent to Bing"},
+    "feeds": {"ru": "«Новости и интересы» в Windows 10, виджеты в Windows 11", "en": "News and Interests in Windows 10, Widgets in Windows 11"},
+    "cortana": {"ru": "Голосовой помощник Microsoft", "en": "Microsoft voice assistant"},
+    "copilot": {"ru": "Кнопка и панель Copilot на панели задач", "en": "Copilot button and panel on the taskbar"},
+    "edge": {"ru": "Edge отправляет в Microsoft данные о просмотре и использовании", "en": "Edge sends browsing and usage data to Microsoft"},
+}
+for _p in PRIVACY:
+    _p.hint = _HINTS.get(_p.id, _p.hint)
+
 _demo_privacy = {"adid", "tips", "feedback"}
 
 

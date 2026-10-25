@@ -13,7 +13,7 @@
 
 **Version 1.0** is a full rewrite: a native-feeling Qt interface with smooth animations, live CPU, memory and disk monitors, a **PC profile** that adapts recommendations to weak, mid-range and powerful machines, Windows visual-effects and power-plan presets, English and Russian, dark and light themes with five accent colours.
 
-Windows 10 and 11. Sweep goes online only to check GitHub for updates (on start when automatic updates are on, or when you press "Check for updates").
+Windows 10 and 11. Sweep goes online only to check GitHub for updates (on start unless you turn it off, or when you press "Check for updates"). When a new version is out, Sweep shows what changed and asks before installing. The full history is in [CHANGELOG.md](CHANGELOG.md).
 
 [Русская версия](README.ru.md)
 
@@ -39,7 +39,7 @@ Windows SmartScreen may warn about an unknown publisher because the build is not
 **Junk.** Shows how much space each category takes and removes only what you tick:
 temp folders, Recycle Bin, thumbnail cache, Windows Update cache, crash dumps and error reports, old Windows logs, browser caches (Chrome, Edge, Yandex, Brave, Vivaldi, Opera, Firefox), browser history and, optionally, cookies. History cleaning removes visited sites, the downloads list and address bar suggestions in every browser; passwords, bookmarks, autofill and open tabs are never touched. In Firefox, where history and bookmarks share one database, only visits are removed and a copy of the database goes to quarantine first. Your ticks are remembered.
 
-**Privacy.** 17 switches in three groups: data collection (telemetry, advertising ID, activity history, error reporting), ads and suggestions (Start menu, lock screen, Explorer, search box, news and widgets, "what's new" screen), Microsoft assistants (Cortana, Copilot, Edge telemetry). Every switch can be flipped back.
+**Privacy.** 17 switches that work like Windows Settings (on means the feature is active, off means it is disabled) in three groups: data collection (telemetry, advertising ID, activity history, error reporting), ads and suggestions (Start menu, lock screen, Explorer, search box, news and widgets, "what's new" screen), Microsoft assistants (Cortana, Copilot, Edge telemetry). Every switch can be flipped back.
 
 **Registry.** Safe categories only: recent-file lists, MuiCache, App Paths and Run entries pointing to deleted programs. Every key is exported to a `.reg` file before it is touched, and a **Restore** button imports it back.
 
@@ -57,7 +57,7 @@ temp folders, Recycle Bin, thumbnail cache, Windows Update cache, crash dumps an
 
 **Quarantine.** Nothing is deleted outright. Files are moved to `ProgramData\Sweep\Quarantine`, and **Restore** puts them back. Purge the quarantine yourself when you are sure.
 
-**Settings.** English or Russian, dark or light theme, five accent colours, animations on or off, administrator rights status, automatic updates.
+**Settings.** English or Russian, dark or light theme, five accent colours, animations on or off, administrator rights status, how new versions arrive (ask me, install automatically or do not check).
 
 The interface is drawn by the CPU, so the graphics card is not used at all and the mouse and games stay smooth while Sweep is open.
 

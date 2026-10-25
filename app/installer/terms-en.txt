@@ -1,0 +1,23 @@
+﻿SWEEP TERMS OF USE
+
+1. Sweep is free, open-source software under the MIT licence (full text below). It is provided as is, without warranty of any kind; you use it at your own risk.
+
+2. Sweep changes Windows settings, services and startup entries and removes files only when you press a button or flip a switch yourself.
+
+3. Removed files go to a quarantine folder first, registry keys are backed up before cleaning and every switch can be turned back, so almost everything can be undone. Creating a Windows restore point before big changes is a good idea.
+
+4. Sweep collects and sends no personal data and no telemetry. It contacts only GitHub (api.github.com, github.com) to check for and download Sweep updates; this can be turned off in Settings.
+
+5. Sweep can be removed at any time with the standard uninstaller (Windows Settings, Apps).
+
+----------------------------------------------------------------------
+
+MIT License
+
+Copyright (c) 2026 Drakedog
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.

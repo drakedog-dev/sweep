@@ -14,6 +14,34 @@ from PySide6.QtGui import QDesktopServices
 from . import cleaner, extras, platform as P, tweaks
 from .i18n import I18n
 
+TERMS_VERSION = 1   # raise when the terms of use change: everyone is asked to accept them again
+
+
+def changelog_notes(text: str, version: str | None = None) -> list[str]:
+    """Bullet lines of one CHANGELOG.md section (or of a whole release body when version is None)."""
+    lines = text.splitlines()
+    if version is not None:
+        out, inside = [], False
+        for l in lines:
+            if l.startswith("## "):
+                inside = l[3:].strip().lstrip("v") == version
+                continue
+            if inside:
+                out.append(l)
+        lines = out
+    return [l.strip()[2:].strip() for l in lines if l.strip().startswith(("- ", "* "))][:12]
+
+
+def bundled_changelog() -> str:
+    from pathlib import Path
+    base = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parents[2]))
+    for p in (base / "CHANGELOG.md", Path(__file__).resolve().parents[2] / "CHANGELOG.md"):
+        try:
+            return p.read_text("utf-8")
+        except OSError:
+            continue
+    return ""
+
 
 class Worker(QThread):
     done = Signal(object)
@@ -85,7 +113,21 @@ class App(QObject):
         self._timer.start()
         self._set_status(self.i18n.t("common.ready"))
         QTimer.singleShot(300, self.boot)
-        if self.settings.get("autoUpdate", True) and P.IS_WINDOWS:
+        # updates: "ask" (default) shows a reminder, "auto" installs silently, "off" never checks
+        had_settings = bool(self.settings)
+        if "updateMode" not in self.settings:
+            self.settings["updateMode"] = "off" if self.settings.get("autoUpdate") is False else "ask"
+        self._update_prompt: dict = {}
+        self._whats_new: dict = {}
+        last = self.settings.get("lastVersion")
+        updated = (last and self._newer(P.APP_VERSION, last)) or (last is None and had_settings)
+        if updated and (P.IS_WINDOWS or "--whatsnew" in sys.argv):
+            self._whats_new = {"tag": P.APP_VERSION, "notes": changelog_notes(bundled_changelog(), P.APP_VERSION)}
+        if last != P.APP_VERSION:
+            self.settings["lastVersion"] = P.APP_VERSION
+        P.save_settings(self.settings)
+        self._need_terms = int(self.settings.get("termsAccepted", 0)) < TERMS_VERSION and (P.IS_WINDOWS or "--terms" in sys.argv)
+        if P.IS_WINDOWS and self.settings["updateMode"] != "off":
             QTimer.singleShot(8000, self.autoUpdateCheck)
 
     # ---------- helpers ----------
@@ -206,20 +248,76 @@ class App(QObject):
         """Banner button: restart Sweep with administrator rights on the same page."""
         self._need_admin("", page or "overview")
 
-    @Property(bool, notify=langChanged)
-    def autoUpdate(self):
-        return bool(self.settings.get("autoUpdate", True))
+    @Property(str, notify=langChanged)
+    def updateMode(self):
+        return self.settings.get("updateMode", "ask")
 
-    @Slot(bool)
-    def setAutoUpdate(self, on):
-        self.settings["autoUpdate"] = on
+    @Slot(str)
+    def setUpdateMode(self, mode):
+        self.settings["updateMode"] = mode
         P.save_settings(self.settings)
         self.langChanged.emit()
 
+    @Property("QVariantMap", notify=changed)
+    def updatePrompt(self):
+        return self._update_prompt
+
+    @Property("QVariantMap", notify=changed)
+    def whatsNew(self):
+        return self._whats_new
+
+    @Property(bool, notify=changed)
+    def needTerms(self):
+        return self._need_terms
+
+    @Slot()
+    def acceptTerms(self):
+        self._need_terms = False
+        self.settings["termsAccepted"] = TERMS_VERSION
+        P.save_settings(self.settings)
+        self.changed.emit()
+
+    @Slot()
+    def declineTerms(self):
+        from PySide6.QtWidgets import QApplication
+        QApplication.quit()
+
+    @Slot()
+    def dismissWhatsNew(self):
+        self._whats_new = {}
+        self.changed.emit()
+
+    def _offer_update(self, info: dict) -> None:
+        self._update_prompt = {"tag": info["tag"], "notes": info.get("notes", [])}
+        self.changed.emit()
+
+    @Slot()
+    def acceptUpdate(self):
+        """Reminder: the user agreed to install the new version."""
+        self._update_prompt = {}
+        self.changed.emit()
+        self.installUpdate()
+
+    @Slot()
+    def remindLater(self):
+        self._update_prompt = {}
+        self.changed.emit()
+
+    @Slot()
+    def skipVersion(self):
+        if self._update_prompt.get("tag"):
+            self.settings["skipVersion"] = self._update_prompt["tag"]
+            P.save_settings(self.settings)
+        self._update_prompt = {}
+        self.changed.emit()
+
     @Slot()
     def autoUpdateCheck(self):
-        """Silent start-up check; installs the newest version automatically when enabled."""
-        if self._busy:
+        """Start-up check. "ask" shows a reminder with the changes, "auto" installs silently."""
+        mode = self.settings.get("updateMode", "ask")
+        if mode == "off":
+            return
+        if self._busy or self._need_terms or self._whats_new:
             QTimer.singleShot(5000, self.autoUpdateCheck)
             return
 
@@ -229,9 +327,13 @@ class App(QObject):
         def done(info):
             self.update_info = info
             self.changed.emit()
-            if info.get("newer") and info.get("url"):
+            if not (info.get("newer") and info.get("url")) or info["tag"] == self.settings.get("skipVersion"):
+                return
+            if mode == "auto":
                 self.toast.emit(self.i18n.t("set.autoinstalling", info["tag"]))
                 QTimer.singleShot(1500, self.installUpdate)
+            else:
+                self._offer_update(info)
 
         w = Worker(work, self)
         self._workers.append(w)
@@ -266,7 +368,7 @@ class App(QObject):
     @Property("QVariantList", notify=changed)
     def privacy(self):
         groups = {"data": "priv.group.data", "ads": "priv.group.ads", "assist": "priv.group.assist"}
-        return [{"id": p.id, "group": self.i18n.t(groups[p.group]), "name": self._loc(p.name), "hint": self._loc(p.hint), "on": self.privacy_state[p.id]} for p in tweaks.PRIVACY]
+        return [{"id": p.id, "group": self.i18n.t(groups[p.group]), "name": self._loc(p.name), "hint": self._loc(p.hint), "on": not self.privacy_state[p.id]} for p in tweaks.PRIVACY]
 
     @Property(int, notify=changed)
     def privacyOn(self):
@@ -586,13 +688,14 @@ class App(QObject):
 
     @Slot(str, bool)
     def setPrivacy(self, pid, on):
+        """on = the Windows feature works (switch on, like in Windows Settings); off = tracking disabled."""
         if self._need_admin(f"privacy:{pid}:{int(on)}", "privacy"):
             self.changed.emit()      # put the switch back
             return
         p = next(x for x in tweaks.PRIVACY if x.id == pid)
-        self.privacy_state[pid] = on
+        self.privacy_state[pid] = not on
         self.changed.emit()
-        self._run(lambda: self._apply_privacy([p], on), self._privacy_report)
+        self._run(lambda: self._apply_privacy([p], not on), self._privacy_report)
 
     @Slot()
     def allPrivacy(self):
@@ -966,7 +1069,8 @@ class App(QObject):
             rel = json.loads(r.read().decode("utf-8"))
         tag = rel.get("tag_name", "").lstrip("v")
         asset = next((a for a in rel.get("assets", []) if a["name"].startswith("Sweep-Setup") and a["name"].endswith(".exe")), None)
-        return {"tag": tag, "url": asset["browser_download_url"] if asset else "", "newer": self._newer(tag, P.APP_VERSION)}
+        return {"tag": tag, "url": asset["browser_download_url"] if asset else "", "newer": self._newer(tag, P.APP_VERSION),
+                "notes": changelog_notes(rel.get("body") or "")}
 
     @Slot()
     def checkUpdates(self):
@@ -976,6 +1080,8 @@ class App(QObject):
             self.update_info = info
             self.changed.emit()
             self._set_status(self.i18n.t("set.available", info["tag"]) if info["newer"] else self.i18n.t("set.latest", P.APP_VERSION))
+            if info["newer"] and info.get("url"):
+                self._offer_update(info)
 
         self._run(work, done, self.i18n.t("common.working"))
 

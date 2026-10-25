@@ -155,4 +155,47 @@ ApplicationWindow {
             PauseAnimation { duration: 2600 }
             NumberAnimation { target: toast; property: "y"; to: win.height; duration: 250; easing.type: Easing.InCubic } }
     }
+
+    // ---------- notes list used by the update dialogs (changes are written in English) ----------
+    component Notes: Rectangle {
+        property var notes: []
+        width: parent ? parent.width : 400
+        height: notesCol.implicitHeight + 28; radius: 14; color: Theme.cardAlt; border.color: Theme.border
+        Column { id: notesCol; anchors.left: parent.left; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; anchors.margins: 16; spacing: 7
+            Repeater { model: notes.length ? notes : [tr("upd.nonotes")]
+                Row { spacing: 10; width: notesCol.width
+                    Icon { name: "check"; size: 15; color: Theme.good; anchors.top: parent.top; anchors.topMargin: 1 }
+                    Txt { text: modelData; width: notesCol.width - 26; font.pixelSize: 13 } } }
+        }
+    }
+
+    // ---------- terms of use: first start and whenever the terms change ----------
+    Modal { open: app.needTerms; icon: "shield-check"; title: tr("terms.title"); subtitle: tr("terms.sub")
+        Repeater { model: ["terms.1", "terms.2", "terms.3", "terms.4"]
+            Row { spacing: 12; width: parent.width
+                Icon { name: "circle-check"; size: 18; color: Theme.accent2; anchors.top: parent.top; anchors.topMargin: 1 }
+                Txt { text: tr(modelData); width: parent.width - 30 } } }
+        Row { spacing: 10; topPadding: 6
+            AccentButton { text: tr("terms.accept"); onClicked: app.acceptTerms() }
+            AccentButton { text: tr("terms.licence"); primary: false; onClicked: app.openUrl("https://github.com/pabloescobarbl-ops/sweep/blob/main/LICENSE") }
+            AccentButton { text: tr("terms.decline"); primary: false; onClicked: app.declineTerms() } }
+    }
+
+    // ---------- after an update: what is new ----------
+    Modal { open: !app.needTerms && app.whatsNew["tag"] !== undefined; icon: "sparkles"
+        title: tr1("new.title", app.whatsNew["tag"] || ""); subtitle: tr("new.sub")
+        Notes { notes: app.whatsNew["notes"] || [] }
+        AccentButton { text: tr("new.ok"); onClicked: app.dismissWhatsNew() }
+    }
+
+    // ---------- a new version is out: reminder with the changes, the user decides ----------
+    Modal { open: !app.needTerms && app.whatsNew["tag"] === undefined && app.updatePrompt["tag"] !== undefined; icon: "download"
+        title: tr1("upd.title", app.updatePrompt["tag"] || ""); subtitle: tr1("upd.current", app.version)
+        Notes { notes: app.updatePrompt["notes"] || [] }
+        Txt { text: tr("upd.consent"); muted: true; font.pixelSize: 12; width: parent.width }
+        Row { spacing: 10
+            AccentButton { text: tr("upd.install"); enabled: !app.busy; onClicked: app.acceptUpdate() }
+            AccentButton { text: tr("upd.later"); primary: false; onClicked: app.remindLater() }
+            AccentButton { text: tr("upd.skip"); primary: false; onClicked: app.skipVersion() } }
+    }
 }
