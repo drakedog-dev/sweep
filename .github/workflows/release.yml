@@ -1,8 +1,12 @@
 name: Build Sweep
 
+# Релиз создаётся автоматически: при каждом изменении на main читается версия из Sweep.ps1,
+# и если тега с такой версией ещё нет, собираются Sweep.exe и установщик и публикуется релиз.
+
 on:
   push:
-    tags: ['v*']
+    branches: [main]
+    paths: ['Sweep.ps1', 'Sweep.iss', 'sweep.ico', '.github/workflows/release.yml']
   workflow_dispatch:
 
 permissions:
@@ -13,34 +17,53 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read version from Sweep.ps1
+        id: ver
+        shell: pwsh
+        run: |
+          $m = [regex]::Match((Get-Content .\Sweep.ps1 -Raw), "\`$AppVersion = '([\d\.]+)'")
+          if (-not $m.Success) { throw 'AppVersion not found in Sweep.ps1' }
+          $ver = $m.Groups[1].Value
+          $exists = (git tag -l "v$ver").Length -gt 0
+          "version=$ver" >> $env:GITHUB_OUTPUT
+          "exists=$exists" >> $env:GITHUB_OUTPUT
+          Write-Host "Version $ver, tag exists: $exists"
 
       - name: Build Sweep.exe (ps2exe)
+        if: steps.ver.outputs.exists == 'False'
         shell: pwsh
         run: |
           Install-Module ps2exe -Scope CurrentUser -Force -AllowClobber
           Import-Module ps2exe
-          $ver = "${{ github.ref_name }}".TrimStart('v'); if (-not $ver -or $ver -eq 'main') { $ver = '0.0.0' }
+          $ver = '${{ steps.ver.outputs.version }}'
           $v4 = ($ver.Split('.') + @('0','0','0'))[0..3] -join '.'
           Invoke-ps2exe -inputFile .\Sweep.ps1 -outputFile .\Sweep.exe -iconFile .\sweep.ico -noConsole -STA -requireAdmin -x64 `
-            -title 'Sweep' -description 'Чистка, приватность и ускорение Windows' -company 'Sweep' -product 'Sweep' -version $v4 -copyright 'MIT'
+            -title 'Sweep' -description 'Clean, de-bloat and speed up Windows' -company 'Sweep' -product 'Sweep' -version $v4 -copyright 'MIT'
           (Get-Content .\Sweep.iss) -replace '#define AppVersion ".*"', "#define AppVersion `"$ver`"" | Set-Content .\Sweep.iss -Encoding UTF8
 
       - name: Build installer (Inno Setup)
+        if: steps.ver.outputs.exists == 'False'
         shell: cmd
         run: '"%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe" Sweep.iss'
 
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: sweep-build
-          path: |
-            Sweep.exe
-            Output/*.exe
+      - name: Create tag
+        if: steps.ver.outputs.exists == 'False'
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "v${{ steps.ver.outputs.version }}"
+          git push origin "v${{ steps.ver.outputs.version }}"
 
       - name: Publish release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: steps.ver.outputs.exists == 'False'
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: v${{ steps.ver.outputs.version }}
+          name: Sweep ${{ steps.ver.outputs.version }}
           files: |
             Output/Sweep-Setup-*.exe
             Sweep.exe
