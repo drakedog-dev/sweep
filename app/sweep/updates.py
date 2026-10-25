@@ -284,9 +284,24 @@ def _bytes(num: str, unit: str) -> float:
     return float(num.replace(",", ".")) * _UNITS.get(unit.lower().replace("i", ""), 1)
 
 
+_OSC = re.compile(r"\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)")
+_OSC_PROGRESS = re.compile(r"\x1b\]9;4;(\d);?(\d*)")         # taskbar progress: ESC ] 9 ; 4 ; state ; percent
+_FRAME = re.compile(r"\r\n|\r|\n|\x1b\[[0-9;]*[GKJHf]")      # new line, or the cursor jumping back to redraw
+
+
+def _escape_complete(s: str) -> bool:
+    if len(s) < 2:
+        return False
+    if s[1] == "]":
+        return "\x07" in s or "\x1b\\" in s[1:]
+    if s[1] == "[":
+        return bool(re.match(r"\x1b\[[0-9;?]*[ -/]*[@-~]", s))
+    return True
+
+
 class Progress:
     """Turns winget's console output into phases: "prepare", "download" (bytes so far and total) and "install".
-    winget redraws its progress bar with carriage returns, so every segment between \\r or \\n is one frame."""
+    winget redraws its progress bar in place, so the text is cut into frames at line breaks and cursor moves."""
 
     def __init__(self, callback=None):
         self.callback = callback
@@ -294,16 +309,44 @@ class Progress:
         self.got = 0.0
         self.total = 0.0
         self.sized = False          # winget printed "x MB / y MB" at least once
-        self.log: list[tuple] = []  # (seconds since start, source, phase, bytes) for diagnostics
+        self.log: list[tuple] = []  # (seconds since start, phase, bytes) for diagnostics
         self._t0 = time.time()
+        self._buf = ""
 
-    def _emit(self, source: str = "out"):
-        self.log.append((round(time.time() - self._t0, 2), source, self.phase, int(self.got)))
+    def _emit(self):
+        self.log.append((round(time.time() - self._t0, 2), self.phase, int(self.got)))
         if self.callback:
             self.callback(self.phase, self.got, self.total)
 
+    def feed_text(self, text: str) -> None:
+        """Raw output as it arrives, in chunks of any size: complete frames are read, the rest waits for more."""
+        buf = self._buf + text
+        hold = len(buf)
+        esc = buf.rfind("\x1b")
+        if esc >= 0 and not _escape_complete(buf[esc:]):
+            hold = esc                                   # an escape sequence cut in half by the chunk border
+        work, rest = buf[:hold], buf[hold:]
+        for m in _OSC_PROGRESS.finditer(work):
+            self._taskbar(int(m[1]), int(m[2] or 0))
+        parts = _FRAME.split(_OSC.sub("", work))
+        self._buf = parts.pop() + rest                   # the frame being drawn right now is finished by the next one
+        for part in parts:
+            self.feed(part)
+
+    def _taskbar(self, state: int, value: int) -> None:
+        if self.phase != "download":
+            return
+        if state in (1, 4) and not self.sized and 0 <= value <= 100:
+            if value != self.got or self.total != 100.0:
+                self.got, self.total = float(value), 100.0
+                self._emit()
+        elif state == 0 and (self.got > 0 or self.sized):
+            self.phase = "install"
+            self._emit()
+
     def feed(self, segment: str) -> None:
-        seg = _ANSI.sub("", segment).strip()
+        """One frame of text."""
+        seg = _ANSI.sub("", _OSC.sub("", segment)).strip()
         if not seg:
             return
         if self.phase == "prepare":
@@ -313,53 +356,48 @@ class Progress:
             return
         if self.phase != "download":
             return
-        m = _SIZE.search(seg)
-        if m:
-            self.got, self.total, self.sized = _bytes(m[1], m[2]), _bytes(m[3], m[4]), True
-            if self.total and self.got >= self.total:
-                self.phase = "install"
-            self._emit()
+        sizes = list(_SIZE.finditer(seg))
+        if sizes:
+            m = sizes[-1]
+            got, total = _bytes(m[1], m[2]), _bytes(m[3], m[4])
+            self.sized = True
+            if (got, total) != (self.got, self.total):
+                self.got, self.total = got, total
+                if total and got >= total:
+                    self.phase = "install"
+                self._emit()
             return
         m = _PCT.search(seg)
         if m and any(ch in seg for ch in _BAR):
-            self.got, self.total = float(m[1]), 100.0
-            if self.got >= 100:
-                self.phase = "install"
-            self._emit()
+            if not self.sized:
+                self.got, self.total = float(m[1]), 100.0
+                if self.got >= 100:
+                    self.phase = "install"
+                self._emit()
             return
-        if self.sized and not any(ch in seg for ch in _BAR) and not re.fullmatch(r"[-\\|/]", seg):
+        if (self.sized or self.got > 0) and not any(ch in seg for ch in _BAR) and not re.fullmatch(r"[-\\|/]", seg):
             self.phase = "install"                       # "Successfully verified installer hash", "Starting package install"
             self._emit()
 
-    def on_disk(self, size: float) -> None:
-        """Fallback when winget's own counter does not come through: bytes already in its download folder."""
-        if self.sized or self.phase == "install" or size <= self.got:
-            return
-        if self.phase == "prepare":
-            self.phase = "download"
-        self.got = size
-        self._emit("disk")
 
-
-def _download_size(pid: str) -> float:
-    """Size of what winget has downloaded so far for this package (%TEMP%\\WinGet\\<id>.<version>)."""
-    try:
-        dirs = glob.glob(os.path.join(tempfile.gettempdir(), "WinGet", glob.escape(pid) + ".*"))
-        if not dirs:
-            return 0.0
-        d = max(dirs, key=os.path.getmtime)
-        return float(sum(e.stat().st_size for e in os.scandir(d) if e.is_file()))
-    except OSError:
-        return 0.0
-
-
-def _stream(args: list[str], timeout: int, prog: Progress, pid: str, on_disk=None) -> tuple[int, bytes]:
-    """Run winget and read its output as it comes, so the interface can show the download live."""
-    import codecs
+def _stream(args: list[str], timeout: int, prog: Progress) -> tuple[int, bytes, str]:
+    """Run winget and read its output as it comes. Inside a pseudo console winget draws its progress live;
+    through a plain pipe it holds the bar back until the end, so the pipe is only the fallback."""
     import threading
     exe = winget_exe()
     if not exe:
-        return -1, b""
+        return -1, b"", "none"
+    out: list[str] = []
+
+    def take(text: str) -> None:
+        out.append(text)
+        prog.feed_text(text)
+
+    from . import conpty
+    rc = conpty.run(subprocess.list2cmdline([exe] + args), take, timeout)
+    if rc is not None:
+        prog.feed_text("\n")
+        return rc, "".join(out).encode("utf-8"), "conpty"
     si = subprocess.STARTUPINFO()
     si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
     try:
@@ -367,38 +405,29 @@ def _stream(args: list[str], timeout: int, prog: Progress, pid: str, on_disk=Non
                                 startupinfo=si, creationflags=0x08000000)
     except Exception as e:  # noqa: BLE001
         P.log(f"winget {args[:3]}: {e}")
-        return -1, b""
-    chunks: list[bytes] = []
+        return -1, b"", "pipe"
+    import codecs
+    dec = codecs.getincrementaldecoder("utf-8")("replace")
 
     def reader():
-        dec = codecs.getincrementaldecoder("utf-8")("replace")
-        buf = ""
         while True:
             data = os.read(proc.stdout.fileno(), 4096)
             if not data:
                 break
-            chunks.append(data)
-            buf += dec.decode(data)
-            parts = re.split(r"[\r\n]", buf)
-            buf = parts.pop()
-            for part in parts:
-                prog.feed(part)
-        if buf:
-            prog.feed(buf)
+            take(dec.decode(data))
 
     th = threading.Thread(target=reader, daemon=True)
     th.start()
-    t0 = time.time()
-    while proc.poll() is None:
-        if time.time() - t0 > timeout:
-            proc.kill()
-            P.log(f"winget {args[:3]}: timed out after {timeout} s")
-            th.join(5)
-            return -2, b"".join(chunks)
-        prog.on_disk(on_disk() if on_disk else _download_size(pid))
-        time.sleep(0.4)
+    try:
+        proc.wait(timeout)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        P.log(f"winget {args[:3]}: timed out after {timeout} s")
+        th.join(5)
+        return -2, "".join(out).encode("utf-8"), "pipe"
     th.join(10)
-    return proc.returncode, b"".join(chunks)
+    prog.feed_text("\n")
+    return proc.returncode, "".join(out).encode("utf-8"), "pipe"
 
 
 def upgrade(pid: str, timeout: int = 1800, progress=None) -> dict:
@@ -418,13 +447,13 @@ def upgrade(pid: str, timeout: int = 1800, progress=None) -> dict:
         time.sleep(0.6)
         return {"ok": True, "code": 0, "reason": ""}
     t0 = time.time()
-    rc, raw = _stream(["upgrade", "--id", pid, "--exact", "--source", SOURCE, "--silent", "--accept-package-agreements"] + COMMON, timeout, prog, pid)
+    rc, raw, how = _stream(["upgrade", "--id", pid, "--exact", "--source", SOURCE, "--silent", "--accept-package-agreements"] + COMMON, timeout, prog)
     code = rc & 0xFFFFFFFF
     reason = "" if rc == 0 else REASONS.get(code, "timeout" if rc == -2 else "code")
     ok = rc == 0 or reason in SUCCESS_REASONS
     tail = " | ".join(ln.strip() for ln in lines(raw) if ln.strip())[-300:]
-    P.log(f"updates: {pid} rc={code:#x} ok={ok} {time.time() - t0:.0f} s, progress {prog.phase} {prog.got:.0f}/{prog.total:.0f} sized={prog.sized}  {tail}")
-    return {"ok": ok, "code": code, "reason": reason, "sized": prog.sized}
+    P.log(f"updates: {pid} rc={code:#x} ok={ok} {time.time() - t0:.0f} s via {how}, progress frames {len(prog.log)}  {tail}")
+    return {"ok": ok, "code": code, "reason": reason, "via": how, "frames": len(prog.log)}
 
 
 def installed_version(pid: str) -> str:

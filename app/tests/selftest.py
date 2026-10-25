@@ -251,8 +251,8 @@ if exe:
         r = UPD.upgrade(pick["id"], progress=lambda ph, got, total: events.append((ph, got, total)))
         after = UPD.installed_version(pick["id"])
         downloads = [e for e in events if e[0] == "download" and e[1] > 0]
-        note(f"winget progress: {len(events)} events, {len(downloads)} with bytes, phases {sorted({e[0] for e in events})}, "
-             f"last {events[-1] if events else None}, winget counter seen={r.get('sized')}")
+        note(f"winget progress via {r.get('via')}: {len(events)} events, {len(downloads)} with bytes, phases {sorted({e[0] for e in events})}, "
+             f"last {events[-1] if events else None}")
         check(any(e[0] == "install" for e in events), "install phase reported after the download")
         wg = Path(tempfile.gettempdir()) / "WinGet"
         note("winget temp folder after the update: " + (", ".join(sorted(p.name for p in wg.iterdir()))[:600] if wg.exists() else "missing"))
@@ -270,19 +270,16 @@ if exe:
     dest = Path(tempfile.gettempdir()) / "sweep-dl-test"
     shutil.rmtree(dest, ignore_errors=True)
 
-    def disk_size(d=dest):
-        return float(sum(f.stat().st_size for f in d.rglob("*") if f.is_file())) if d.exists() else 0.0
-
     for big in ("LLVM.LLVM", "Unity.UnityHub"):
         prog = UPD.Progress()
         t0 = _time.time()
-        rc, out = UPD._stream(["download", "--id", big, "--exact", "--source", "winget", "-d", str(dest), "--accept-package-agreements"] + UPD.COMMON,
-                              900, prog, big, disk_size)
+        rc, out, how = UPD._stream(["download", "--id", big, "--exact", "--source", "winget", "-d", str(dest), "--accept-package-agreements"] + UPD.COMMON,
+                                   900, prog)
         took = _time.time() - t0
-        mid = [e for e in prog.log if e[3] > 0 and e[0] < took - 0.5]
-        note(f"download {big}: rc={rc & 0xFFFFFFFF:#x}, {took:.1f} s, {disk_size() / 2**20:.0f} MB, events {len(prog.log)}, "
-             f"from winget {sum(1 for e in prog.log if e[1] == 'out')}, from disk {sum(1 for e in prog.log if e[1] == 'disk')}, "
-             f"before the end {len(mid)}: {prog.log[:6]} ... {prog.log[-3:]}")
+        mid = [e for e in prog.log if e[2] > 0 and e[0] < took - 0.5]
+        note(f"download {big} via {how}: rc={rc & 0xFFFFFFFF:#x}, {took:.1f} s, events {len(prog.log)}, "
+             f"before the end {len(mid)}: {prog.log[:8]} ... {prog.log[-3:]}")
+        check(how == "conpty", f"winget runs inside a pseudo console ({how})")
         if rc == 0:
             check(len(mid) >= 2, f"live progress while downloading {big} ({len(mid)} updates before it finished)")
             break

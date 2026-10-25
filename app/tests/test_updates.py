@@ -84,10 +84,30 @@ def test_live_progress():
         p.feed(seg)
     assert [e[0] for e in events] == ["download", "download", "install"]
     assert events[1][1] == 1.2 * 2 ** 20
+
+
+def test_live_progress_in_a_pseudo_console():
+    """Inside ConPTY winget redraws the bar with cursor moves and reports the taskbar percentage (OSC 9;4)."""
+    events = []
     p = U.Progress(lambda *a: events.append(a))
-    p.feed("Downloading https://x/y.exe")
-    p.on_disk(500_000)
-    assert p.phase == "download" and p.got == 500_000
+    bar = "\u2588\u2592\u2592"
+    text = ("\x1b[?25l\x1b]9;4;3;0\x1b\\Found \x1b[96mLLVM\x1b[0m [LLVM.LLVM] Version 23.1.4\r\n"
+            "Downloading https://github.com/llvm/x.exe\r\n\x1b]9;4;1;5\x1b\\\x1b[2K\r  " + bar + "  32.0 MB /  639 MB\x1b[1G"
+            "\x1b]9;4;1;50\x1b\\\x1b[2K  " + bar + "  320 MB /  639 MB\x1b[1G\x1b]9;4;1;100\x1b\\  " + bar + "  639 MB /  639 MB\r\n"
+            "\x1b]9;4;0;0\x1b\\Successfully verified installer hash\r\n")
+    for i in range(0, len(text), 7):          # arrives in small, awkward chunks
+        p.feed_text(text[i:i + 7])
+    p.feed_text("\n")
+    phases = [e[0] for e in events]
+    assert phases[0] == "download" and phases[-1] == "install"
+    assert (32 * 2 ** 20, 639 * 2 ** 20) in [(e[1], e[2]) for e in events]
+    assert (320 * 2 ** 20, 639 * 2 ** 20) in [(e[1], e[2]) for e in events]
+    events.clear()
+    p = U.Progress(lambda *a: events.append(a))   # no megabytes printed: the taskbar percentage is used
+    text = "Downloading https://x/y.msi\r\n\x1b]9;4;1;10\x1b\\\x1b]9;4;1;60\x1b\\\x1b]9;4;0;0\x1b\\Installing\r\n"
+    for i in range(0, len(text), 5):
+        p.feed_text(text[i:i + 5])
+    assert [(e[0], e[1]) for e in events] == [("download", 0.0), ("download", 10.0), ("download", 60.0), ("install", 60.0)]
 
 
 def test_exit_codes():
