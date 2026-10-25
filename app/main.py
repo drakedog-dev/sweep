@@ -66,6 +66,7 @@ def run_guard() -> None:
 def notify(title: str, text: str) -> None:
     """Windows notification from the tray; a click opens Sweep on the Guard page."""
     import subprocess
+
     from PySide6.QtCore import QTimer
     from PySide6.QtGui import QIcon
     from PySide6.QtWidgets import QApplication, QSystemTrayIcon
@@ -108,6 +109,7 @@ def main() -> int:
     from PySide6.QtGui import QIcon
     from PySide6.QtQml import QQmlApplicationEngine
     from PySide6.QtWidgets import QApplication
+
     from sweep.bridge import App
 
     qt_app = QApplication(sys.argv)

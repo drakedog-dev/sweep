@@ -1,0 +1,22 @@
+name: Feature request
+description: An idea for Sweep
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would it solve
+      placeholder: "Every big Windows update brings back ..."
+    validations: { required: true }
+  - type: textarea
+    id: idea
+    attributes:
+      label: What you have in mind
+    validations: { required: true }
+  - type: checkboxes
+    id: rules
+    attributes:
+      label: Sweep's ground rules
+      options:
+        - label: It can be undone, and nothing happens without the user's click
+          required: true

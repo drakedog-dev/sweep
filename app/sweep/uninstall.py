@@ -17,9 +17,9 @@ import re
 import shutil
 import subprocess
 import time
-from pathlib import Path
 
-from . import cleaner, platform as P
+from . import cleaner
+from . import platform as P
 
 if P.IS_WINDOWS:
     import winreg

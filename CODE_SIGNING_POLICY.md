@@ -20,14 +20,8 @@ Multi-factor authentication is enabled for all team members on GitHub and SignPa
 
 ## Privacy policy
 
-Sweep does not collect, store or send personal data, usage statistics or telemetry.
-
-The only network connections Sweep makes are to `api.github.com` and `github.com`, to check for and download new Sweep releases:
-- on start-up, which can be turned off in **Settings → Updates → New versions → Do not check**;
-- when you press **Check for updates**.
-
-This program will not transfer any other information to other networked systems unless specifically requested by the user or the person installing or operating it.
+This program will not transfer any information to other networked systems unless specifically requested by the user or the person installing or operating it. Sweep collects no personal data and no telemetry. The connections it makes (GitHub for Sweep updates, and the Microsoft winget catalogue and vendor download sites when you check or install program updates) are listed in [PRIVACY.md](PRIVACY.md).
 
 ## System changes
 
-Sweep changes Windows settings only when you press a button or flip a switch, and every change is described next to that switch. Deleted files go to a quarantine folder and can be restored; registry keys are backed up before cleaning; privacy switches and services can be switched back. Sweep is removed with the standard uninstaller (Settings → Apps in Windows).
+Sweep changes Windows settings only when you press a button or flip a switch, and every change is described next to that switch. Deleted files go to a quarantine folder and can be restored; registry keys are backed up before cleaning; privacy switches and services can be switched back. Sweep is removed with the standard uninstaller (Settings → Apps in Windows), which also deletes the scheduled tasks Sweep created.

@@ -67,7 +67,7 @@ def test_show():
 def test_progress_noise_is_dropped():
     ls = U.lines(raw("winget-upgrade-one-en.txt"))
     assert "Successfully verified installer hash" in ls and "Successfully installed" in ls
-    assert not any("\r" in l or "█" in l and "MB" not in l for l in ls)
+    assert not any("\r" in ln or ("\u2588" in ln and "MB" not in ln) for ln in ls)
 
 
 def test_exit_codes():

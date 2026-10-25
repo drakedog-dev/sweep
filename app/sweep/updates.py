@@ -169,17 +169,17 @@ def parse_upgrades(raw: bytes | str) -> list[dict]:
 def parse_show(raw: bytes | str) -> dict:
     """Name, homepage and installer address from `winget show`. Labels are translated, so only the shape is used:
     the first line is "Found <name> [<id>]", the first link is the publisher's site, the last one the installer."""
-    ls = [l for l in lines(raw) if l.strip()]
+    ls = [ln for ln in lines(raw) if ln.strip()]
     out = {"name": "", "homepage": "", "installer": "", "sha256": False}
-    for l in ls[:4]:
-        m = re.search(r"\s(.+?)\s+\[([^\]\s]+)\]\s*$", l)
+    for ln in ls[:4]:
+        m = re.search(r"\s(.+?)\s+\[([^\]\s]+)\]\s*$", ln)
         if m:
             out["name"] = m.group(1).strip()
             break
-    urls = [u.rstrip(").,;") for l in ls for u in re.findall(r"https?://\S+", l)]
+    urls = [u.rstrip(").,;") for ln in ls for u in re.findall(r"https?://\S+", ln)]
     if urls:
         out["homepage"], out["installer"] = urls[0], urls[-1]
-    out["sha256"] = any(re.search(r"\b[0-9a-fA-F]{64}\b", l) for l in ls)
+    out["sha256"] = any(re.search(r"\b[0-9a-fA-F]{64}\b", ln) for ln in ls)
     return out
 
 
@@ -253,7 +253,7 @@ def scan(details: bool = True) -> dict:
         r.update(title=r["name"].rstrip("…. "), installer="", homepage="", host="", sha256=False)
     if rows and details:
         with ThreadPoolExecutor(max_workers=4) as ex:
-            for r, d in zip(rows, ex.map(lambda r: show(r["id"]), rows)):
+            for r, d in zip(rows, ex.map(lambda r: show(r["id"]), rows), strict=True):
                 r.update(installer=d["installer"], homepage=d["homepage"], host=host(d["installer"]), sha256=d["sha256"])
                 if d["name"]:
                     r["title"] = d["name"]     # "7-Zip" rather than the installed entry "7-Zip 26.04 (x64)"
@@ -278,7 +278,7 @@ def upgrade(pid: str, timeout: int = 1800) -> dict:
     code = rc & 0xFFFFFFFF
     reason = "" if rc == 0 else REASONS.get(code, "timeout" if rc == -2 else "code")
     ok = rc == 0 or reason in SUCCESS_REASONS
-    tail = " | ".join(l.strip() for l in lines(raw) if l.strip())[-300:]
+    tail = " | ".join(ln.strip() for ln in lines(raw) if ln.strip())[-300:]
     P.log(f"updates: {pid} rc={code:#x} ok={ok} {time.time() - t0:.0f} s  {tail}")
     return {"ok": ok, "code": code, "reason": reason}
 
@@ -288,8 +288,8 @@ def installed_version(pid: str) -> str:
     if not P.IS_WINDOWS:
         return ""
     rc, raw = _run(["list", "--id", pid, "--exact"] + COMMON, 120)
-    for l in lines(raw):
-        toks = l.split()
+    for ln in lines(raw):
+        toks = ln.split()
         if pid in toks:
             i = toks.index(pid)
             if i + 1 < len(toks):

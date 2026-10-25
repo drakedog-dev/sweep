@@ -2,15 +2,14 @@
 from __future__ import annotations
 
 import os
-import platform as pyplatform
 import time
 from dataclasses import dataclass
 from datetime import datetime
-from pathlib import Path
 
 import psutil
 
 from . import platform as P
+
 
 # ---------------- registry ----------------
 @dataclass
@@ -275,7 +274,6 @@ def remove_app(app_id: str) -> None:
 def system_info() -> dict:
     """Returns {section: [(label, value)]} with raw language-neutral values where possible."""
     mem = psutil.virtual_memory()
-    boot = datetime.fromtimestamp(psutil.boot_time())
     info: dict = {"uptime": time.time() - psutil.boot_time(), "ram_total": mem.total, "ram_free": mem.available, "cores": psutil.cpu_count(False) or 0, "threads": psutil.cpu_count() or 0}
     if P.IS_WINDOWS:
         d = P.ps_json(r'''

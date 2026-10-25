@@ -9,7 +9,8 @@ import winreg
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from sweep import cleaner, platform as P, tweaks  # noqa: E402
+from sweep import cleaner, tweaks  # noqa: E402
+from sweep import platform as P
 
 fails: list[str] = []
 
@@ -18,6 +19,14 @@ def check(cond: bool, what: str):
     print(("OK   " if cond else "FAIL ") + what, flush=True)
     if not cond:
         fails.append(what)
+        if os.environ.get("GITHUB_ACTIONS"):      # shows up on the run page without opening the log
+            print(f"::error title=Self test::{what[:900]}", flush=True)
+
+
+def note(what: str):
+    print("     " + what, flush=True)
+    if os.environ.get("GITHUB_ACTIONS"):
+        print(f"::notice title=Self test::{what[:900]}", flush=True)
 
 
 print(f"admin: {P.is_admin()}  python: {sys.version.split()[0]}")
@@ -117,7 +126,9 @@ check(c.execute("SELECT COUNT(*) FROM moz_historyvisits").fetchone()[0] == 500, 
 c.close()
 
 # ---------- boot x-ray ----------
-from sweep import boot as bootx, extras, guard  # noqa: E402
+from sweep import boot as bootx  # noqa: E402
+from sweep import extras, guard
+
 ev = bootx.read_events()
 check(isinstance(ev, list), f"boot diagnostics log readable ({len(ev)} events)")
 r = bootx.analyse(ev)
@@ -147,7 +158,9 @@ except Exception as e:  # noqa: BLE001
 
 # ---------- every module on real Windows (read only) ----------
 import subprocess  # noqa: E402
+
 from sweep import uninstall as U  # noqa: E402
+
 for c in cleaner.CATEGORIES:
     check(cleaner.scan(c) >= 0, f"junk scan {c.id}: {c.size} bytes")
 for c in extras.REG_CATEGORIES:
@@ -218,12 +231,13 @@ if prog:
 # ---------------- program updates through winget: real catalogue, real download, real install ----------------
 print("\n== program updates (winget)")
 from sweep import updates as UPD  # noqa: E402
+
 exe = UPD.winget_exe()
 check(bool(exe), f"winget found: {exe}")
 if exe:
     res = UPD.scan()
     items = res["items"]
-    print("     updates:", [(i["id"], i["version"], i["available"], i["host"]) for i in items][:40])
+    note("winget updates: " + ", ".join(f"{i['id']} {i['version']}>{i['available']} @{i['host'] or '?'}" for i in items[:12]))
     check(res["winget"] and len(items) > 0, f"outdated programs found on this machine: {len(items)}")
     check(all(i["id"] and "." in i["id"] and i["available"] and i["title"] for i in items), "every row has an id, a title and a new version")
     known = [i for i in items if i["host"] and i["sha256"]]
@@ -234,6 +248,7 @@ if exe:
         r = UPD.upgrade(pick["id"])
         after = UPD.installed_version(pick["id"])
         check(r["ok"], f"{pick['id']} updated {before} -> {after}: {r}")
+        note(f"winget upgrade {pick['id']}: {before} -> {after}, {r}")
         check(bool(after) and after != before, f"installed version changed ({before} -> {after}, catalogue {pick['available']})")
         again = UPD.upgrade(pick["id"])
         check(again["ok"] and again["reason"] == "uptodate", f"second run reports up to date: {again}")

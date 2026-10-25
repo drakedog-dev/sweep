@@ -1,0 +1,50 @@
+name: Bug report
+description: Something does not work as expected
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this. Security problems go to the [private report form](https://github.com/pabloescobarbl-ops/sweep/security/advisories/new) instead.
+        Можно писать по-русски.
+  - type: input
+    id: version
+    attributes:
+      label: Sweep version
+      description: Shown under the logo in the sidebar
+      placeholder: "1.0.16"
+    validations: { required: true }
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version
+      description: Win+R, type winver
+      placeholder: "Windows 11 24H2, build 26100"
+    validations: { required: true }
+  - type: input
+    id: antivirus
+    attributes:
+      label: Antivirus
+      description: Kaspersky, ESET, Avast and others can silently block changes
+      placeholder: "Microsoft Defender only"
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected and what happened instead
+      placeholder: |
+        1. Opened Privacy
+        2. Turned off Telemetry
+        3. The switch turned itself back on
+    validations: { required: true }
+  - type: textarea
+    id: log
+    attributes:
+      label: Log
+      description: Settings → Open log (C:\ProgramData\Sweep\log.txt). Paste the last lines around the problem.
+      render: text
+  - type: textarea
+    id: screens
+    attributes:
+      label: Screenshots
+      description: Drag images here if they help

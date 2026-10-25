@@ -51,6 +51,11 @@ Filename: "{app}\Sweep.exe"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags
 ; silent self-update started from inside Sweep: relaunch the app when asked to
 Filename: "{app}\Sweep.exe"; Flags: nowait shellexec; Check: ShouldRelaunch
 
+[UninstallRun]
+; scheduled tasks Sweep created (Guard and the weekly clean) leave together with Sweep
+Filename: "{sys}\schtasks.exe"; Parameters: "/Delete /TN ""Sweep Guard"" /F"; Flags: runhidden; RunOnceId: "DelGuardTask"
+Filename: "{sys}\schtasks.exe"; Parameters: "/Delete /TN ""Sweep Auto Clean"" /F"; Flags: runhidden; RunOnceId: "DelAutoTask"
+
 [Code]
 function ShouldRelaunch: Boolean;
 begin

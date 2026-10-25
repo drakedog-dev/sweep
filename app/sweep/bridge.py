@@ -4,21 +4,22 @@ from __future__ import annotations
 import os
 import re
 import sys
-import threading
 import traceback
-import webbrowser
 from datetime import datetime
-
 from urllib.parse import quote, unquote
 
 from PySide6.QtCore import Property, QFileInfo, QObject, QSize, QThread, QTimer, QUrl, Signal, Slot
 from PySide6.QtGui import QDesktopServices, QPixmap
 from PySide6.QtQuick import QQuickImageProvider
 
-from . import boot as bootx, cleaner, extras, guard, platform as P, tweaks, uninstall as U, updates as UPD
+from . import boot as bootx
+from . import cleaner, extras, guard, tweaks
+from . import platform as P
+from . import uninstall as U
+from . import updates as UPD
 from .i18n import I18n
 
-TERMS_VERSION = 1   # raise when the terms of use change: everyone is asked to accept them again
+TERMS_VERSION = 2   # raise when the terms of use change: everyone is asked to accept them again (2: winget program updates)
 
 
 def changelog_notes(text: str, version: str | None = None) -> list[str]:
@@ -26,14 +27,14 @@ def changelog_notes(text: str, version: str | None = None) -> list[str]:
     lines = text.splitlines()
     if version is not None:
         out, inside = [], False
-        for l in lines:
-            if l.startswith("## "):
-                inside = l[3:].strip().lstrip("v") == version
+        for line in lines:
+            if line.startswith("## "):
+                inside = line[3:].strip().lstrip("v") == version
                 continue
             if inside:
-                out.append(l)
+                out.append(line)
         lines = out
-    return [l.strip()[2:].strip() for l in lines if l.strip().startswith(("- ", "* "))][:12]
+    return [ln.strip()[2:].strip() for ln in lines if ln.strip().startswith(("- ", "* "))][:12]
 
 
 def bundled_changelog() -> str:
@@ -1142,7 +1143,7 @@ class App(QObject):
         letters = [v["letter"] for v in self.volumes]
 
         def work():
-            return {l: extras.drive_junk(l) for l in letters}
+            return {letter: extras.drive_junk(letter) for letter in letters}
 
         def done(res):
             self.drive_junk = res

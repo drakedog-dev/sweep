@@ -1,7 +1,6 @@
 *.zip
 *.jpg
 *.png
-!sweep-icon.png
 __pycache__/
 app/build/
 app/dist/

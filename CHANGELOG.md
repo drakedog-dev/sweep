@@ -2,6 +2,16 @@
 
 All notable changes to Sweep. The newest version is at the top; the in-app update dialog and the GitHub release notes are built from this file.
 
+## 1.0.16
+- Program updates: a new Updates tab on the Programs page finds installed programs that have a newer version, using winget, the package manager built into Windows 10 and 11
+- Every update shows where the installer comes from (7-zip.org, videolan.org, github.com/notepad-plus-plus and so on) and is checked against its SHA-256 before it runs
+- Update the ticked programs one by one or a single program with its own button; major upgrades are not ticked by default, any program can be hidden, and a restore point is created first
+- Optional daily check with a counter on the Programs item in the sidebar and a tip on the Overview; nothing is installed without your click
+- Uninstalling Sweep now also removes its scheduled tasks (Guard and the weekly clean)
+- Terms of use and the privacy policy describe the new winget connections, so they are shown once more for your consent
+- New repository look: redesigned README, privacy policy, security policy, contribution guide, issue forms, and a Linux pipeline with lint, unit tests and an interface test next to the Windows self-test
+- Release pages now list the SHA-256 of the installer
+
 ## 1.0.15
 - Programs: a thorough uninstaller that lists every installed program with its real icon, size, publisher and install date, with search and sorting
 - Runs the program's own uninstaller (quietly when it supports it), waits for it to finish, then finds what it left behind in program folders, AppData, ProgramData, the registry, shortcuts, Run entries, scheduled tasks and services

@@ -25,7 +25,7 @@ jobs:
       # Code signing by SignPath Foundation switches on by itself once the secret and the variable exist
       SIGNPATH_ENABLED: ${{ secrets.SIGNPATH_API_TOKEN != '' && vars.SIGNPATH_ORGANIZATION_ID != '' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with: { fetch-depth: 0 }
 
       - name: Read version
@@ -39,7 +39,7 @@ jobs:
           "exists=$exists" >> $env:GITHUB_OUTPUT
           Write-Host "Version $ver, tag exists: $exists"
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         if: steps.ver.outputs.exists == 'False'
         with: { python-version: '3.12' }
 
@@ -87,7 +87,7 @@ jobs:
       - name: Upload Sweep.exe for signing
         id: up_app
         if: steps.ver.outputs.exists == 'False' && env.SIGNPATH_ENABLED == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with: { name: sweep-app-unsigned, path: app/dist/Sweep/Sweep.exe, if-no-files-found: error }
 
       - name: Sign Sweep.exe
@@ -127,7 +127,7 @@ jobs:
       - name: Upload installer for signing
         id: up_setup
         if: steps.ver.outputs.exists == 'False' && env.SIGNPATH_ENABLED == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with: { name: sweep-setup-unsigned, path: app/sign-setup/Sweep-Setup.exe, if-no-files-found: error }
 
       - name: Sign installer
@@ -152,6 +152,13 @@ jobs:
           Write-Host "Installer signature: $($sig.Status)"
           if ($sig.Status -ne 'Valid') { throw 'Installer is not validly signed' }
 
+      - name: Previous version
+        id: prev
+        if: steps.ver.outputs.exists == 'False'
+        run: |
+          $prev = git tag --list 'v*' --sort=-v:refname | Select-Object -First 1
+          "tag=$prev" >> $env:GITHUB_OUTPUT
+
       - name: Create tag
         if: steps.ver.outputs.exists == 'False'
         run: |
@@ -168,7 +175,16 @@ jobs:
           $text = Get-Content CHANGELOG.md -Raw
           $m = [regex]::Match($text, "(?ms)^## v?$([regex]::Escape($v))[ \t]*\r?\n(.*?)(?=^## |\z)")
           $body = if ($m.Success) { $m.Groups[1].Value.Trim() } else { "Sweep $v" }
-          $body += "`n`n**Download:** Sweep-Setup-$v.exe below. Sweep also offers this update by itself when it starts."
+          $setup = "app/Output/Sweep-Setup-$v.exe"
+          $hash = (Get-FileHash $setup -Algorithm SHA256).Hash.ToLower()
+          $size = '{0:N1} MB' -f ((Get-Item $setup).Length / 1MB)
+          $signed = if ((Get-AuthenticodeSignature $setup).Status -eq 'Valid') { 'signed by SignPath Foundation' } else { 'not signed yet' }
+          "$hash  Sweep-Setup-$v.exe" | Set-Content -Path app/Output/SHA256SUMS.txt -Encoding ascii
+          $prev = '${{ steps.prev.outputs.tag }}'
+          $body += "`n`n### Download`n`n| File | Size | SHA-256 |`n|---|---|---|`n| [Sweep-Setup-$v.exe](https://github.com/${{ github.repository }}/releases/download/v$v/Sweep-Setup-$v.exe) | $size | ``$hash`` |"
+          $body += "`n`nWindows 10 and 11, 64-bit. Installer $signed. Check the file in PowerShell: ``Get-FileHash .\Sweep-Setup-$v.exe``"
+          $body += "`n`nSweep offers this update by itself when it starts."
+          if ($prev) { $body += " Full list of commits: [$prev...v$v](https://github.com/${{ github.repository }}/compare/$prev...v$v)" }
           Set-Content -Path release-notes.md -Value $body -Encoding utf8
           Get-Content release-notes.md
 
@@ -178,5 +194,7 @@ jobs:
         with:
           tag_name: v${{ steps.ver.outputs.version }}
           name: Sweep ${{ steps.ver.outputs.version }}
-          files: app/Output/Sweep-Setup-*.exe
+          files: |
+            app/Output/Sweep-Setup-*.exe
+            app/Output/SHA256SUMS.txt
           body_path: release-notes.md

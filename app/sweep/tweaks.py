@@ -135,7 +135,7 @@ def _reg_exe_query(root: str, path: str, name: str) -> str:
     si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
     try:
         r = subprocess.run(["reg.exe", "query", f"{root}\\{path}", "/v", name, "/reg:64"], capture_output=True, text=True, timeout=20, startupinfo=si)
-        line = next((l.strip() for l in r.stdout.splitlines() if name.lower() in l.lower() and "REG_" in l), "")
+        line = next((ln.strip() for ln in r.stdout.splitlines() if name.lower() in ln.lower() and "REG_" in ln), "")
         return line or "no value"
     except Exception as e:
         return f"error {e}"

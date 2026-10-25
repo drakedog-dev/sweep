@@ -5,7 +5,8 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from . import extras, platform as P, tweaks
+from . import extras, tweaks
+from . import platform as P
 
 TASK = "Sweep Guard"
 DEFAULTS = {"enabled": False, "auto": False, "privacy": None, "apps": [], "lastRun": "", "lastBuild": "", "events": [], "pending": {}}
