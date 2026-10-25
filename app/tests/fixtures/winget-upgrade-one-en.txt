@@ -1,0 +1,8 @@
+   -                                                                                                                            -                                                                                                                         Found 7-Zip [7zip.7zip] Version 26.05
+This application is licensed to you by its owner.
+Microsoft is not responsible for, nor does it grant any licenses to, third-party packages.
+Downloading https://github.com/ip7z/7zip/releases/download/26.05/7z2605-x64.exe
+   -    \    |    /    -    \    |                                                                                                                           ██████████████████████████████  1.58 MB / 1.58 MB
+Successfully verified installer hash
+Starting package install...
+   -    \    |                                                                                                                         Successfully installed

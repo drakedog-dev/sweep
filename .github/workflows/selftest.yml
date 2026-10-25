@@ -1,6 +1,6 @@
 name: Self test
 
-# Runs Sweep's privacy, startup and browser-history code on a real Windows machine.
+# Runs Sweep's real code on a real Windows machine: privacy, startup, history, Guard, uninstaller, winget updates.
 on:
   push:
     branches: [main]
@@ -17,6 +17,8 @@ jobs:
         with: { python-version: '3.12' }
       - name: Install dependencies
         run: pip install -r app/requirements.txt
+      - name: Unit tests (winget output parser)
+        run: python app/tests/test_updates.py
       - name: Self test
         run: python app/tests/selftest.py
       - name: UI test (every page, real data)

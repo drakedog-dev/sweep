@@ -1,0 +1,31 @@
+   -    \                                                                                                                         The `msstore` source requires that you view the following agreements before using.
+Terms of Transaction: https://aka.ms/microsoft-store-terms-of-transaction
+The source requires the current machine's 2-letter geographic region to be sent to the backend service to function properly (ex. "US").
+
+   -                                                                                                                         Name                                             Id                                Version        Available      Source
+-----------------------------------------------------------------------------------------------------------------------
+7-Zip 26.04 (x64)                                7zip.7zip                         26.04          26.05          winget
+Git                                              Git.Git                           2.56.0.2       2.56.0.3       winget
+ImageMagick 7.1.2-25 Q16-HDRI (64-bit) (2026-06… ImageMagick.ImageMagick           7.1.2.25       7.1.2.34       winget
+Miniconda3 py314_26.9.3-0 (Python 3.14.8 64-bit) Anaconda.Miniconda3               py314_26.9.3-0 py314_26.9.4-0 winget
+OpenSSL 3.6.5 (64-bit)                           ShiningLight.OpenSSL.Dev          3.6.5          4.1.0          winget
+Unity Hub 3.22.3                                 Unity.UnityHub                    3.22.3.65535   3.22.4.65535   winget
+AWS SAM Command Line Interface                   Amazon.SAM-CLI                    1.169.0        1.170.0        winget
+Microsoft ODBC Driver 17 for SQL Server          Microsoft.msodbcsql.17            17.10.6.1      17.11.1.1      winget
+Strawberry Perl (64-bit)                         StrawberryPerl.StrawberryPerl     5.42.1         5.42.3.1       winget
+MongoDB Shell                                    MongoDB.Shell                     2.13.0         2.14.0         winget
+MongoDB 7.0.45 2008R2Plus SSL (64 bit)           MongoDB.Server                    7.0.45         9.0.2          winget
+AWS Command Line Interface v2                    Amazon.AWSCLI                     2.38.3.0       2.38.5         winget
+GitHub CLI                                       GitHub.cli                        2.103.0        2.103.2        winget
+MySQL Server 8.0                                 Oracle.MySQL                      8.0.46         8.4.9          winget
+Microsoft OLE DB Driver 19 for SQL Server        Microsoft.SQLServer.OLEDBDriver   19.4.1.0       19.4.3         winget
+PowerShell 7-x64                                 Microsoft.PowerShell              7.6.7.0        7.6.8.0        winget
+Microsoft SQL Server Data-Tier Application Fram… Microsoft.SqlPackage.NETFramework 170.4.83.3     170.5.96       winget
+Inno Setup version 6.7.1                         JRSoftware.InnoSetup              6.7.1          6.7.3          winget
+LLVM                                             LLVM.LLVM                         20.1.8         23.1.4         winget
+Microsoft Edge                                   Microsoft.Edge                    155.0.4283.62  156.0.4314.42  winget
+sbt 1.12.12                                      sbt.sbt                           1.12.12        2.0.11         winget
+Microsoft Visual C++ 2013 Redistributable (x64)… Microsoft.VCRedist.2013.x64       12.0.40660.0   12.0.40664.0   winget
+App Installer                                    Microsoft.AppInstaller            1.26.510.0     1.29.380       winget
+Windows Terminal                                 Microsoft.WindowsTerminal         1.23.20211.0   1.25.2733.0    winget
+24 upgrades available.

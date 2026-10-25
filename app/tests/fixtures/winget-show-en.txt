@@ -1,0 +1,40 @@
+   -                                                                                                                         Found 7-Zip [7zip.7zip]
+Version: 26.05
+Publisher: Igor Pavlov
+Publisher Url: https://7-zip.org/
+Publisher Support Url: https://7-zip.org/support.html
+Author: Igor Pavlov
+Moniker: 7zip
+Description: A file archiver with a high compression ratio.
+Homepage: https://7-zip.org/download.html
+License: LGPL-2.1
+License Url: https://7-zip.org/license.txt
+Copyright: Copyright © 1999-2026 Igor Pavlov.
+Release Notes:
+  - Improved code for unpacking Z archives and Mach-O files.
+  - Some bugs and vulnerabilities were fixed.
+Release Notes Url: https://github.com/ip7z/7zip/releases/tag/26.05
+Documentation:
+  FAQ: https://7-zip.org/faq.html
+Tags:
+  7zfiles
+  archive
+  archiver
+  compress
+  compression
+  decompress
+  decompression
+  extract
+  extractor
+  rarfiles
+  targzfiles
+  unarchive
+  unarchiver
+  unzip
+  zip
+Installer:
+  Installer Type: exe
+  Installer Url: https://github.com/ip7z/7zip/releases/download/26.05/7z2605-x64.exe
+  Installer SHA256: fd99e86f57d8f429ef5ed045bf98315af962e2309b0f1ba87a147a44c71647d0
+  Release Date: 2026-10-21
+  Offline Distribution Supported: true

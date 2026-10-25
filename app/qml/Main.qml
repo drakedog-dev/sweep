@@ -84,6 +84,11 @@ ApplicationWindow {
                         Txt { text: tr("nav." + navKeys[index]); font.pixelSize: 14; bold: true; color: current === index ? Theme.text : Theme.muted; anchors.verticalCenter: parent.verticalCenter
                             Behavior on color { ColorAnimation { duration: Theme.dur } } }
                     }
+                    Rectangle { // updates waiting on the Programs page
+                        property int n: navKeys[index] === "apps" ? (app.programUpdates["count"] || 0) : 0
+                        visible: n > 0; anchors.right: parent.right; anchors.rightMargin: 24; anchors.verticalCenter: parent.verticalCenter
+                        width: Math.max(20, nb.implicitWidth + 10); height: 20; radius: 10; color: Theme.accent
+                        Txt { id: nb; anchors.centerIn: parent; text: String(parent.n); color: "white"; bold: true; font.pixelSize: 11 } }
                     MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; hoverEnabled: true; onClicked: current = index
                         Rectangle { anchors.fill: parent; anchors.leftMargin: 12; anchors.rightMargin: 12; radius: 12; color: Theme.text; opacity: parent.containsMouse && current !== index ? 0.05 : 0 } }
                 }

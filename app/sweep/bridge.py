@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import re
 import sys
 import threading
 import traceback
@@ -14,7 +15,7 @@ from PySide6.QtCore import Property, QFileInfo, QObject, QSize, QThread, QTimer,
 from PySide6.QtGui import QDesktopServices, QPixmap
 from PySide6.QtQuick import QQuickImageProvider
 
-from . import boot as bootx, cleaner, extras, guard, platform as P, tweaks, uninstall as U
+from . import boot as bootx, cleaner, extras, guard, platform as P, tweaks, uninstall as U, updates as UPD
 from .i18n import I18n
 
 TERMS_VERSION = 1   # raise when the terms of use change: everyone is asked to accept them again
@@ -84,6 +85,7 @@ class App(QObject):
     busyChanged = Signal()
     monitorChanged = Signal()
     langChanged = Signal()
+    updatesChanged = Signal()      # program updates list and progress (emitted from worker threads too)
     toast = Signal(str)
 
     def __init__(self):
@@ -121,6 +123,11 @@ class App(QObject):
         self._prog_sort = "size"
         self._un: dict = {}            # uninstall wizard state
         self._un_cancel = False
+        # program updates through winget
+        self._pu = {"checked": False, "checking": False, "winget": True, "running": False, "current": "", "done": 0, "total": 0, "when": ""}
+        self._pu_items: list[dict] = []
+        self._pu_cancel = False
+        self._pu_pending: list[str] = []
         self.sysinfo = {}
         self.profile = {"class": "mid"}
         self.quarantine = cleaner.sessions()
@@ -155,6 +162,8 @@ class App(QObject):
         self._need_terms = int(self.settings.get("termsAccepted", 0)) < TERMS_VERSION and (P.IS_WINDOWS or "--terms" in sys.argv)
         if P.IS_WINDOWS and self.settings["updateMode"] != "off":
             QTimer.singleShot(8000, self.autoUpdateCheck)
+        if P.IS_WINDOWS and self._pu_conf().get("auto") and self._pu_due():
+            QTimer.singleShot(25000, lambda: self._scan_updates(quiet=True))
 
     # ---------- helpers ----------
     @staticmethod
@@ -216,6 +225,31 @@ class App(QObject):
                     P.log(traceback.format_exc())
             self._set_status(self._err_text(e))
             self.changed.emit()
+
+        w.done.connect(finished)
+        w.failed.connect(failed)
+        w.start()
+
+    def _bg(self, fn, on_done=None, on_fail=None):
+        """Like _run, but the rest of Sweep stays usable meanwhile (no busy flag)."""
+        w = Worker(fn, self)
+        self._workers.append(w)
+
+        def finished(res):
+            self._workers.remove(w)
+            try:
+                if on_done:
+                    on_done(res)
+            except Exception:  # noqa: BLE001
+                P.log(traceback.format_exc())
+
+        def failed(e):
+            self._workers.remove(w)
+            try:
+                if on_fail:
+                    on_fail(e)
+            except Exception:  # noqa: BLE001
+                P.log(traceback.format_exc())
 
         w.done.connect(finished)
         w.failed.connect(failed)
@@ -560,6 +594,9 @@ class App(QObject):
             self.setService(name, on)
         elif kind == "schedule":
             self.setSchedule(flag == "1")
+        elif kind == "progupdates":
+            self._pu_pending = [x for x in name.split("|") if x]
+            self._scan_updates()
         elif kind == "startup":
             idx = next((i for i, e in enumerate(self.startup) if e["name"] == name), -1)
             if idx >= 0:
@@ -615,6 +652,10 @@ class App(QObject):
         pend = guard.state(self.settings).get("pending") or {}
         if pend.get("privacy") or pend.get("apps"):
             tips.insert(0, self.i18n.t("ov.tip.guard", len(pend.get("privacy", [])) + len(pend.get("apps", []))))
+        n_upd = len(self._pu_open())
+        if n_upd:
+            score -= 6 if n_upd >= 5 else 3
+            tips.append(self.i18n.t("ov.tip.updates", n_upd))
         up_days = int(self.sysinfo.get("uptime", 0) // 86400)
         if up_days > 14:
             score -= 8; tips.append(self.i18n.t("ov.tip.uptime", up_days))
@@ -1205,13 +1246,16 @@ class App(QObject):
         except Exception:
             return ""
 
+    @staticmethod
+    def _load_programs():
+        progs = U.list_programs()
+        for p in progs:
+            p["iconPath"] = U.uninstall_icon_key(p) if P.IS_WINDOWS else ""
+        return progs
+
     @Slot()
     def scanPrograms(self):
-        def work():
-            progs = U.list_programs()
-            for p in progs:
-                p["iconPath"] = U.uninstall_icon_key(p) if P.IS_WINDOWS else ""
-            return progs
+        work = self._load_programs
 
         def done(progs):
             self.programs = progs
@@ -1340,6 +1384,194 @@ class App(QObject):
     def closeUninstall(self):
         self._un = {}
         self.changed.emit()
+
+    # ---------- program updates (winget) ----------
+    def _pu_conf(self) -> dict:
+        return self.settings.setdefault("progUpdates", {"auto": False, "skip": [], "lastCheck": ""})
+
+    def _pu_due(self) -> bool:
+        try:
+            return (datetime.now() - datetime.fromisoformat(self._pu_conf().get("lastCheck", ""))).total_seconds() > 20 * 3600
+        except Exception:
+            return True
+
+    def _pu_open(self) -> list[dict]:
+        """Updates still to do: not skipped by the user and not installed yet."""
+        skip = set(self._pu_conf().get("skip", []))
+        return [it for it in self._pu_items if it["id"] not in skip and it.get("state") != "ok"]
+
+    @staticmethod
+    def _major(v: str) -> str:
+        m = re.search(r"\d+", v or "")
+        return m.group(0) if m else ""
+
+    @Property("QVariantMap", notify=updatesChanged)
+    def programUpdates(self):
+        skip = set(self._pu_conf().get("skip", []))
+        items = [dict(it) for it in self._pu_items if it["id"] not in skip]
+        open_ = [it for it in items if it.get("state") != "ok"]
+        return dict(self._pu, items=items, count=len(open_), picked=sum(1 for it in open_ if it.get("picked")),
+                    skipped=len(skip), auto=bool(self._pu_conf().get("auto")))
+
+    @Slot()
+    def scanUpdates(self):
+        self._scan_updates()
+
+    def _scan_updates(self, quiet: bool = False):
+        if self._pu["checking"] or self._pu["running"]:
+            return
+        self._pu["checking"] = True
+        self.updatesChanged.emit()
+        if not quiet:
+            self._set_status(self.i18n.t("pu.checking"))
+        progs = list(self.programs)
+
+        def work():
+            res = UPD.scan()
+            if res["items"]:
+                self._pu_icons(res["items"], progs or U.list_programs())
+            return res
+
+        def done(res):
+            old = {it["id"]: it for it in self._pu_items}
+            for it in res["items"]:
+                major = self._major(it["version"]) != self._major(it["available"])
+                it.update(major=major, state="", reason="", code="",
+                          picked=old[it["id"]]["picked"] if it["id"] in old else not major)
+            self._pu_items = res["items"]
+            self._pu.update(checking=False, checked=True, winget=res["winget"], when=datetime.now().strftime("%H:%M"))
+            self._pu_conf()["lastCheck"] = datetime.now().isoformat(timespec="seconds")
+            P.save_settings(self.settings)
+            self._compute_health()
+            self.updatesChanged.emit()
+            self.changed.emit()
+            n = len(self._pu_open())
+            if not quiet:
+                self._set_status(self.i18n.t("pu.found", n) if n else self.i18n.t("pu.none") if res["winget"] else self.i18n.t("pu.nowinget.short"))
+            if self._pu_pending:
+                want, self._pu_pending = set(self._pu_pending), []
+                for it in self._pu_items:
+                    it["picked"] = it["id"] in want
+                self.installUpdates()
+
+        def failed(e):
+            self._pu["checking"] = False
+            self.updatesChanged.emit()
+            if not quiet:
+                self._set_status(self._err_text(e))
+
+        self._bg(work, done, failed)
+
+    @staticmethod
+    def _pu_icons(items, progs):
+        """Real program icons: match the winget entry to the installed program by name."""
+        def norm(s):
+            return re.sub(r"[^a-z0-9]+", "", (s or "").lower())
+        table = [(norm(p["name"]), p) for p in progs]
+        for it in items:
+            n = norm(it["name"].rstrip("\u2026."))
+            hit = next((p for k, p in table if k == n), None) or next((p for k, p in table if n and (k.startswith(n) or n.startswith(k)) and len(k) > 3), None)
+            path = U.uninstall_icon_key(hit) if hit and P.IS_WINDOWS else ""
+            it["icon"] = ("image://appicon/" + quote(path, safe="")) if path else ""
+
+    @Slot(str, bool)
+    def setUpdatePick(self, pid, on):
+        for it in self._pu_items:
+            if it["id"] == pid:
+                it["picked"] = on
+        self.updatesChanged.emit()
+
+    @Slot(bool)
+    def setAllUpdatePicks(self, on):
+        for it in self._pu_open():
+            it["picked"] = on
+        self.updatesChanged.emit()
+
+    @Slot(str)
+    def skipUpdate(self, pid):
+        conf = self._pu_conf()
+        if pid not in conf["skip"]:
+            conf["skip"].append(pid)
+        P.save_settings(self.settings)
+        self._compute_health()
+        self.updatesChanged.emit()
+        self.changed.emit()
+
+    @Slot()
+    def resetSkipped(self):
+        self._pu_conf()["skip"] = []
+        P.save_settings(self.settings)
+        self._compute_health()
+        self.updatesChanged.emit()
+        self.changed.emit()
+
+    @Slot(bool)
+    def setUpdatesAuto(self, on):
+        self._pu_conf()["auto"] = on
+        P.save_settings(self.settings)
+        self.updatesChanged.emit()
+
+    @Slot()
+    def installUpdates(self):
+        self._install_updates([it for it in self._pu_open() if it.get("picked")])
+
+    @Slot(str)
+    def updateOne(self, pid):
+        self._install_updates([it for it in self._pu_open() if it["id"] == pid])
+
+    @Slot()
+    def cancelUpdates(self):
+        self._pu_cancel = True
+        self._set_status(self.i18n.t("pu.stopping"))
+
+    def _install_updates(self, todo: list[dict]):
+        """One package after another: winget downloads it from the vendor, checks the SHA-256, installs silently."""
+        if not todo or self._pu["running"] or self._busy:
+            return
+        if self._need_admin("progupdates:" + "|".join(it["id"] for it in todo) + ":1", "apps"):
+            return
+        for it in todo:
+            it.update(state="queued", reason="", code="")
+        self._pu.update(running=True, done=0, total=len(todo), current="")
+        self._pu_cancel = False
+        self.updatesChanged.emit()
+
+        def work():
+            self._restore_point("update programs")
+            ok = 0
+            for n, it in enumerate(todo):
+                if self._pu_cancel:
+                    it["state"] = ""
+                    continue
+                it["state"] = "working"
+                self._pu.update(current=it.get("title") or it["name"], done=n)
+                self.updatesChanged.emit()
+                r = UPD.upgrade(it["id"])
+                it.update(state="ok" if r["ok"] else "failed", reason=r["reason"], code=f"{r['code']:#x}" if r["code"] else "")
+                ok += bool(r["ok"])
+                self.updatesChanged.emit()
+            return ok
+
+        def done(ok):
+            self._pu.update(running=False, current="", done=len(todo))
+            msg = self.i18n.t("pu.done", ok, len(todo))
+            if any(it.get("reason") == "reboot" for it in todo):
+                msg += ". " + self.i18n.t("pu.r.reboot")
+            self._set_status(msg)
+            self.toast.emit(msg)
+            self._compute_health()
+            self.updatesChanged.emit()
+            self.changed.emit()
+            self._bg(self._load_programs, lambda progs: (setattr(self, "programs", progs), self.changed.emit()))   # new versions in the list
+
+        def failed(e):
+            self._pu.update(running=False, current="")
+            for it in todo:
+                if it.get("state") in ("queued", "working"):
+                    it["state"] = ""
+            self.updatesChanged.emit()
+
+        self._run(work, done, self.i18n.t("pu.installing"), failed)
 
     @Slot()
     def openStore(self):

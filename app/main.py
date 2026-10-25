@@ -137,11 +137,21 @@ def run_ui_test(qt_app, root, bridge, warnings) -> int:
     """Opens every page of the real build, loads the real program list, fails on any QML warning."""
     from PySide6.QtCore import QTimer
     keys = list(root.property("navKeys").toVariant()) if hasattr(root.property("navKeys"), "toVariant") else list(root.property("navKeys"))
+    from PySide6.QtCore import QObject
+
+    def apps_tab(t):
+        page = root.findChild(QObject, "appsPage")
+        if page is not None:
+            page.setProperty("tab", t)
+        else:
+            warnings.append("ui-test: appsPage not found")
+
     steps = [lambda i=i: root.setProperty("current", i) for i in range(len(keys))] + [bridge.scanPrograms, bridge.scanBoot]
+    steps += [lambda: root.setProperty("current", keys.index("apps")), lambda: apps_tab(2), lambda: apps_tab(1), lambda: apps_tab(2), lambda: apps_tab(0)]
     result = {"code": 0}
 
     def step(n=0):
-        if bridge.busy:
+        if bridge.busy or bridge.programUpdates.get("checking"):
             QTimer.singleShot(300, lambda: step(n))
             return
         if n < len(steps):
@@ -149,7 +159,9 @@ def run_ui_test(qt_app, root, bridge, warnings) -> int:
             QTimer.singleShot(900, lambda: step(n + 1))
             return
         progs = bridge.programCount
-        P.log(f"ui-test: pages {len(keys)}, programs {progs}, boots {len(bridge.bootData.get('boots', []))}, QML warnings {len(warnings)}")
+        pu = bridge.programUpdates
+        P.log(f"ui-test: pages {len(keys)}, programs {progs}, boots {len(bridge.bootData.get('boots', []))}, "
+              f"updates {pu.get('count')} (winget={pu.get('winget')}, checked={pu.get('checked')}), QML warnings {len(warnings)}")
         for w in warnings[:20]:
             P.log(f"ui-test QML: {w}")
         result["code"] = 1 if warnings or progs == 0 else 0

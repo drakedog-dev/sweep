@@ -108,7 +108,14 @@ QtObject {
         "arrow-right": "\ue049",
         "life-buoy": "\ue101",
         "users": "\ue1a4",
-        "user-cog": "\ue342"
+        "user-cog": "\ue342",
+        "circle-arrow-up": "\ue07b",
+        "eye-off": "\ue0bb",
+        "badge-check": "\ue241",
+        "x": "\ue1b2",
+        "eye": "\ue0ba",
+        "git-branch": "\ue0e2",
+        "heart": "\ue0f2"
     })
     function icon(name) { return icons[name] || "" }
 }

@@ -215,6 +215,33 @@ if prog:
     n = cleaner.restore(str(P.QUARANTINE / session))
     check((Path(os.environ["APPDATA"]) / "SweepTestApp").exists(), f"restore from quarantine works ({n} items)")
 
+# ---------------- program updates through winget: real catalogue, real download, real install ----------------
+print("\n== program updates (winget)")
+from sweep import updates as UPD  # noqa: E402
+exe = UPD.winget_exe()
+check(bool(exe), f"winget found: {exe}")
+if exe:
+    res = UPD.scan()
+    items = res["items"]
+    print("     updates:", [(i["id"], i["version"], i["available"], i["host"]) for i in items][:40])
+    check(res["winget"] and len(items) > 0, f"outdated programs found on this machine: {len(items)}")
+    check(all(i["id"] and "." in i["id"] and i["available"] and i["title"] for i in items), "every row has an id, a title and a new version")
+    known = [i for i in items if i["host"] and i["sha256"]]
+    check(len(known) >= max(1, len(items) * 0.8), f"vendor address and SHA-256 known for most packages ({len(known)}/{len(items)})")
+    pick = next((i for k in ("7zip.7zip", "GitHub.cli", "JRSoftware.InnoSetup", "Microsoft.PowerShell") for i in items if i["id"] == k), None)
+    if pick:
+        before = UPD.installed_version(pick["id"])
+        r = UPD.upgrade(pick["id"])
+        after = UPD.installed_version(pick["id"])
+        check(r["ok"], f"{pick['id']} updated {before} -> {after}: {r}")
+        check(bool(after) and after != before, f"installed version changed ({before} -> {after}, catalogue {pick['available']})")
+        again = UPD.upgrade(pick["id"])
+        check(again["ok"] and again["reason"] == "uptodate", f"second run reports up to date: {again}")
+        rest = UPD.scan(details=False)["items"]
+        check(pick["id"] not in [i["id"] for i in rest], "updated program left the list")
+    else:
+        print("     no small package to update on this machine: install step skipped")
+
 print()
 print("FAILED:" if fails else "ALL PASSED", *fails, sep="\n  ")
 sys.exit(1 if fails else 0)
