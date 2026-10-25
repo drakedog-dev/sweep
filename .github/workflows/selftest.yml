@@ -19,6 +19,11 @@ jobs:
         run: pip install -r app/requirements.txt
       - name: Self test
         run: python app/tests/selftest.py
+      - name: UI test (every page, real data)
+        run: |
+          $p = Start-Process -FilePath python -ArgumentList 'app/main.py','--ui-test','--no-elevate' -Wait -PassThru -NoNewWindow
+          Get-Content "$env:ProgramData\Sweep\log.txt" | Select-String 'ui-test' | Select-Object -Last 25
+          if ($p.ExitCode -ne 0) { throw "UI test failed with exit code $($p.ExitCode)" }
       - name: Log
         if: always()
         run: if (Test-Path "$env:ProgramData\Sweep\log.txt") { Get-Content "$env:ProgramData\Sweep\log.txt" -Tail 40 }

@@ -77,6 +77,10 @@ jobs:
           Write-Host "Version info: $($vi.ProductName) $($vi.ProductVersion)"
           if ($vi.ProductName -ne 'Sweep') { throw 'Sweep.exe has no product name' }
           Start-Process -FilePath dist/Sweep/Sweep.exe -ArgumentList '--auto','--no-elevate' -Wait -NoNewWindow
+          # open every page of the built app, load the real program list, fail on any QML warning
+          $ui = Start-Process -FilePath dist/Sweep/Sweep.exe -ArgumentList '--ui-test','--no-elevate' -Wait -PassThru
+          if (Test-Path "$env:ProgramData\Sweep\log.txt") { Get-Content "$env:ProgramData\Sweep\log.txt" | Select-String 'ui-test' | Select-Object -Last 25 }
+          if ($ui.ExitCode -ne 0) { throw "UI test failed with exit code $($ui.ExitCode)" }
           if (Test-Path "$env:ProgramData\Sweep\log.txt") { Get-Content "$env:ProgramData\Sweep\log.txt" | Select-Object -Last 3 }
 
       # ---- code signing of Sweep.exe (SignPath Foundation), skipped until SignPath is set up ----

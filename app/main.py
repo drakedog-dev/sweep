@@ -96,7 +96,11 @@ def main() -> int:
         ensure_admin()
         run_auto()
         return 0
-    ensure_admin()
+    ui_test = "--ui-test" in sys.argv
+    if ui_test:
+        os.environ["QT_QPA_PLATFORM"] = "offscreen"    # CI: no visible window
+    else:
+        ensure_admin()
     os.environ.setdefault("QT_QUICK_CONTROLS_STYLE", "Basic")
     # The interface is always drawn by the CPU (Qt Quick software renderer): the graphics card is not used at all,
     # which keeps the mouse cursor and games smooth while Sweep is open.
@@ -116,10 +120,44 @@ def main() -> int:
     engine = QQmlApplicationEngine()
     engine.addImportPath(str(HERE / "qml"))
     engine.rootContext().setContextProperty("app", bridge)
+    from sweep.bridge import AppIconProvider
+    engine.addImageProvider("appicon", AppIconProvider())
+    warnings: list[str] = []
+    engine.warnings.connect(lambda ws: warnings.extend(w.toString() for w in ws))
     engine.load(str(HERE / "qml" / "Main.qml"))
     if not engine.rootObjects():
+        P.log("ui-test: Main.qml did not load: " + " | ".join(warnings))
         return 1
+    if ui_test:
+        return run_ui_test(qt_app, engine.rootObjects()[0], bridge, warnings)
     return qt_app.exec()
+
+
+def run_ui_test(qt_app, root, bridge, warnings) -> int:
+    """Opens every page of the real build, loads the real program list, fails on any QML warning."""
+    from PySide6.QtCore import QTimer
+    keys = list(root.property("navKeys").toVariant()) if hasattr(root.property("navKeys"), "toVariant") else list(root.property("navKeys"))
+    steps = [lambda i=i: root.setProperty("current", i) for i in range(len(keys))] + [bridge.scanPrograms, bridge.scanBoot]
+    result = {"code": 0}
+
+    def step(n=0):
+        if bridge.busy:
+            QTimer.singleShot(300, lambda: step(n))
+            return
+        if n < len(steps):
+            steps[n]()
+            QTimer.singleShot(900, lambda: step(n + 1))
+            return
+        progs = bridge.programCount
+        P.log(f"ui-test: pages {len(keys)}, programs {progs}, boots {len(bridge.bootData.get('boots', []))}, QML warnings {len(warnings)}")
+        for w in warnings[:20]:
+            P.log(f"ui-test QML: {w}")
+        result["code"] = 1 if warnings or progs == 0 else 0
+        qt_app.quit()
+
+    QTimer.singleShot(4000, step)
+    qt_app.exec()
+    return result["code"]
 
 
 if __name__ == "__main__":

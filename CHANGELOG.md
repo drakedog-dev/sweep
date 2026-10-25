@@ -2,6 +2,14 @@
 
 All notable changes to Sweep. The newest version is at the top; the in-app update dialog and the GitHub release notes are built from this file.
 
+## 1.0.15
+- Programs: a thorough uninstaller that lists every installed program with its real icon, size, publisher and install date, with search and sorting
+- Runs the program's own uninstaller (quietly when it supports it), waits for it to finish, then finds what it left behind in program folders, AppData, ProgramData, the registry, shortcuts, Run entries, scheduled tasks and services
+- Force mode for programs whose uninstaller is broken, missing or refuses to work; locked files are removed at the next restart
+- Only items that surely belong to the program are ticked; files go to quarantine, registry keys, tasks and services are backed up, and a restore point is created first
+- Built-in Windows apps moved to a second tab of the same page
+- Every page of the released build is opened automatically before publishing, and the Windows self-test uninstalls a test program end to end
+
 ## 1.0.14
 - Boot X-ray: how long Windows takes to start, split into "until the desktop" and "after sign-in", a chart of recent boots and what slows them down in seconds, straight from Windows' own diagnostics log
 - Remove a boot culprit from startup in one click, then restart and watch the new bar show the seconds you saved

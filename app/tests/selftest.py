@@ -145,6 +145,76 @@ try:
 except Exception as e:  # noqa: BLE001
     check(False, f"restore point raised {e}")
 
+# ---------- every module on real Windows (read only) ----------
+import subprocess  # noqa: E402
+from sweep import uninstall as U  # noqa: E402
+for c in cleaner.CATEGORIES:
+    check(cleaner.scan(c) >= 0, f"junk scan {c.id}: {c.size} bytes")
+for c in extras.REG_CATEGORIES:
+    print(f"     registry {c.id}: {extras.reg_scan(c)} found")
+states = {s.name: tweaks.service_state(s.name) for s in tweaks.SERVICES}
+check(any(v is not None for v in states.values()), f"service states read: {sum(v is not None for v in states.values())}")
+info = extras.system_info()
+check(bool(info.get("cpu")) and bool(info.get("os")), f"system info: {info.get('os')} / {info.get('cpu')}")
+print("     profile:", extras.pc_profile(info))
+vols = extras.volumes()
+check(len(vols) > 0, f"volumes: {[v['letter'] for v in vols]}")
+dj = extras.drive_junk(vols[0]["letter"])
+check(isinstance(dj, dict), f"drive junk {vols[0]['letter']}: {sum(c['size'] for c in dj.values())} bytes")
+print("     built-in apps found:", len(extras.installed_bloat()))
+print("     fx:", tweaks.visual_fx_mode(), "power:", tweaks.power_plan(), "schedule:", tweaks.schedule_state())
+progs = U.list_programs()
+check(len(progs) > 3, f"installed programs listed: {len(progs)}")
+
+# ---------- forced uninstall of a program that leaves things everywhere ----------
+APPD = Path("C:/SweepTestApp")
+APPD.mkdir(exist_ok=True)
+(APPD / "app.exe").write_bytes(b"MZ fake")
+(APPD / "uninstall.cmd").write_text("@exit /b 0\r\n")          # a "broken" uninstaller that removes nothing
+for d in (Path(os.environ["APPDATA"]) / "SweepTestApp", Path(os.environ["LOCALAPPDATA"]) / "SweepTestApp", Path(os.environ["ProgramData"]) / "SweepTestApp"):
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "settings.ini").write_text("x=1")
+UN = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\SweepTestApp"
+for path, vals in ((UN, {"DisplayName": "SweepTestApp", "Publisher": "Sweep Test", "DisplayVersion": "1.2.3", "InstallLocation": str(APPD).replace("/", "\\"),
+                         "UninstallString": r"C:\SweepTestApp\uninstall.cmd"}), (r"SOFTWARE\WOW6432Node\SweepTestApp", {"Path": "C:\\SweepTestApp"})):
+    with winreg.CreateKeyEx(winreg.HKEY_LOCAL_MACHINE, path, 0, winreg.KEY_SET_VALUE | winreg.KEY_WOW64_64KEY) as k:
+        for n, v in vals.items():
+            winreg.SetValueEx(k, n, 0, winreg.REG_SZ, v)
+with winreg.CreateKeyEx(winreg.HKEY_CURRENT_USER, r"Software\SweepTestApp\Settings", 0, winreg.KEY_SET_VALUE) as k:
+    winreg.SetValueEx(k, "Theme", 0, winreg.REG_SZ, "dark")
+with winreg.CreateKeyEx(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run", 0, winreg.KEY_SET_VALUE) as k:
+    winreg.SetValueEx(k, "SweepTestApp", 0, winreg.REG_SZ, r"C:\SweepTestApp\app.exe --tray")
+P.powershell(r"$s=(New-Object -ComObject WScript.Shell).CreateShortcut([Environment]::GetFolderPath('Desktop')+'\SweepTestApp.lnk'); $s.TargetPath='C:\SweepTestApp\app.exe'; $s.Save(); "
+             r"Register-ScheduledTask -TaskName 'SweepTestApp Update' -Action (New-ScheduledTaskAction -Execute 'C:\SweepTestApp\app.exe') -Trigger (New-ScheduledTaskTrigger -Daily -At 03:00) -Force | Out-Null", 60)
+subprocess.run(["sc.exe", "create", "SweepTestAppSvc", "binPath=", r"C:\SweepTestApp\app.exe", "start=", "demand"], capture_output=True)
+
+prog = next((p for p in U.list_programs() if p["name"] == "SweepTestApp"), None)
+check(prog is not None and prog["location"].lower() == r"c:\sweeptestapp", f"test program listed with its folder: {prog and prog['location']}")
+if prog:
+    r = U.run_uninstaller(prog, quiet=False, timeout=60)
+    check(r["still"], "broken uninstaller ran and left the program registered")
+    items = U.find_leftovers(prog)
+    kinds = {it["kind"] for it in items if it["exact"]}
+    print("     leftovers:", [(it["kind"], it["path"], it["exact"]) for it in items])
+    for k in ("folder", "reg", "run", "shortcut", "task", "service"):
+        check(k in kinds, f"leftover kind found: {k}")
+    stray = [it["path"] for it in items if it["exact"] and "sweeptestapp" not in it["path"].lower().replace(" ", "")]
+    check(not stray, f"nothing unrelated is ticked {stray}")
+    session = cleaner.new_session()
+    res = U.remove_leftovers([it for it in items if it["exact"]], session, "SweepTestApp")
+    print("     removal:", res)
+    check(not res["failed"], f"all leftovers removed {res['failed']}")
+    check(not APPD.exists() or res["reboot"] > 0, "program folder gone (or queued for restart)")
+    check(not (Path(os.environ["APPDATA"]) / "SweepTestApp").exists(), "AppData folder gone")
+    check(not U.still_installed(prog), "uninstall entry gone")
+    check(tweaks.reg_get("HKCU", r"Software\Microsoft\Windows\CurrentVersion\Run", "SweepTestApp") is None, "Run entry gone")
+    check(P.powershell("if(Get-ScheduledTask -TaskName 'SweepTestApp Update' -EA SilentlyContinue){'yes'}", 30).strip() != "yes", "task gone")
+    check(subprocess.run(["sc.exe", "query", "SweepTestAppSvc"], capture_output=True).returncode != 0, "service gone")
+    check(any(f.name.startswith(session) for f in P.REG_BACKUP.iterdir()), "registry backup written")
+    check((P.QUARANTINE / session / "manifest.txt").exists(), "files are in quarantine")
+    n = cleaner.restore(str(P.QUARANTINE / session))
+    check((Path(os.environ["APPDATA"]) / "SweepTestApp").exists(), f"restore from quarantine works ({n} items)")
+
 print()
 print("FAILED:" if fails else "ALL PASSED", *fails, sep="\n  ")
 sys.exit(1 if fails else 0)

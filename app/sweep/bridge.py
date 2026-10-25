@@ -8,10 +8,13 @@ import traceback
 import webbrowser
 from datetime import datetime
 
-from PySide6.QtCore import Property, QObject, QThread, QTimer, QUrl, Signal, Slot
-from PySide6.QtGui import QDesktopServices
+from urllib.parse import quote, unquote
 
-from . import boot as bootx, cleaner, extras, guard, platform as P, tweaks
+from PySide6.QtCore import Property, QFileInfo, QObject, QSize, QThread, QTimer, QUrl, Signal, Slot
+from PySide6.QtGui import QDesktopServices, QPixmap
+from PySide6.QtQuick import QQuickImageProvider
+
+from . import boot as bootx, cleaner, extras, guard, platform as P, tweaks, uninstall as U
 from .i18n import I18n
 
 TERMS_VERSION = 1   # raise when the terms of use change: everyone is asked to accept them again
@@ -59,6 +62,22 @@ class Worker(QThread):
             self.failed.emit(e)
 
 
+class AppIconProvider(QQuickImageProvider):
+    """image://appicon/<path>: the real icon of a program, taken from its exe or ico by Windows."""
+
+    def __init__(self):
+        super().__init__(QQuickImageProvider.ImageType.Pixmap)
+        self._cache: dict[str, QPixmap] = {}
+
+    def requestPixmap(self, id_, size, requested):  # noqa: N802
+        path = unquote(id_)
+        if path not in self._cache:
+            from PySide6.QtWidgets import QFileIconProvider
+            side = requested.width() if requested and requested.width() > 0 else 40
+            self._cache[path] = QFileIconProvider().icon(QFileInfo(path)).pixmap(QSize(side, side))
+        return self._cache[path]
+
+
 class App(QObject):
     changed = Signal()            # generic: any list/property changed
     statusChanged = Signal()
@@ -97,6 +116,11 @@ class App(QObject):
         self.drive_junk: dict = {}
         self.drive_checked: dict = {}
         self.apps = []
+        self.programs: list[dict] = []
+        self._prog_search = ""
+        self._prog_sort = "size"
+        self._un: dict = {}            # uninstall wizard state
+        self._un_cancel = False
         self.sysinfo = {}
         self.profile = {"class": "mid"}
         self.quarantine = cleaner.sessions()
@@ -1146,6 +1170,176 @@ class App(QObject):
             return len(ids)
 
         self._run(work, lambda n: (setattr(self, "apps", [a for a in self.apps if a["id"] not in ids]), self.changed.emit(), self._set_status(self.i18n.t("common.done"))), self.i18n.t("common.working"))
+
+    # ---------- installed programs and the thorough uninstaller ----------
+    @Property("QVariantList", notify=changed)
+    def programList(self):
+        q = self._prog_search.strip().lower()
+        rows = [p for p in self.programs if not q or q in p["name"].lower() or q in p.get("publisher", "").lower()]
+        key = {"size": lambda p: -p.get("size", 0), "name": lambda p: p["name"].lower(), "date": lambda p: p.get("date", "")}[self._prog_sort]
+        rows.sort(key=key, reverse=self._prog_sort == "date")
+        return [{"id": p["id"], "name": p["name"], "publisher": p.get("publisher", ""), "version": p.get("version", ""), "size": float(p.get("size", 0)),
+                 "date": self._fmt_date(p.get("date", "")), "icon": ("image://appicon/" + quote(p["iconPath"], safe="")) if p.get("iconPath") else ""} for p in rows]
+
+    @Property(int, notify=changed)
+    def programCount(self):
+        return len(self.programs)
+
+    @Property(str, notify=changed)
+    def programSort(self):
+        return self._prog_sort
+
+    @Slot(str)
+    def setProgramSearch(self, q):
+        self._prog_search = q
+        self.changed.emit()
+
+    @Slot(str)
+    def setProgramSort(self, key):
+        self._prog_sort = key
+        self.changed.emit()
+
+    def _fmt_date(self, iso: str) -> str:
+        try:
+            return datetime.strptime(iso, "%Y-%m-%d").strftime("%d.%m.%Y")
+        except Exception:
+            return ""
+
+    @Slot()
+    def scanPrograms(self):
+        def work():
+            progs = U.list_programs()
+            for p in progs:
+                p["iconPath"] = U.uninstall_icon_key(p) if P.IS_WINDOWS else ""
+            return progs
+
+        def done(progs):
+            self.programs = progs
+            self.changed.emit()
+            self._set_status(self.i18n.t("un.found", len(progs)))
+
+        self._run(work, done, self.i18n.t("common.working"))
+
+    @Property("QVariantMap", notify=changed)
+    def uninstallState(self):
+        if not self._un:
+            return {}
+        u = dict(self._un)
+        u["leftovers"] = [dict(it, kindText=self.i18n.t("un.kind." + it["kind"]), sizeText=self.i18n.size(it["size"]) if it.get("size") else "")
+                          for it in self._un.get("leftovers", [])]
+        u["checkedCount"] = sum(1 for it in self._un.get("leftovers", []) if it.get("checked"))
+        u["checkedSize"] = float(sum(it.get("size", 0) for it in self._un.get("leftovers", []) if it.get("checked")))
+        return u
+
+    def _prog(self, pid):
+        return next((p for p in self.programs if p["id"] == pid), None)
+
+    @Slot(str)
+    def startUninstall(self, pid):
+        """Step 0: show the program, running processes and the options."""
+        if self._need_admin("", "apps"):
+            return
+        p = self._prog(pid)
+        if not p:
+            return
+        running = U.running_processes(p)
+        self._un = {"stage": "confirm", "id": pid, "name": p["name"], "publisher": p.get("publisher", ""), "version": p.get("version", ""),
+                    "icon": ("image://appicon/" + quote(p["iconPath"], safe="")) if p.get("iconPath") else "",
+                    "quietAvailable": bool(p.get("quiet")), "quiet": False, "running": sorted({r["name"] for r in running}),
+                    "leftovers": [], "result": {}, "still": False, "forced": False}
+        self.changed.emit()
+
+    @Slot(bool)
+    def setUninstallQuiet(self, on):
+        if self._un:
+            self._un["quiet"] = on
+            self.changed.emit()
+
+    @Slot(bool)
+    def confirmUninstall(self, forced):
+        """Steps 1-3: close the program, run its own uninstaller (unless forced), then look for leftovers."""
+        u = self._un
+        p = self._prog(u.get("id"))
+        if not p:
+            return
+        u["forced"] = forced
+        u["stage"] = "uninstalling"
+        self._un_cancel = False
+        self.changed.emit()
+
+        def work():
+            self._restore_point(f"uninstall {p['name']}")
+            U.close_processes(p)
+            if forced:
+                return {"ok": False, "still": U.still_installed(p), "forced": True}
+            return U.run_uninstaller(p, quiet=bool(u.get("quiet")), cancel=lambda: self._un_cancel)
+
+        def scanned(items):
+            for it in items:
+                it["checked"] = bool(it["exact"])
+            u["leftovers"] = items
+            u["stage"] = "leftovers" if items else "done"
+            self._set_status(self.i18n.t("un.found.text", len(items), sum(1 for it in items if it["checked"])))
+            if not items:
+                u["result"] = {"removed": 0, "reboot": 0, "failed": [], "freed": 0}
+                self._after_uninstall(p)
+            self.changed.emit()
+
+        def uninstalled(r):
+            u["still"] = bool(r.get("still"))
+            u["stage"] = "scanning"
+            self.changed.emit()
+            self._run(lambda: U.find_leftovers(p), scanned, self.i18n.t("un.scanning"))
+
+        self._run(work, uninstalled, self.i18n.t("un.running", p["name"]))
+
+    @Slot()
+    def skipWaiting(self):
+        self._un_cancel = True
+
+    @Slot(int, bool)
+    def setLeftover(self, idx, on):
+        for it in self._un.get("leftovers", []):
+            if it["id"] == idx:
+                it["checked"] = on
+        self.changed.emit()
+
+    @Slot(bool)
+    def setAllLeftovers(self, on):
+        for it in self._un.get("leftovers", []):
+            it["checked"] = on
+        self.changed.emit()
+
+    @Slot()
+    def removeLeftovers(self):
+        """Step 4: remove what is ticked; everything stays restorable."""
+        u = self._un
+        p = self._prog(u.get("id")) or {"name": u.get("name", "program")}
+        items = [it for it in u.get("leftovers", []) if it.get("checked")]
+        session = cleaner.new_session()
+        u["stage"] = "removing"
+        self.changed.emit()
+
+        def done(res):
+            u["result"] = res
+            u["stage"] = "done"
+            self._after_uninstall(p)
+            self.changed.emit()
+            self._set_status(self.i18n.t("un.done.text", res.get("removed", 0), self.i18n.size(res.get("freed", 0))))
+
+        self._run(lambda: U.remove_leftovers(items, session, p["name"]), done, self.i18n.t("common.working"))
+
+    def _after_uninstall(self, p):
+        if not P.IS_WINDOWS or not U.still_installed(p):
+            self.programs = [x for x in self.programs if x["id"] != p.get("id")]
+        self.quarantine = cleaner.sessions()
+        self.reg_backups = extras.reg_backups()
+        self.startup = tweaks.startup_entries() if P.IS_WINDOWS else self.startup
+
+    @Slot()
+    def closeUninstall(self):
+        self._un = {}
+        self.changed.emit()
 
     @Slot()
     def openStore(self):

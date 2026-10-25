@@ -41,7 +41,7 @@ ApplicationWindow {
         if (!visited[key]) {
             var v = visited; v[key] = true; visited = v
             if (key === "registry") app.regScan()
-            else if (key === "apps") app.scanApps()
+            else if (key === "apps") app.scanPrograms()
         }
     }
     readonly property var navKeys: ["overview", "junk", "privacy", "guard", "boot", "startup", "services", "registry", "boost", "disks", "apps", "system", "quarantine", "settings"]
@@ -212,5 +212,95 @@ ApplicationWindow {
         Row { spacing: 10
             AccentButton { text: confirmOk; onClicked: { var f = confirmFn; confirmFn = null; if (f) f() } }
             AccentButton { text: tr("common.cancel"); primary: false; onClicked: confirmFn = null } }
+    }
+
+    // ---------- thorough uninstall wizard ----------
+    component Check: Rectangle {
+        property bool on: false; signal flip()
+        width: 22; height: 22; radius: 7; color: on ? Theme.accent : "transparent"; border.width: on ? 0 : 2; border.color: Theme.faint
+        Icon { anchors.centerIn: parent; name: "check"; size: 14; color: "white"; visible: parent.on }
+        MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: parent.flip() }
+    }
+    component Spinner: Icon {
+        name: "refresh-cw"; size: 22; color: Theme.accent2
+        RotationAnimation on rotation { from: 0; to: 360; duration: 1100; loops: Animation.Infinite; running: parent.visible }
+    }
+    Modal {
+        id: unModal
+        property var u: app.uninstallState
+        property string st: u["stage"] || ""
+        open: st !== ""
+        boxWidth: 760
+        icon: st === "done" ? "circle-check" : st === "leftovers" ? "search" : "package"
+        title: st === "confirm" ? tr1("un.title.confirm", u["name"] || "") : st === "uninstalling" ? tr1("un.title.running", u["name"] || "")
+             : st === "scanning" ? tr("un.title.scanning") : st === "leftovers" ? tr("un.title.leftovers") : st === "removing" ? tr("un.title.removing")
+             : tr1("un.title.done", u["name"] || "")
+        subtitle: st === "confirm" ? [u["publisher"], u["version"]].filter(function (x) { return x }).join("  ·  ") : ""
+
+        // confirm
+        Column { width: parent.width; spacing: 12; visible: unModal.st === "confirm"
+            Txt { text: tr("un.confirm.text"); width: parent.width }
+            Row { spacing: 10; visible: (unModal.u["running"] || []).length > 0; width: parent.width
+                Icon { name: "triangle-alert"; size: 16; color: Theme.warn; anchors.top: parent.top; anchors.topMargin: 1 }
+                Txt { text: tr1("un.running.warn", (unModal.u["running"] || []).join(", ")); color: Theme.warn; width: parent.width - 30 } }
+            ToggleRow { visible: unModal.u["quietAvailable"] === true; icon: "zap"; title: tr("un.quiet"); hint: tr("un.quiet.hint"); checked: unModal.u["quiet"] === true
+                onToggled: v => app.setUninstallQuiet(v) }
+            Txt { text: tr("un.forced.hint"); muted: true; font.pixelSize: 12; width: parent.width }
+            Row { spacing: 10
+                AccentButton { text: tr("un.go"); onClicked: app.confirmUninstall(false) }
+                AccentButton { text: tr("un.forced"); primary: false; onClicked: app.confirmUninstall(true) }
+                AccentButton { text: tr("common.cancel"); primary: false; onClicked: app.closeUninstall() } }
+        }
+        // waiting
+        Column { width: parent.width; spacing: 14; visible: unModal.st === "uninstalling" || unModal.st === "scanning" || unModal.st === "removing"
+            Row { spacing: 14; width: parent.width
+                Spinner { anchors.verticalCenter: parent.verticalCenter }
+                Txt { width: parent.width - 40; anchors.verticalCenter: parent.verticalCenter
+                    text: unModal.st === "uninstalling" ? (unModal.u["forced"] ? tr("un.wait.forced") : tr("un.wait.vendor"))
+                         : unModal.st === "scanning" ? tr("un.wait.scan") : tr("un.wait.remove") } }
+            AccentButton { visible: unModal.st === "uninstalling" && !unModal.u["forced"]; text: tr("un.skip"); primary: false; onClicked: app.skipWaiting() }
+        }
+        // leftovers
+        Column { width: parent.width; spacing: 10; visible: unModal.st === "leftovers"
+            Txt { width: parent.width
+                text: tr2("un.found.text", String((unModal.u["leftovers"] || []).length), String(unModal.u["checkedCount"] || 0)) + (unModal.u["checkedSize"] > 0 ? "  ·  " + app.size(unModal.u["checkedSize"]) : "") }
+            Txt { visible: unModal.u["still"] === true; text: tr("un.still"); color: Theme.warn; width: parent.width; font.pixelSize: 12 }
+            Rectangle { width: parent.width; height: Math.min(330, list.contentHeight + 12); radius: 14; color: Theme.cardAlt; border.color: Theme.border; clip: true
+                Flickable { id: list; anchors.fill: parent; anchors.margins: 6; contentHeight: lcol.implicitHeight; clip: true; boundsBehavior: Flickable.StopAtBounds
+                    Column { id: lcol; width: list.width
+                        Repeater { model: unModal.u["leftovers"] || []
+                            Item { width: lcol.width; height: 44
+                                Check { id: ck; on: modelData.checked; anchors.left: parent.left; anchors.leftMargin: 8; anchors.verticalCenter: parent.verticalCenter
+                                    onFlip: app.setLeftover(modelData.id, !modelData.checked) }
+                                Rectangle { id: kd; anchors.left: ck.right; anchors.leftMargin: 10; anchors.verticalCenter: parent.verticalCenter
+                                    width: 96; height: 24; radius: 12; color: Theme.soft
+                                    Txt { anchors.centerIn: parent; text: modelData.kindText; font.pixelSize: 11; bold: true } }
+                                Txt { anchors.left: kd.right; anchors.leftMargin: 10; anchors.right: meta.left; anchors.rightMargin: 10; anchors.verticalCenter: parent.verticalCenter
+                                    text: modelData.path; font.pixelSize: 12; elide: Text.ElideMiddle; wrapMode: Text.NoWrap }
+                                Row { id: meta; anchors.right: parent.right; anchors.rightMargin: 10; anchors.verticalCenter: parent.verticalCenter; spacing: 8
+                                    Txt { text: tr("un.similar"); color: Theme.warn; font.pixelSize: 11; visible: !modelData.exact }
+                                    Txt { text: modelData.sizeText; muted: true; font.pixelSize: 11 } }
+                            }
+                        }
+                    }
+                }
+            }
+            Txt { text: tr("un.safe"); muted: true; font.pixelSize: 12; width: parent.width }
+            Row { spacing: 10
+                AccentButton { text: tr("un.clean"); danger: true; enabled: (unModal.u["checkedCount"] || 0) > 0; onClicked: app.removeLeftovers() }
+                AccentButton { text: tr("un.all"); primary: false; onClicked: app.setAllLeftovers(true) }
+                AccentButton { text: tr("un.none"); primary: false; onClicked: app.setAllLeftovers(false) }
+                AccentButton { text: tr("un.leave"); primary: false; onClicked: app.closeUninstall() } }
+        }
+        // done
+        Column { width: parent.width; spacing: 12; visible: unModal.st === "done"
+            property var r: unModal.u["result"] || ({})
+            Txt { width: parent.width
+                text: tr2("un.done.text", String(parent.r["removed"] || 0), app.size(parent.r["freed"] || 0)) }
+            Txt { visible: (parent.r["reboot"] || 0) > 0; width: parent.width; color: Theme.warn; text: tr1("un.done.reboot", String(parent.r["reboot"] || 0)) }
+            Txt { visible: (parent.r["failed"] || []).length > 0; width: parent.width; color: Theme.bad; text: tr1("un.done.failed", String((parent.r["failed"] || []).length)) }
+            Txt { text: tr("un.done.safe"); muted: true; width: parent.width; font.pixelSize: 12 }
+            AccentButton { text: tr("un.close"); onClicked: app.closeUninstall() }
+        }
     }
 }

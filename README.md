@@ -56,7 +56,7 @@ temp folders, Recycle Bin, thumbnail cache, Windows Update cache, crash dumps an
 
 **Disks.** Every drive is scanned for junk that is safe to remove: its Recycle Bin, temporary and unfinished downloads, old logs and dumps, thumbnail leftovers, remains of previous Windows installations. Each item has its own switch; selected items go to quarantine.
 
-**Apps.** Pre-installed Microsoft and partner apps most people never use (Xbox, Solitaire, News, Weather, Office Hub, Candy Crush and so on). Remove what you tick; anything can be reinstalled from Microsoft Store.
+**Programs.** A thorough uninstaller. Every installed program with its icon, size and date. Sweep runs the program's own uninstaller, then finds what it left behind (program folders, AppData, ProgramData, registry keys, shortcuts, Run entries, scheduled tasks, services) and shows the list before removing anything. Force mode handles programs whose uninstaller is broken or that refuse to go; locked files are removed at the next restart. Everything removed goes to quarantine or a registry backup. A second tab removes pre-installed Microsoft and partner apps (Xbox, Solitaire, News, Candy Crush and so on).
 
 **System.** Windows build, CPU, GPU, motherboard, BIOS, RAM modules, disks, uptime, temperatures where Windows exposes them. Copy as text.
 
