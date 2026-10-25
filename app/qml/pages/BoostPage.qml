@@ -8,10 +8,11 @@ Page {
 
     component ActionCard: Card {
         property string head: ""; property string body: ""; property string btn: ""; signal go()
+        property bool needsIdle: true
         Row { width: parent.width; spacing: 20
-            Column { width: parent.width - 200; spacing: 4; anchors.verticalCenter: parent.verticalCenter
-                Txt { text: head; font.pixelSize: 15; bold: true } Txt { text: body; muted: true; width: parent.width } }
-            AccentButton { text: btn; anchors.verticalCenter: parent.verticalCenter; enabled: !app.busy; onClicked: go() }
+            Column { width: parent.width - acBtn.width - 20; spacing: 4; anchors.verticalCenter: parent.verticalCenter
+                Txt { text: head; font.pixelSize: 15; bold: true; width: parent.width } Txt { text: body; muted: true; width: parent.width } }
+            AccentButton { id: acBtn; text: btn; anchors.verticalCenter: parent.verticalCenter; enabled: !needsIdle || !app.busy; onClicked: go() }
         }
     }
     component Chip: Rectangle {
@@ -41,11 +42,11 @@ Page {
             Chip { label: tr("boost.power.balanced"); on: app.powerPlan === "balanced"; onPick: app.setPower("balanced") } }
     } }
     Card { Row { width: parent.width; spacing: 20
-        Column { width: parent.width - 80; spacing: 4
+        Column { width: parent.width - 70; spacing: 4
             Txt { text: tr("boost.sched"); font.pixelSize: 15; bold: true }
             Txt { text: tr("boost.sched.hint"); muted: true; width: parent.width }
             Txt { text: app.scheduleState["enabled"] ? tr1("boost.sched.next", app.scheduleState["next"] || "") : tr("common.off"); muted: true; font.pixelSize: 12 } }
         Toggle { anchors.verticalCenter: parent.verticalCenter; checked: app.scheduleState["enabled"] === true; onToggled: v => app.setSchedule(v) }
     } }
-    ActionCard { head: tr("boost.update"); body: tr("boost.update.hint"); btn: tr("boost.update.btn"); onGo: app.openUpdate() }
+    ActionCard { head: tr("boost.update"); body: tr("boost.update.hint"); btn: tr("boost.update.btn"); needsIdle: false; onGo: app.openUpdate() }
 }

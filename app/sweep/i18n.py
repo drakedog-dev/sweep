@@ -24,7 +24,7 @@ STRINGS: dict[str, dict[str, str]] = {
     "hdr.startup": {"ru": "Что запускается вместе с Windows", "en": "What launches with Windows"},
     "hdr.boost": {"ru": "Память, диски, эффекты и расписание", "en": "Memory, drives, effects and schedule"},
     "hdr.disks": {"ru": "Что занимает место на каждом диске", "en": "What takes up space on each drive"},
-    "hdr.apps": {"ru": "Установка и обновления с официальных сайтов, удаление начисто", "en": "Installs and updates from official sites, clean uninstalls"},
+    "hdr.apps": {"ru": "Установка, обновления и удаление начисто", "en": "Installs, updates and clean uninstalls"},
     "hdr.system": {"ru": "Железо и Windows на одном экране", "en": "Hardware and Windows on one screen"},
     "hdr.quarantine": {"ru": "Всё, что убрано, можно вернуть", "en": "Everything removed can be restored"},
     "hdr.settings": {"ru": "Язык, тема, обновления, о программе", "en": "Language, theme, updates, about"},
@@ -37,7 +37,6 @@ STRINGS: dict[str, dict[str, str]] = {
     "common.done": {"ru": "Готово", "en": "Done"},
     "common.copy": {"ru": "Скопировать", "en": "Copy"},
     "common.copied": {"ru": "Скопировано в буфер обмена", "en": "Copied to clipboard"},
-    "common.on": {"ru": "Включено", "en": "On"},
     "common.off": {"ru": "Выключено", "en": "Off"},
     "common.canfree": {"ru": "МОЖНО ОСВОБОДИТЬ", "en": "CAN BE FREED"},
     "common.free": {"ru": "свободно", "en": "free"},
@@ -47,7 +46,6 @@ STRINGS: dict[str, dict[str, str]] = {
     "common.error": {"ru": "Ошибка: {0}", "en": "Error: {0}"},
     "common.demo": {"ru": "Демо-режим: данные условные, система не меняется", "en": "Demo mode: sample data, nothing is changed"},
     # overview
-    "ov.health": {"ru": "Индекс здоровья", "en": "Health index"},
     "ov.health.good": {"ru": "Компьютер в хорошей форме", "en": "Your PC is in good shape"},
     "ov.health.mid": {"ru": "Есть что улучшить", "en": "Room for improvement"},
     "ov.health.bad": {"ru": "Компьютеру нужна забота", "en": "Your PC needs some care"},
@@ -59,9 +57,7 @@ STRINGS: dict[str, dict[str, str]] = {
     "ov.cpu": {"ru": "ПРОЦЕССОР", "en": "CPU"},
     "ov.ram": {"ru": "ПАМЯТЬ", "en": "MEMORY"},
     "ov.disk": {"ru": "ДИСК", "en": "DISK"},
-    "ov.junk": {"ru": "МУСОР", "en": "JUNK"},
     "ov.startup": {"ru": "АВТОЗАГРУЗКА", "en": "STARTUP"},
-    "ov.startup.sub": {"ru": "программ с Windows", "en": "programs with Windows"},
     "ov.profile": {"ru": "Профиль компьютера", "en": "PC profile"},
     "ov.profile.weak": {"ru": "Слабый компьютер", "en": "Low-end PC"},
     "ov.profile.mid": {"ru": "Средний компьютер", "en": "Mid-range PC"},
@@ -69,7 +65,6 @@ STRINGS: dict[str, dict[str, str]] = {
     "ov.profile.weak.hint": {"ru": "Рекомендуем всё: службы, эффекты, автозагрузку, индексирование. Каждая мелочь даёт ощутимый прирост.", "en": "We recommend everything: services, effects, startup, indexing. Every bit counts here."},
     "ov.profile.mid.hint": {"ru": "Стоит почистить мусор и автозагрузку, выключить лишние службы. Эффекты Windows можно оставить.", "en": "Clean junk and startup, turn off spare services. Windows effects can stay."},
     "ov.profile.strong.hint": {"ru": "Ресурсов хватает: службы и эффекты не трогаем, достаточно мусора и приватности.", "en": "Plenty of resources: leave services and effects alone, junk and privacy are enough."},
-    "ov.recommend": {"ru": "Рекомендуем для вашего компьютера", "en": "Recommended for your PC"},
     "ov.apply": {"ru": "Применить рекомендации", "en": "Apply recommendations"},
     "ov.tip.junk": {"ru": "Много мусора: запустите очистку", "en": "Lots of junk: run a clean"},
     "ov.tip.junk2": {"ru": "Есть что почистить", "en": "Some junk to clean"},
@@ -83,7 +78,6 @@ STRINGS: dict[str, dict[str, str]] = {
     "ov.tip.ok": {"ru": "Всё в порядке, так держать", "en": "All good, keep it up"},
     # junk
     "junk.hint": {"ru": "Отметьте, что убрать. Всё, кроме корзины, переносится в карантин, откуда можно вернуть.", "en": "Tick what to remove. Everything except the Recycle Bin goes to quarantine and can be restored."},
-    "junk.cleaning": {"ru": "Убираю: {0}", "en": "Removing: {0}"},
     "junk.scanning": {"ru": "Проверяю: {0}", "en": "Checking: {0}"},
     "junk.done": {"ru": "Убрано {0}. Файлы в карантине, занятые программами файлы пропущены.", "en": "Removed {0}. Files are in quarantine, files in use were skipped."},
     "junk.scanned": {"ru": "Проверка закончена: можно освободить {0}", "en": "Scan finished: {0} can be freed"},
@@ -155,7 +149,6 @@ STRINGS: dict[str, dict[str, str]] = {
     "disk.open": {"ru": "Открыть в Проводнике", "en": "Open in Explorer"},
     "disk.used": {"ru": "занято {0} из {1}", "en": "used {0} of {1}"},
         "disk.scanning": {"ru": "Проверяю диски {0}… На больших дисках это может занять пару минут", "en": "Scanning drives {0}… Large drives may take a couple of minutes"},
-    "disk.freeLabel": {"ru": "СВОБОДНО", "en": "FREE"},
     # apps
     "apps.hint": {"ru": "Предустановленные приложения, которые редко кому нужны. Удаление освобождает место и чистит меню Пуск. Вернуть можно из Microsoft Store.", "en": "Pre-installed apps most people never use. Removing them frees space and declutters Start. Reinstall any from Microsoft Store."},
     "apps.remove": {"ru": "Удалить отмеченные", "en": "Remove selected"},
@@ -261,7 +254,6 @@ STRINGS: dict[str, dict[str, str]] = {
     "ov.boot.sub": {"ru": "в среднем {0} с", "en": "average {0} s"},
     "ov.boot.none": {"ru": "нужна перезагрузка", "en": "restart to measure"},
     "ov.qa.guard.on": {"ru": "под Стражем", "en": "guarded"},
-    "ov.qa.guard.off": {"ru": "включите Стража", "en": "turn on Guard"},
     "ov.tip.boot": {"ru": "Windows загружается {0} с: загляните в «Загрузку»", "en": "Windows takes {0} s to start: see Boot"},
     "ov.tip.guard": {"ru": "Windows вернула отключённое (пунктов: {0}), откройте «Стража»", "en": "Windows brought back what you disabled ({0} items): open Guard"},
     "guard.status": {"ru": "СТРАЖ", "en": "GUARD"},
@@ -363,8 +355,6 @@ STRINGS: dict[str, dict[str, str]] = {
     "admin.need": {"ru": "Нужны права администратора: нажмите «Дать права» вверху окна.", "en": "Administrator rights are needed: press Grant rights at the top of the window."},
     "admin.denied": {"ru": "Windows не сохранила изменения даже с правами администратора. Обычно так делает антивирус, подробности в журнале ProgramData\\Sweep\\log.txt.", "en": "Windows did not keep the changes even with administrator rights. Usually an antivirus does this, details in ProgramData\\Sweep\\log.txt."},
     "admin.declined": {"ru": "Без прав администратора это действие не выполнить", "en": "This action needs administrator rights"},
-    "set.autoupdate": {"ru": "Обновляться автоматически", "en": "Update automatically"},
-    "set.autoupdate.hint": {"ru": "При запуске Sweep проверяет GitHub и, если вышла новая версия, тихо ставит её и перезапускается", "en": "On start Sweep checks GitHub and, when a new version is out, installs it silently and restarts"},
     "set.autoinstalling": {"ru": "Вышла версия {0}, устанавливаю…", "en": "Version {0} is out, installing…"},
     "set.updates": {"ru": "Обновления", "en": "Updates"},
     "set.check": {"ru": "Проверить обновления", "en": "Check for updates"},
@@ -372,11 +362,11 @@ STRINGS: dict[str, dict[str, str]] = {
     "set.available": {"ru": "Доступна версия {0}", "en": "Version {0} is available"},
     "set.install": {"ru": "Обновить до {0}", "en": "Update to {0}"},
     "set.downloading": {"ru": "Скачиваю {0}…", "en": "Downloading {0}…"},
-    "set.about": {"ru": "В интернет Sweep выходит, только чтобы проверить свои обновления на GitHub и, по вашей команде, обновления программ через winget. Открытый код: github.com/drakedog-dev/sweep", "en": "Sweep goes online only to check GitHub for its own updates and, when you ask, program updates through winget. Open source: github.com/drakedog-dev/sweep"},
+    "set.about": {"ru": "В интернет Sweep выходит, только чтобы проверить свои обновления на GitHub и, по вашей команде, найти, обновить или установить программы через winget. Открытый код: github.com/drakedog-dev/sweep", "en": "Sweep goes online only to check GitHub for its own updates and, when you ask, to find, update or install programs through winget. Open source: github.com/drakedog-dev/sweep"},
     "set.version": {"ru": "Версия", "en": "Version"},
     # about
     "about.title": {"ru": "О программе", "en": "About"},
-    "about.text": {"ru": "Sweep бесплатна и распространяется с открытым исходным кодом по лицензии MIT. Весь код лежит на GitHub: любой может прочитать его, проверить и предложить улучшения. Программа не выходит в интернет, кроме проверки обновлений по вашему нажатию, и не собирает никаких данных.", "en": "Sweep is free and open source under the MIT licence. All the code is on GitHub: anyone can read it, verify it and suggest improvements. The app stays offline except for update checks you start, and collects no data."},
+    "about.text": {"ru": "Sweep бесплатна и распространяется с открытым исходным кодом по лицензии MIT. Весь код лежит на GitHub: любой может прочитать его, проверить и предложить улучшения. Sweep не собирает никаких данных: в интернет он выходит только за своими обновлениями и за программами, которые вы сами решили обновить или установить.", "en": "Sweep is free and open source under the MIT licence. All the code is on GitHub: anyone can read it, verify it and suggest improvements. Sweep collects no data: it goes online only for its own updates and for programs you choose to update or install."},
     "about.star": {"ru": "Если Sweep вам полезен, поставьте звёздочку на GitHub: это лучшая благодарность автору и помогает другим найти программу.", "en": "If Sweep is useful to you, star it on GitHub: it is the best thanks to the author and helps others find it."},
     "about.star.btn": {"ru": "Поставить звёздочку", "en": "Star on GitHub"},
     "about.issues": {"ru": "Нашли ошибку или есть идея? Напишите в Issues на GitHub, там же можно посмотреть, что уже в работе.", "en": "Found a bug or have an idea? Open an issue on GitHub, where you can also see what is already in progress."},
@@ -417,8 +407,6 @@ STRINGS: dict[str, dict[str, str]] = {
     "pu.check": {"ru": "Проверить", "en": "Check"},
     "pu.update": {"ru": "Обновить", "en": "Update"},
     "pu.updateSel": {"ru": "Обновить выбранные: {0}", "en": "Update selected: {0}"},
-    "pu.all": {"ru": "Выбрать все", "en": "Select all"},
-    "pu.noneSel": {"ru": "Снять выбор", "en": "Select none"},
     "pu.skip": {"ru": "Не обновлять эту программу", "en": "Do not update this program"},
     "pu.showSkipped": {"ru": "Вернуть скрытые: {0}", "en": "Show hidden: {0}"},
     "pu.stop": {"ru": "Остановить после текущей", "en": "Stop after this one"},
@@ -428,12 +416,10 @@ STRINGS: dict[str, dict[str, str]] = {
     "pu.done": {"ru": "Обновлено программ: {0} из {1}", "en": "Programs updated: {0} of {1}"},
     "pu.major": {"ru": "новая основная версия", "en": "major version"},
     "pu.major.hint": {"ru": "Крупное обновление может изменить привычный вид или настройки программы.", "en": "A major upgrade can change how a program looks or works."},
-    "pu.verified": {"ru": "SHA-256", "en": "SHA-256"},
     "pu.when": {"ru": "Проверено в {0}", "en": "Checked at {0}"},
     "pu.auto": {"ru": "Проверять раз в день", "en": "Check once a day"},
     "pu.auto.hint": {"ru": "Ставить или нет, решаете вы", "en": "You decide what to install"},
     "pu.trust": {"ru": "Официальные сайты, проверка SHA-256", "en": "Official sites, SHA-256 verified"},
-    "pu.st.queued": {"ru": "В очереди", "en": "Queued"},
     "pu.st.queuedN": {"ru": "В очереди: {0}", "en": "Queued: {0}"},
     "pu.ph.prepare": {"ru": "Готовлю…", "en": "Preparing…"},
     "pu.ph.download": {"ru": "Скачиваю {0} из {1}", "en": "Downloading {0} of {1}"},
@@ -445,16 +431,12 @@ STRINGS: dict[str, dict[str, str]] = {
     "pu.pick.all": {"ru": "Все", "en": "All"},
     "pu.pick.minor": {"ru": "Без крупных", "en": "All but major"},
     "pu.pick.none": {"ru": "Снять все", "en": "None"},
-    "pu.st.working": {"ru": "Устанавливаю…", "en": "Installing…"},
-    "pu.st.ok": {"ru": "Обновлено", "en": "Updated"},
-    "pu.st.failed": {"ru": "Не удалось", "en": "Failed"},
     "pu.r.uptodate": {"ru": "Уже последняя версия", "en": "Already the latest version"},
     "pu.r.notfound": {"ru": "winget не видит эту программу установленной: обновите её с сайта производителя", "en": "winget does not see this program installed: update it from the vendor's site"},
     "pu.r.nochange": {"ru": "Установщик завершился, но версия осталась прежней. Нажмите «Обновить» ещё раз", "en": "The installer finished, but the version stayed the same. Press Update once more"},
     "pu.r.running": {"ru": "Программа была открыта и не обновилась: закройте её и нажмите «Обновить»", "en": "The program was open and did not update: close it and press Update"},
     "pu.running": {"ru": "открыта", "en": "open"},
     "pu.running.tip": {"ru": "Программа сейчас открыта: закройте её перед обновлением", "en": "The program is open now: close it before updating"},
-    "pu.suspects": {"ru": "Под вопросом: {0}", "en": "Questionable: {0}"},
     "pu.r.hash": {"ru": "Файл не совпал с контрольной суммой, установка отменена", "en": "The file did not match its checksum, nothing was installed"},
     "pu.r.download": {"ru": "Не удалось скачать установщик", "en": "The installer could not be downloaded"},
     "pu.r.inuse": {"ru": "Программа запущена: закройте её и повторите", "en": "The program is running: close it and try again"},
@@ -488,7 +470,6 @@ STRINGS: dict[str, dict[str, str]] = {
     "pu.notes.open": {"ru": "Открыть на сайте", "en": "Open on the site"},
     "pu.notes.close": {"ru": "Закрыть", "en": "Close"},
     "pu.ph.installT": {"ru": "Устанавливаю… {0}", "en": "Installing… {0}"},
-    "pu.percent": {"ru": "{0}%", "en": "{0}%"},
     # installing programs
     "ins.tab": {"ru": "Установка", "en": "Install"},
     "ins.hint": {"ru": "Нужные программы в один клик. Sweep скачивает их с сайтов производителей через winget и сверяет по SHA-256. Отметьте, что поставить, возьмите готовый набор или найдите любую программу в каталоге.", "en": "The programs you need in one click. Sweep downloads them from the vendors' sites through winget and checks them against their SHA-256. Tick what to install, take a ready-made set or find any program in the catalogue."},
@@ -514,7 +495,7 @@ STRINGS: dict[str, dict[str, str]] = {
     "ins.installing": {"ru": "Устанавливаю программы…", "en": "Installing programs…"},
     "ins.progress": {"ru": "Устанавливаю {0} из {1}: {2}", "en": "Installing {0} of {1}: {2}"},
     "ins.done": {"ru": "Установлено программ: {0} из {1}", "en": "Programs installed: {0} of {1}"},
-    "ins.r.already": {"ru": "Уже была установлена", "en": "Was already installed"},
+    "pu.r.already": {"ru": "Уже была установлена", "en": "Was already installed"},
     "ins.cat.browsers": {"ru": "Браузеры", "en": "Browsers"},
     "ins.cat.chat": {"ru": "Общение", "en": "Messaging"},
     "ins.cat.media": {"ru": "Видео и музыка", "en": "Video and music"},
@@ -587,10 +568,16 @@ class I18n:
                 pass
         return s
 
+    def num(self, x: float, digits: int = 1) -> str:
+        """A number as people write it: 4,7 in Russian, 4.7 in English."""
+        s = f"{float(x or 0):.{digits}f}"
+        return s.replace(".", ",") if self.lang == "ru" else s
+
     def size(self, n: float) -> str:
         n = float(n or 0)
         if n >= 1 << 30:
-            return f"{n / (1 << 30):.1f} {self.t('u.gb')}"
+            g = n / (1 << 30)
+            return f"{g:.0f} {self.t('u.gb')}" if g >= 100 else f"{self.num(g)} {self.t('u.gb')}"
         if n >= 1 << 20:
             return f"{n / (1 << 20):.0f} {self.t('u.mb')}"
         if n >= 1 << 10:

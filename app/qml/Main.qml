@@ -26,6 +26,7 @@ ApplicationWindow {
     function tr(key) { return langTick, app.t(key) }
     function tr1(key, a) { return langTick, app.t1(key, a) }
     function tr2(key, a, b) { return langTick, app.t2(key, a, b) }
+    function num(x, d) { var s = Number(x || 0).toFixed(d === undefined ? 1 : d); return langTick, app.lang === "ru" ? s.replace(".", ",") : s }
     // confirmation dialog for actions that cannot wait (restart and the like)
     property var confirmFn: null
     property string confirmTitle: ""

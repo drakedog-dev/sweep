@@ -21,7 +21,7 @@ Free and open source · no ads · no telemetry · every change can be undone
 
 [**Download**](../../releases/latest) · [Features](#features) · [Screenshots](#screenshots) · [Safety](#how-sweep-keeps-you-safe) · [FAQ](#faq) · [Build](#building-from-source) · [Русский](README.ru.md)
 
-<img src="docs/hero-en.png" alt="Sweep: Privacy page in the dark theme and Overview in the light theme" width="100%">
+<img src="docs/hero-en.png" alt="Sweep: Overview in the dark theme and the Install tab in the light theme" width="100%">
 
 </div>
 
@@ -33,7 +33,7 @@ Most cleaners delete first and ask later. Sweep is built the other way round:
 - **It remembers your choices.** Big Windows updates quietly turn telemetry and ads back on. **Guard** notices and puts your settings back.
 - **Facts, not guesses.** Boot times come from Windows' own diagnostics log; outdated programs come from the Microsoft winget catalogue with SHA-256 checks.
 - **Nothing phones home.** No accounts, no analytics, no ads. The code is right here.
-- **Tested on real Windows.** Every change runs a self-test on a Windows machine that flips real privacy switches, cleans real browser history, uninstalls a test program and updates a real one.
+- **Tested on real Windows.** Every change runs a self-test on a Windows machine that flips real privacy switches, cleans real browser history, uninstalls a test program, and updates and installs real ones.
 
 ## Features
 
@@ -100,13 +100,15 @@ Most cleaners delete first and ask later. Sweep is built the other way round:
 | | |
 |:---:|:---:|
 | ![Overview](docs/screens/en-overview.png) | ![Program updates](docs/screens/en-updates.png) |
-| **Overview** | **Program updates** |
-| ![Thorough uninstaller](docs/screens/en-programs.png) | ![Junk](docs/screens/en-junk.png) |
-| **Thorough uninstaller** | **Junk** |
-| ![Boot X-ray](docs/screens/en-boot.png) | ![Guard](docs/screens/en-guard.png) |
-| **Boot X-ray** | **Guard** |
-| ![Privacy](docs/screens/en-privacy.png) | ![Light theme](docs/screens/en-light.png) |
-| **Privacy** | **Light theme** |
+| **Overview** | **Program updates with live progress** |
+| ![Install in one click](docs/screens/en-install.png) | ![Thorough uninstaller](docs/screens/en-programs.png) |
+| **Install in one click** | **Thorough uninstaller** |
+| ![Junk](docs/screens/en-junk.png) | ![Boot X-ray](docs/screens/en-boot.png) |
+| **Junk** | **Boot X-ray** |
+| ![Guard](docs/screens/en-guard.png) | ![Privacy](docs/screens/en-privacy.png) |
+| **Guard** | **Privacy** |
+| ![Disks](docs/screens/en-disks.png) | ![Light theme](docs/screens/en-light.png) |
+| **Disks** | **Light theme** |
 
 ## Download
 
@@ -134,7 +136,7 @@ Kaspersky puts unsigned programs into a restricted group and silently blocks the
 | Registry cleaning, uninstall leftovers | Every key exported to a `.reg` backup first |
 | Privacy switches, services, startup | The same switch turns it back; Guard keeps your choice |
 | Big changes (privacy, uninstall, updates) | Windows restore point first (at most once a day) |
-| Program updates | Vendor's official installer only, SHA-256 checked by winget |
+| Program updates and installs | Vendor's official installer only, SHA-256 checked by winget; forks and look-alikes are flagged, never updated by accident |
 | Files in use | Skipped, or removed at the next restart if you force it |
 
 Documents, photos, licences and passwords are never touched. Only the Recycle Bin is emptied for real, and that category is off by default.
@@ -144,7 +146,7 @@ Documents, photos, licences and passwords are never touched. Only the Recycle Bi
 <details>
 <summary><b>Does Sweep send anything anywhere?</b></summary>
 
-No personal data, statistics or telemetry. It contacts GitHub to check for Sweep updates (can be turned off), and when you check for program updates, winget contacts the Microsoft catalogue and the vendors' download sites. Details: [PRIVACY.md](PRIVACY.md).
+No personal data, statistics or telemetry. It contacts GitHub to check for Sweep updates (can be turned off), and when you check for program updates or search for and install programs, winget contacts the Microsoft catalogue and the vendors' download sites. Details: [PRIVACY.md](PRIVACY.md).
 </details>
 
 <details>
@@ -162,7 +164,7 @@ No. Sweep does not disable security features, does not remove Store, Defender or
 <details>
 <summary><b>Which Windows versions are supported?</b></summary>
 
-Windows 10 and Windows 11, 64-bit. Program updates need winget (App Installer), which ships with both and is free in Microsoft Store.
+Windows 10 and Windows 11, 64-bit. Program updates and installs need winget (App Installer), which ships with both and is free in Microsoft Store.
 </details>
 
 <details>
@@ -179,7 +181,7 @@ flowchart LR
     B --> C["cleaner.py<br/>junk and quarantine"]
     B --> T["tweaks.py<br/>privacy, services, startup"]
     B --> U["uninstall.py<br/>uninstaller and leftovers"]
-    B --> W["updates.py<br/>program updates"]
+    B --> W["updates.py<br/>program updates and installs"]
     B --> G["guard.py<br/>watches settings"]
     B --> X["boot.py<br/>Boot X-ray"]
     T --> R[("Registry")]

@@ -5,16 +5,20 @@ import "../components"
 Page {
     id: pg
     title: tr("nav.disks"); subtitle: tr("hdr.disks"); hint: tr("disk.hint")
-    bigLabel: tr("common.canfree"); bigValue: app.size(app.driveJunkTotal)
+    bigLabel: tr("common.canfree")
+    bigValue: (app.driveJunk || []).some(function (d) { return d.scanned }) ? app.size(app.driveJunkTotal) : "—"
     Repeater { model: app.driveJunk
         Card { id: card; pad: 14
             property var vol: { var vs = app.volumeList; for (var i = 0; i < vs.length; i++) if (vs[i].letter === modelData.letter) return vs[i]; return {} }
             Column { width: parent.width; spacing: 8
-                Row { width: parent.width; spacing: 12; leftPadding: 10; rightPadding: 10
-                    Txt { text: (vol.label ? vol.label + " (" : "") + modelData.letter + ":" + (vol.label ? ")" : ""); bold: true; font.pixelSize: 16 }
-                    Txt { text: tr("disk.used").replace("{0}", app.size(vol.used || 0)).replace("{1}", app.size(vol.total || 0)) + "  ·  " + (vol.pct || 0) + "%"; muted: true; anchors.baseline: parent.children[0].baseline }
-                    Item { width: parent.width - 520; height: 1 }
-                    Txt { text: modelData.scanned ? (modelData.rows.length ? app.size(modelData.total) : tr("disk.clean")) : tr("disk.notscanned"); bold: true; color: modelData.scanned && modelData.rows.length ? Theme.accent2 : Theme.muted; anchors.baseline: parent.children[0].baseline }
+                Item { width: parent.width; height: dName.implicitHeight
+                    Txt { id: dName; x: 10; text: (vol.label ? vol.label + " (" : "") + modelData.letter + ":" + (vol.label ? ")" : ""); bold: true; font.pixelSize: 16
+                          width: Math.min(implicitWidth, parent.width * 0.4); elide: Text.ElideRight; wrapMode: Text.NoWrap }
+                    Txt { anchors.left: dName.right; anchors.leftMargin: 12; anchors.right: dState.left; anchors.rightMargin: 12; anchors.baseline: dName.baseline
+                          text: tr("disk.used").replace("{0}", app.size(vol.used || 0)).replace("{1}", app.size(vol.total || 0)) + "  ·  " + (vol.pct || 0) + "%"; muted: true; elide: Text.ElideRight; wrapMode: Text.NoWrap }
+                    Txt { id: dState; anchors.right: parent.right; anchors.rightMargin: 10; anchors.baseline: dName.baseline
+                          text: modelData.scanned ? (modelData.rows.length ? app.size(modelData.total) : tr("disk.clean")) : tr("disk.notscanned"); bold: true; wrapMode: Text.NoWrap
+                          color: modelData.scanned && modelData.rows.length ? Theme.accent2 : Theme.muted }
                 }
                 Rectangle { width: parent.width - 20; x: 10; height: 8; radius: 4; color: Theme.track
                     Rectangle { width: Math.max(6, parent.width * (vol.pct || 0) / 100); height: parent.height; radius: 4

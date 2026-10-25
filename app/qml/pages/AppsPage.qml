@@ -60,7 +60,7 @@ Page {
 
     component Tab: Rectangle {
         property string label: ""; property string icon: ""; property bool on: false; property int badge: 0; signal pick()
-        width: tr_.implicitWidth + 50; height: 38; radius: 19
+        width: tr_.implicitWidth + (pg.width < 760 ? 30 : 44); height: 38; radius: 19
         color: on ? Theme.accent : tabHov.containsMouse ? Theme.softHover : Theme.soft
         Behavior on color { ColorAnimation { duration: Theme.dur } }
         Row { id: tr_; anchors.centerIn: parent; spacing: 8

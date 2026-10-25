@@ -9,9 +9,9 @@ Page {
     property var d: app.bootData
     property bool has: d["boots"] !== undefined && d["boots"].length > 0
     property var last: has ? d["boots"][0] : ({ total: 0, main: 0, post: 0 })
-    bigLabel: tr("boot.last"); bigValue: has ? tr1("boot.sec", Number(d["last"]).toFixed(1)) : "…"
+    bigLabel: tr("boot.last"); bigValue: has ? tr1("boot.sec", num(d["last"], 1)) : "…"
     function secColor(s) { return s < 30 ? Theme.good : s < 60 ? Theme.warn : Theme.bad }
-    function fmt(s) { return tr1("boot.sec", Number(s).toFixed(1)) }
+    function fmt(s) { return tr1("boot.sec", num(s, 1)) }
 
     // ---------- nothing recorded yet ----------
     Card { visible: !bp.has
@@ -60,7 +60,7 @@ Page {
         Column { width: parent.width; spacing: 10
             Row { width: parent.width; spacing: 10
                 Txt { id: histT; text: tr("boot.history"); font.pixelSize: 15; bold: true }
-                Txt { text: tr2("boot.avg", Number(d["avg"] || 0).toFixed(1), String((d["boots"] || []).length)) + "  ·  " + tr1("boot.best", Number(d["best"] || 0).toFixed(1)); muted: true; font.pixelSize: 12; anchors.baseline: histT.baseline }
+                Txt { text: tr2("boot.avg", num(d["avg"] || 0, 1), String((d["boots"] || []).length)) + "  ·  " + tr1("boot.best", num(d["best"] || 0, 1)); muted: true; font.pixelSize: 12; anchors.baseline: histT.baseline }
             }
             Item { id: chart; width: parent.width; height: 190
                 property var boots: bp.has ? d["boots"].slice(0, 12).reverse() : []
@@ -81,7 +81,7 @@ Page {
                         Txt { anchors.horizontalCenter: bar.horizontalCenter; anchors.bottom: bar.top; anchors.bottomMargin: 4
                             text: Number(modelData.total).toFixed(0); font.pixelSize: 11; bold: newest; muted: !newest }
                         Txt { anchors.horizontalCenter: parent.horizontalCenter; y: chart.plotH + 10; text: modelData.label; font.pixelSize: 10; muted: !newest; bold: newest
-                            width: parent.width + 10; horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight; wrapMode: Text.NoWrap }
+                            width: parent.width + 10; horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight; wrapMode: Text.WordWrap; maximumLineCount: 2; lineHeight: 0.9 }
                     }
                 }
             }
@@ -110,7 +110,7 @@ Page {
                     Rectangle { id: pill; anchors.right: act.left; anchors.rightMargin: 14; anchors.verticalCenter: parent.verticalCenter
                         width: pt.implicitWidth + 22; height: 28; radius: 14
                         color: modelData.avg >= 5 ? Qt.rgba(Theme.bad.r, Theme.bad.g, Theme.bad.b, 0.18) : modelData.avg >= 2 ? Qt.rgba(Theme.warn.r, Theme.warn.g, Theme.warn.b, 0.18) : Theme.soft
-                        Txt { id: pt; anchors.centerIn: parent; text: tr1("boot.plus", Number(modelData.avg).toFixed(1)); bold: true
+                        Txt { id: pt; anchors.centerIn: parent; text: tr1("boot.plus", num(modelData.avg, 1)); bold: true
                             color: modelData.avg >= 5 ? Theme.bad : modelData.avg >= 2 ? Theme.warn : Theme.muted } }
                     Item { id: act; anchors.right: parent.right; anchors.rightMargin: 10; anchors.verticalCenter: parent.verticalCenter
                         width: 210; height: 34

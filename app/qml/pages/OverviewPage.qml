@@ -18,14 +18,14 @@ Page {
                         Label10 { text: tr("ov.of100"); anchors.horizontalCenter: parent.horizontalCenter } }
                 }
                 Column { width: parent.width - 126; spacing: 6; anchors.verticalCenter: parent.verticalCenter
-                    Txt { font.pixelSize: 17; bold: true; font.weight: Font.Bold
+                    Txt { font.pixelSize: 17; bold: true; font.weight: Font.Bold; width: parent.width
                         text: { var s = app.health["score"] || 0; return tr(s >= 80 ? "ov.health.good" : s >= 55 ? "ov.health.mid" : "ov.health.bad") } }
                     Txt { text: tr("ov.health.hint"); muted: true; font.pixelSize: 12; width: parent.width }
                     Column { spacing: 3; width: parent.width
                         Repeater { model: app.health["tips"] || []
-                            Row { spacing: 8
-                                Rectangle { width: 6; height: 6; radius: 3; color: Theme.accent2; anchors.verticalCenter: parent.verticalCenter }
-                                Txt { text: modelData; font.pixelSize: 12 } } }
+                            Row { spacing: 8; width: parent.width
+                                Rectangle { width: 6; height: 6; radius: 3; color: Theme.accent2; anchors.top: parent.top; anchors.topMargin: 6 }
+                                Txt { text: modelData; font.pixelSize: 12; width: parent.width - 14 } } }
                     }
                 }
             }
@@ -57,7 +57,7 @@ Page {
         Tile { width: parent.w; icon: "timer"; label: tr("ov.boot")
             property var b: app.bootData
             property bool has: b["boots"] !== undefined && b["boots"].length > 0
-            value: has ? tr1("boot.sec", Number(b["last"]).toFixed(1)) : "…"
+            value: has ? tr1("boot.sec", num(b["last"], 1)) : "…"
             sub: has ? tr1("ov.boot.sub", Number(b["avg"]).toFixed(0)) : tr("ov.boot.none")
             sparkColor: !has ? Theme.accent2 : b["last"] < 30 ? Theme.good : b["last"] < 60 ? Theme.warn : Theme.bad
             bar: has ? Math.min(1, b["last"] / 90) : -1
@@ -73,24 +73,25 @@ Page {
         signal clicked()
         pad: 16
         color: hov.containsMouse ? Theme.cardAlt : Theme.card
-        Row { width: parent.width; spacing: 14
+        Row { width: parent.width; spacing: 14; y: Math.max(0, (parent.height - height) / 2)
             Rectangle { width: 42; height: 42; radius: 12; anchors.verticalCenter: parent.verticalCenter
                 gradient: Gradient { orientation: Gradient.Horizontal; GradientStop { position: 0; color: Theme.accent } GradientStop { position: 1; color: Theme.accent3 } }
                 Icon { anchors.centerIn: parent; name: ac.icon; size: 20; color: "white" } }
             Column { width: parent.width - 56; spacing: 2; anchors.verticalCenter: parent.verticalCenter
-                Txt { text: ac.title; bold: true; font.pixelSize: 14; width: parent.width; elide: Text.ElideRight; maximumLineCount: 1 }
-                Txt { text: ac.sub; muted: true; font.pixelSize: 12; width: parent.width; elide: Text.ElideRight; maximumLineCount: 1 } }
+                Txt { text: ac.title; bold: true; font.pixelSize: 14; width: parent.width; elide: Text.ElideRight; maximumLineCount: 2; lineHeight: 0.95 }
+                Txt { text: ac.sub; muted: true; font.pixelSize: 12; width: parent.width; elide: Text.ElideRight; maximumLineCount: 2; lineHeight: 0.95 } }
         }
         MouseArea { id: hov; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: ac.clicked() }
     }
-    Row { width: parent.width; spacing: 14
+    Row { id: qa; width: parent.width; spacing: 14
         property real w: (width - 14 * 2) / 3
-        ActionCard { width: parent.w; icon: "shield-check"; title: tr("ov.qa.privacy")
+        property real h: w < 260 ? 104 : 78          // room for two-line titles in a narrow window, the same for all three
+        ActionCard { id: qa1; width: parent.w; height: qa.h; icon: "shield-check"; title: tr("ov.qa.privacy")
             sub: tr1("ov.qa.privacy.sub", app.privacyOn + " " + tr("common.of") + " " + app.privacy.length) + (app.guardState["enabled"] ? "  ·  " + tr("ov.qa.guard.on") : "")
             onClicked: go("privacy") }
-        ActionCard { width: parent.w; icon: "memory-stick"; title: tr("ov.qa.ram")
+        ActionCard { id: qa2; width: parent.w; height: qa.h; icon: "memory-stick"; title: tr("ov.qa.ram")
             sub: tr1("ov.qa.ram.sub", Math.round(app.mon["ram"] || 0) + "%"); onClicked: if (!app.busy) app.freeRam() }
-        ActionCard { width: parent.w; icon: "hard-drive"; title: tr("ov.qa.disks"); sub: tr("ov.qa.disks.sub")
+        ActionCard { id: qa3; width: parent.w; height: qa.h; icon: "hard-drive"; title: tr("ov.qa.disks"); sub: tr("ov.qa.disks.sub")
             onClicked: { go("disks"); if (!app.busy) app.scanDrives() } }
     }
 
@@ -100,11 +101,11 @@ Page {
             Rectangle { width: 52; height: 52; radius: 15; anchors.verticalCenter: parent.verticalCenter
                 gradient: Gradient { orientation: Gradient.Horizontal; GradientStop { position: 0; color: Theme.accent } GradientStop { position: 1; color: Theme.accent3 } }
                 Icon { anchors.centerIn: parent; name: "sparkles"; size: 26; color: "white" } }
-            Column { width: parent.width - 290; spacing: 4; anchors.verticalCenter: parent.verticalCenter
+            Column { width: parent.width - 70 - quickBtn.width - 18; spacing: 4; anchors.verticalCenter: parent.verticalCenter
                 Txt { text: tr("ov.quick"); font.pixelSize: 17; bold: true; font.weight: Font.Bold }
                 Txt { text: tr("ov.quick.hint"); muted: true; width: parent.width }
             }
-            AccentButton { text: tr("ov.quick.btn"); anchors.verticalCenter: parent.verticalCenter; onClicked: app.quickClean(); enabled: !app.busy }
+            AccentButton { id: quickBtn; text: tr("ov.quick.btn"); anchors.verticalCenter: parent.verticalCenter; onClicked: app.quickClean(); enabled: !app.busy }
         }
     }
 }

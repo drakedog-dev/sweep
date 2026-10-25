@@ -871,7 +871,7 @@ class App(QObject):
             self.boot_data = bd
             self._compute_health()
             self.changed.emit()
-            self._set_status(self.i18n.t("boot.scanned", f"{bd.get('last', 0):.1f}") if bd.get("boots") else self.i18n.t("boot.empty.short"))
+            self._set_status(self.i18n.t("boot.scanned", self.i18n.num(bd.get('last', 0))) if bd.get("boots") else self.i18n.t("boot.empty.short"))
 
         self._run(lambda: bootx.analyse(bootx.read_events()), done, self.i18n.t("common.working"))
 
