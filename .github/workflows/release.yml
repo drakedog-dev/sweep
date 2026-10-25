@@ -12,6 +12,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: windows-latest
@@ -26,7 +30,7 @@ jobs:
           $m = [regex]::Match((Get-Content app/sweep/platform.py -Raw), 'APP_VERSION = "([\d\.]+)"')
           if (-not $m.Success) { throw 'APP_VERSION not found' }
           $ver = $m.Groups[1].Value
-          $exists = (git tag -l "v$ver").Length -gt 0
+          $exists = ((git ls-remote --tags origin "refs/tags/v$ver") | Measure-Object).Count -gt 0
           "version=$ver" >> $env:GITHUB_OUTPUT
           "exists=$exists" >> $env:GITHUB_OUTPUT
           Write-Host "Version $ver, tag exists: $exists"
@@ -73,6 +77,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          if (((git ls-remote --tags origin "refs/tags/v${{ steps.ver.outputs.version }}") | Measure-Object).Count -gt 0) { Write-Host 'Tag already exists, skipping'; exit 0 }
           git tag "v${{ steps.ver.outputs.version }}"
           git push origin "v${{ steps.ver.outputs.version }}"
 
