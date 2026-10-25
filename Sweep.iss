@@ -2,7 +2,7 @@
 ; или запустить build-setup.bat. На выходе: Output\Sweep-Setup-0.3.exe
 
 #define AppName "Sweep"
-#define AppVersion "0.6"
+#define AppVersion "0.7"
 
 [Setup]
 AppId={{7E2C1C3A-5B61-4C7B-9D1E-0A7A1F2B3C4D}

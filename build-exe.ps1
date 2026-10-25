@@ -12,7 +12,7 @@ if (-not (Get-Module -ListAvailable -Name ps2exe)) {
 Import-Module ps2exe
 Invoke-ps2exe -inputFile '.\Sweep.ps1' -outputFile '.\Sweep.exe' -iconFile '.\sweep.ico' `
     -noConsole -STA -requireAdmin -x64 `
-    -title 'Sweep' -description 'Чистка, приватность и ускорение Windows' -company 'Sweep' -product 'Sweep' -version "0.6.0.0" -copyright 'MIT'
+    -title 'Sweep' -description 'Чистка, приватность и ускорение Windows' -company 'Sweep' -product 'Sweep' -version "0.7.0.0" -copyright 'MIT'
 Write-Host ''
 Write-Host 'Готово: Sweep.exe лежит рядом с этим файлом.' -ForegroundColor Green
 Write-Host 'Теперь можно собрать установщик: build-setup.bat (нужен Inno Setup).'

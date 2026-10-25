@@ -1,6 +1,6 @@
 ﻿#requires -version 5.1
 <#
-    Sweep 0.6 — чистка, приватность и ускорение Windows.
+    Sweep 0.7 — чистка, приватность и ускорение Windows.
     Windows 10 и 11. Ничего не отправляет в интернет.
     Правила безопасности:
       1. Файлы не удаляются, а переносятся в карантин, откуда их можно вернуть одной кнопкой.
@@ -355,6 +355,21 @@ function Restore-RegSession([string]$session) {
     return $n
 }
 
+
+# =====================================================================
+#  РЕЖИМ -auto: тихая очистка по расписанию, без окна
+# =====================================================================
+if ($args -contains '-auto') {
+    try {
+        $session = Get-Date -Format 'yyyyMMdd_HHmmss'; $freed = [long]0
+        Write-Log "Автоочистка по расписанию, сеанс $session"
+        foreach ($c in $Categories) { if ($c.Default -and $c.Id -ne 'bin') { $freed += Move-ToQuarantine $c $session } }
+        # Карантин старше 30 дней удаляется окончательно, чтобы не копился
+        Get-ChildItem -Path $Quarantine -Directory -ErrorAction SilentlyContinue | Where-Object { $_.CreationTime -lt (Get-Date).AddDays(-30) } | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+        Write-Log "Автоочистка: освобождено $(Format-Size $freed)"
+    } catch { Write-Log "Автоочистка: ошибка $($_.Exception.Message)" }
+    exit
+}
 # =====================================================================
 #  ИНТЕРФЕЙС
 # =====================================================================
@@ -413,10 +428,10 @@ function Restore-RegSession([string]$session) {
 
     <!-- Боковое меню -->
     <Style x:Key="Nav" TargetType="RadioButton">
-      <Setter Property="Foreground" Value="{DynamicResource TextMuted}"/><Setter Property="Cursor" Value="Hand"/><Setter Property="Margin" Value="12,2"/>
+      <Setter Property="Foreground" Value="{DynamicResource TextMuted}"/><Setter Property="Cursor" Value="Hand"/><Setter Property="Margin" Value="12,1"/>
       <Setter Property="Template"><Setter.Value>
         <ControlTemplate TargetType="RadioButton">
-          <Border x:Name="B" Background="Transparent" CornerRadius="12" Padding="14,11">
+          <Border x:Name="B" Background="Transparent" CornerRadius="12" Padding="14,9">
             <Grid>
               <Grid.ColumnDefinitions><ColumnDefinition Width="28"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
               <TextBlock x:Name="I" Text="{TemplateBinding Tag}" FontFamily="Segoe MDL2 Assets" FontSize="16" VerticalAlignment="Center" Foreground="{TemplateBinding Foreground}"/>
@@ -473,9 +488,9 @@ function Restore-RegSession([string]$session) {
         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
         <StackPanel Orientation="Horizontal" Margin="24,26,24,22">
           <Border Width="40" Height="40" CornerRadius="12" Background="{StaticResource AccentGrad}"><TextBlock Text="&#xE74D;" FontFamily="Segoe MDL2 Assets" FontSize="18" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
-          <StackPanel Margin="12,0,0,0" VerticalAlignment="Center"><TextBlock Text="Sweep" FontSize="20" FontWeight="Bold"/><TextBlock Text="версия 0.6" FontSize="11" Foreground="{DynamicResource TextMuted}"/></StackPanel>
+          <StackPanel Margin="12,0,0,0" VerticalAlignment="Center"><TextBlock Text="Sweep" FontSize="20" FontWeight="Bold"/><TextBlock Text="версия 0.7" FontSize="11" Foreground="{DynamicResource TextMuted}"/></StackPanel>
         </StackPanel>
-        <StackPanel Grid.Row="1">
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Hidden"><StackPanel>
           <RadioButton x:Name="NavHome"    Style="{StaticResource Nav}" Tag="&#xE80F;" Content="Обзор" IsChecked="True"/>
           <RadioButton x:Name="NavClean"   Style="{StaticResource Nav}" Tag="&#xE74D;" Content="Мусор"/>
           <RadioButton x:Name="NavPrivacy" Style="{StaticResource Nav}" Tag="&#xE72E;" Content="Приватность"/>
@@ -485,13 +500,17 @@ function Restore-RegSession([string]$session) {
           <RadioButton x:Name="NavBoost"   Style="{StaticResource Nav}" Tag="&#xE945;" Content="Ускорение"/>
           <RadioButton x:Name="NavDisk"    Style="{StaticResource Nav}" Tag="&#xEDA2;" Content="Диски"/>
           <RadioButton x:Name="NavSys"     Style="{StaticResource Nav}" Tag="&#xE7F4;" Content="Система"/>
+          <RadioButton x:Name="NavApps"    Style="{StaticResource Nav}" Tag="&#xE71D;" Content="Приложения"/>
           <RadioButton x:Name="NavQ"       Style="{StaticResource Nav}" Tag="&#xE8B7;" Content="Карантин"/>
-        </StackPanel>
-        <StackPanel Grid.Row="2" Margin="24,0,24,22">
-          <Button x:Name="BtnUpdateApp" Content="Обновить" Style="{StaticResource BtnMain}" Margin="0,0,0,10" HorizontalAlignment="Stretch" Visibility="Collapsed"/>
-          <Button x:Name="BtnTheme" Content="Светлая тема" Style="{StaticResource Btn}" Margin="0" HorizontalAlignment="Stretch"/>
-          <Button x:Name="BtnCheckUpdate" Content="Проверить обновления" Style="{StaticResource Btn}" Margin="0,10,0,0" HorizontalAlignment="Stretch" FontSize="12"/>
-          <TextBlock Text="Ничего не отправляет в интернет. Проверка обновлений только по вашему нажатию." FontSize="11" Foreground="{DynamicResource TextMuted}" Margin="0,12,0,0" TextWrapping="Wrap"/>
+        </StackPanel></ScrollViewer>
+        <StackPanel Grid.Row="2" Margin="16,8,16,16">
+          <Button x:Name="BtnUpdateApp" Content="Обновить" Style="{StaticResource BtnMain}" Margin="0,0,0,8" HorizontalAlignment="Stretch" Visibility="Collapsed"/>
+          <Grid>
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+            <Button x:Name="BtnTheme" Content="Светлая тема" Style="{StaticResource Btn}" Margin="0,0,6,0" HorizontalAlignment="Stretch" Padding="10,9" FontSize="12"/>
+            <Button x:Name="BtnCheckUpdate" Grid.Column="1" Content="&#xE895;" FontFamily="Segoe MDL2 Assets" Style="{StaticResource Btn}" Margin="0" Padding="12,9" ToolTip="Проверить обновления"/>
+          </Grid>
+          <TextBlock Text="Не выходит в интернет. Обновления только по вашему нажатию." FontSize="10" Foreground="{DynamicResource TextMuted}" Margin="2,8,0,0" TextWrapping="Wrap"/>
         </StackPanel>
       </Grid>
     </Border>
@@ -521,6 +540,19 @@ function Restore-RegSession([string]$session) {
 
         <Grid x:Name="SecHome">
           <ScrollViewer><StackPanel>
+            <Border Style="{StaticResource Card}"><Grid>
+              <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+              <Grid Width="104" Height="104" Margin="0,0,22,0">
+                <Ellipse Stroke="{DynamicResource CardBorder}" StrokeThickness="9" Width="96" Height="96"/>
+                <Ellipse x:Name="HealthRing" Stroke="#A78BFA" StrokeThickness="9" Width="96" Height="96" StrokeDashCap="Round" StrokeDashArray="0 100" RenderTransformOrigin="0.5,0.5"><Ellipse.RenderTransform><RotateTransform Angle="-90"/></Ellipse.RenderTransform></Ellipse>
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"><TextBlock x:Name="HealthText" Text="…" FontSize="26" FontWeight="Bold" HorizontalAlignment="Center"/><TextBlock Text="из 100" FontSize="10" Foreground="{DynamicResource TextMuted}" HorizontalAlignment="Center" Margin="0,-4,0,0"/></StackPanel>
+              </Grid>
+              <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                <TextBlock x:Name="HealthTitle" Text="Индекс здоровья" FontWeight="Bold" FontSize="17"/>
+                <TextBlock x:Name="HealthHint" Text="Считается по мусору, автозагрузке, свободному месту и настройкам приватности." TextWrapping="Wrap" Foreground="{DynamicResource TextMuted}" Margin="0,4,0,0"/>
+                <StackPanel x:Name="HealthTips" Margin="0,8,0,0"/>
+              </StackPanel>
+            </Grid></Border>
             <UniformGrid Columns="4" Margin="0,0,0,2">
               <Border Style="{StaticResource Card}" Margin="0,0,14,14"><StackPanel><TextBlock Text="МУСОР" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextMuted}"/><TextBlock x:Name="TileJunk" Text="…" FontSize="26" FontWeight="Bold" Margin="0,4,0,0"/><TextBlock Text="можно освободить" FontSize="12" Foreground="{DynamicResource TextMuted}"/></StackPanel></Border>
               <Border Style="{StaticResource Card}" Margin="0,0,14,14"><StackPanel><TextBlock Text="ДИСК C:" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextMuted}"/><TextBlock x:Name="TileDisk" Text="…" FontSize="26" FontWeight="Bold" Margin="0,4,0,0"/><TextBlock x:Name="TileDiskSub" Text="свободно" FontSize="12" Foreground="{DynamicResource TextMuted}"/></StackPanel></Border>
@@ -603,6 +635,15 @@ function Restore-RegSession([string]$session) {
               <TextBlock Text="TRIM для SSD, дефрагментация для HDD. Windows сама определяет тип диска. Может занять несколько минут." TextWrapping="Wrap" Foreground="{DynamicResource TextMuted}" Margin="0,4,0,12"/>
               <StackPanel Orientation="Horizontal"><Button x:Name="BtnDisk" Content="Оптимизировать" Style="{StaticResource BtnMain}"/><TextBlock x:Name="DiskText" VerticalAlignment="Center" Foreground="{DynamicResource TextMuted}"/></StackPanel>
             </StackPanel></Border>
+            <Border Style="{StaticResource Card}"><Grid>
+              <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+              <StackPanel>
+                <TextBlock Text="Автоочистка по расписанию" FontWeight="Bold" FontSize="15"/>
+                <TextBlock Text="Раз в неделю Sweep сам уберёт временные файлы и кэши с настройками по умолчанию, без окон и вопросов. Всё, как обычно, попадает в карантин." TextWrapping="Wrap" Foreground="{DynamicResource TextMuted}" Margin="0,4,0,0"/>
+                <TextBlock x:Name="SchedText" Text="" FontSize="12" Foreground="{DynamicResource TextMuted}" Margin="0,6,0,0"/>
+              </StackPanel>
+              <CheckBox x:Name="SchedBox" Grid.Column="1" Content="" VerticalAlignment="Center" Margin="10,0,0,0"/>
+            </Grid></Border>
             <Border Style="{StaticResource Card}"><StackPanel>
               <TextBlock Text="Обновления Windows" FontWeight="Bold" FontSize="15"/>
               <TextBlock Text="Открывает окно обновлений. Обновления закрывают дыры в безопасности и часто исправляют тормоза." TextWrapping="Wrap" Foreground="{DynamicResource TextMuted}" Margin="0,4,0,12"/>
@@ -639,6 +680,19 @@ function Restore-RegSession([string]$session) {
           <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,4,0,14"><Button x:Name="BtnSysInfo" Content="Собрать сведения" Style="{StaticResource BtnMain}"/><Button x:Name="BtnSysCopy" Content="Скопировать" Style="{StaticResource Btn}" IsEnabled="False"/></StackPanel>
         </Grid>
 
+        <Grid x:Name="SecApps" Visibility="Collapsed">
+          <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+          <ScrollViewer><Border Style="{StaticResource Card}"><StackPanel>
+            <TextBlock Text="Предустановленные приложения Microsoft, которые редко кому нужны. Удаление освобождает место и убирает лишнее из меню Пуск. Любое из них можно бесплатно вернуть из Microsoft Store." TextWrapping="Wrap" Foreground="{DynamicResource TextMuted}" Margin="10,0,10,8"/>
+            <StackPanel x:Name="AppsPanel"><TextBlock Text="Нажмите «Проверить», чтобы увидеть установленные." Foreground="{DynamicResource TextMuted}" Margin="10,0"/></StackPanel>
+          </StackPanel></Border></ScrollViewer>
+          <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,4,0,14">
+            <Button x:Name="BtnAppsRemove" Content="Удалить отмеченные" Style="{StaticResource BtnMain}" IsEnabled="False"/>
+            <Button x:Name="BtnAppsScan" Content="Проверить" Style="{StaticResource Btn}"/>
+            <Button x:Name="BtnAppsStore" Content="Открыть Microsoft Store" Style="{StaticResource Btn}"/>
+          </StackPanel>
+        </Grid>
+
         <Grid x:Name="SecQ" Visibility="Collapsed">
           <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
           <ScrollViewer><Border Style="{StaticResource Card}"><StackPanel>
@@ -657,7 +711,7 @@ function Restore-RegSession([string]$session) {
 
 $Window = [Windows.Markup.XamlReader]::Load((New-Object System.Xml.XmlNodeReader $xaml))
 $ui = @{}
-foreach ($n in 'HeadTitle','HeadSub','BigLabel','BigTotal','Busy','Sections','SectionShift','NavHome','SecHome','BtnUpdateApp','BtnCheckUpdate','NavDisk','SecDisk','DiskPanel','BigFilesTitle','BigFilesPanel','BtnBigScan','BtnBigClean','BtnDiskOpen','TileJunk','TileDisk','TileDiskSub','TileMem','TileMemSub','TileStartup','BtnQuick',
+foreach ($n in 'HeadTitle','HeadSub','BigLabel','BigTotal','Busy','Sections','SectionShift','NavHome','SecHome','BtnUpdateApp','BtnCheckUpdate','HealthRing','HealthText','HealthTitle','HealthHint','HealthTips','NavApps','SecApps','AppsPanel','BtnAppsRemove','BtnAppsScan','BtnAppsStore','SchedText','SchedBox','NavDisk','SecDisk','DiskPanel','BigFilesTitle','BigFilesPanel','BtnBigScan','BtnBigClean','BtnDiskOpen','TileJunk','TileDisk','TileDiskSub','TileMem','TileMemSub','TileStartup','BtnQuick',
               'NavClean','NavPrivacy','NavReg','NavSvc','NavStartup','NavBoost','NavSys','NavQ',
               'SecClean','SecPrivacy','SecReg','SecSvc','SecStartup','SecBoost','SecSys','SecQ',
               'CatPanel','BtnClean','BtnScan','PrivPanel','BtnPrivAll','RegPanel','RegBackupPanel','BtnRegClean','BtnRegScan','SvcPanel','StartupPanel','BtnStartupRefresh',
@@ -697,6 +751,7 @@ $Sections = @{ NavHome=@{ Sec='SecHome'; Title='Обзор'; Sub='Состоян
                NavBoost=@{ Sec='SecBoost'; Title='Ускорение'; Sub='Память, диски и обновления'; Big='СВОБОДНО ПАМЯТИ' }
                NavDisk=@{ Sec='SecDisk'; Title='Диски'; Sub='Что занимает место на каждом диске'; Big='СВОБОДНО' }
                NavSys=@{ Sec='SecSys'; Title='Система'; Sub='Железо и Windows на одном экране'; Big='КОМПЬЮТЕР' }
+               NavApps=@{ Sec='SecApps'; Title='Приложения'; Sub='Предустановленный мусор Windows'; Big='НАЙДЕНО' }
                NavQ=@{ Sec='SecQ'; Title='Карантин'; Sub='Всё, что убрано, можно вернуть'; Big='В КАРАНТИНЕ' } }
 $FadeIn = New-Object System.Windows.Media.Animation.Storyboard
 $fa = New-Object System.Windows.Media.Animation.DoubleAnimation(0.0, 1.0, [TimeSpan]::FromMilliseconds(260)); [System.Windows.Media.Animation.Storyboard]::SetTarget($fa, $ui.Sections); [System.Windows.Media.Animation.Storyboard]::SetTargetProperty($fa, (New-Object System.Windows.PropertyPath('Opacity')))
@@ -725,7 +780,7 @@ function Set-BigSize([long]$bytes) { $script:bigFrom = 0; $script:bigTo = $bytes
 function Update-BigNumber([string]$nav) {
     $BigTimer.Stop()
     switch ($nav) {
-        'NavHome'    { Set-BigSize (Get-CheckedTotal); Update-Tiles }
+        'NavHome'    { Set-BigSize (Get-CheckedTotal); Update-Tiles; Update-Health }
         'NavClean'   { Set-BigSize (Get-CheckedTotal) }
         'NavPrivacy' { $n = @($PrivBoxes.Values | Where-Object { $_.IsChecked }).Count; $ui.BigTotal.Text = "$n из $($Privacy.Count)" }
         'NavReg'     { $ui.BigTotal.Text = $(if ($script:regFound -ge 0) { "$($script:regFound)" } else { '…' }) }
@@ -734,6 +789,7 @@ function Update-BigNumber([string]$nav) {
         'NavBoost'   { $ui.BigTotal.Text = Format-Size ([long]((Get-CimInstance Win32_OperatingSystem).FreePhysicalMemory * 1KB)) }
         'NavDisk'    { if (-not $ui.DiskPanel.Children.Count) { Load-Disks }; $v = Get-SelectedVolume; if ($v) { $ui.BigTotal.Text = Format-Size ([long]$v.SizeRemaining) } }
         'NavSys'     { $ui.BigTotal.Text = $env:COMPUTERNAME }
+        'NavApps'    { $ui.BigTotal.Text = $(if ($script:appsFound -ge 0) { "$($script:appsFound)" } else { '…' }) }
         'NavQ'       { $sz = [long]0; foreach ($q in (Get-QuarantineSessions)) { $sz += $q.Size }; $ui.BigTotal.Text = Format-Size $sz }
     }
 }
@@ -766,7 +822,7 @@ function Start-Scan {
         $size = if ($c.Id -eq 'bin') { Get-RecycleBinSize } else { Get-CatSize $c }
         $CatSizes[$c.Id] = $size; $CatBoxes[$c.Id].Title.Text = "$($c.Name)    $(Format-Size $size)"
     }
-    Set-BigSize (Get-CheckedTotal); Set-Busy $false; Update-Tiles
+    Set-BigSize (Get-CheckedTotal); Set-Busy $false; Update-Tiles; Update-Health
     Set-Status 'Проверка закончена. Отметьте, что убрать, и нажмите «Очистить». Всё, кроме корзины, попадёт в карантин.'
     $ui.BtnScan.IsEnabled = $true; $ui.BtnClean.IsEnabled = $true
 }
@@ -795,7 +851,7 @@ $ui.BtnClean.Add_Click({
     if ($wuStopped) { try { Start-Service wuauserv -ErrorAction SilentlyContinue } catch {} }
     Set-BigSize 0; Set-Busy $false; Write-Log "Освобождено $(Format-Size $freed)"
     Set-Status "Готово. Убрано: $(Format-Size $freed). Файлы лежат в карантине, их можно вернуть в разделе «Карантин». Занятые программами файлы пропущены."
-    Load-Quarantine; Update-Tiles; $ui.BtnScan.IsEnabled = $true
+    Load-Quarantine; Update-Tiles; Update-Health; $ui.BtnScan.IsEnabled = $true
 })
 
 # ----- Приватность -----
@@ -1002,6 +1058,130 @@ $ui.BtnBigClean.Add_Click({
 })
 $ui.BtnDiskOpen.Add_Click({ Start-Process explorer.exe "$($script:selectedDrive):\" })
 
+# ----- Индекс здоровья -----
+function Update-Health {
+    try {
+        $score = 100; $tips = @()
+        $junk = Get-CheckedTotal
+        if ($junk -gt 5GB) { $score -= 25; $tips += 'Много мусора: запустите очистку' } elseif ($junk -gt 1GB) { $score -= 12; $tips += 'Есть что почистить' } elseif ($junk -gt 300MB) { $score -= 5 }
+        $st = @($ui.StartupPanel.Children | Where-Object { $_ -is [System.Windows.Controls.CheckBox] -and $_.IsChecked }).Count
+        if ($st -gt 12) { $score -= 20; $tips += "Автозагрузка перегружена: $st программ" } elseif ($st -gt 7) { $score -= 10; $tips += "В автозагрузке $st программ, часть можно выключить" }
+        $sys = Get-Volume -DriveLetter ($env:SystemDrive.TrimEnd(':')) -ErrorAction SilentlyContinue
+        if ($sys -and $sys.Size -gt 0) { $free = $sys.SizeRemaining / $sys.Size; if ($free -lt 0.07) { $score -= 25; $tips += 'На системном диске почти нет места' } elseif ($free -lt 0.15) { $score -= 12; $tips += 'На системном диске мало места' } }
+        $priv = @($PrivBoxes.Values | Where-Object { $_.IsChecked }).Count
+        if ($priv -lt 3) { $score -= 15; $tips += 'Слежка и реклама Windows включены' } elseif ($priv -lt 8) { $score -= 6; $tips += 'Часть телеметрии ещё включена' }
+        $os = Get-CimInstance Win32_OperatingSystem; $up = (Get-Date) - $os.LastBootUpTime
+        if ($up.TotalDays -gt 14) { $score -= 8; $tips += "Компьютер не перезагружался $([int]$up.TotalDays) дней" }
+        $score = [math]::Max(5, [math]::Min(100, $score))
+        $ui.HealthText.Text = "$score"
+        $circ = [math]::PI * 96 / 9
+        $ui.HealthRing.StrokeDashArray = New-Object System.Windows.Media.DoubleCollection(@([double]($circ * $score / 100), [double]999))
+        $ui.HealthRing.Stroke = $(if ($score -ge 80) { '#34D399' } elseif ($score -ge 55) { '#FBBF24' } else { '#F87171' })
+        $ui.HealthTitle.Text = $(if ($score -ge 80) { 'Компьютер в хорошей форме' } elseif ($score -ge 55) { 'Есть что улучшить' } else { 'Компьютеру нужна забота' })
+        $ui.HealthTips.Children.Clear()
+        foreach ($t in ($tips | Select-Object -First 3)) { $ui.HealthTips.Children.Add((New-Text "• $t" 'TextMain' 12)) | Out-Null }
+        if (-not $tips) { $ui.HealthTips.Children.Add((New-Text '• Всё в порядке, так держать' 'Good' 12)) | Out-Null }
+    } catch { Write-Log "Здоровье: $($_.Exception.Message)" }
+}
+
+# ----- Приложения (предустановленный мусор) -----
+$BloatApps = @(
+    @{ Id='Microsoft.XboxApp'; Name='Xbox'; Hint='Игровой клиент Xbox' }
+    @{ Id='Microsoft.GamingApp'; Name='Xbox (новое приложение)'; Hint='Магазин игр Xbox' }
+    @{ Id='Microsoft.XboxGamingOverlay'; Name='Xbox Game Bar'; Hint='Оверлей для записи игр. Если не играете, не нужен' }
+    @{ Id='Microsoft.ZuneMusic'; Name='Media Player / Музыка Groove'; Hint='Проигрыватель Microsoft' }
+    @{ Id='Microsoft.ZuneVideo'; Name='Кино и ТВ'; Hint='Видеопроигрыватель и магазин фильмов' }
+    @{ Id='Microsoft.BingNews'; Name='Новости'; Hint='Лента новостей Microsoft' }
+    @{ Id='Microsoft.BingWeather'; Name='Погода'; Hint='Погода от MSN' }
+    @{ Id='Microsoft.BingSearch'; Name='Поиск Bing'; Hint='Веб-поиск в меню Пуск' }
+    @{ Id='Microsoft.GetHelp'; Name='Техническая поддержка'; Hint='Чат с поддержкой Microsoft' }
+    @{ Id='Microsoft.Getstarted'; Name='Советы'; Hint='Приложение «Начало работы»' }
+    @{ Id='Microsoft.MicrosoftSolitaireCollection'; Name='Solitaire Collection'; Hint='Пасьянсы с рекламой' }
+    @{ Id='Microsoft.People'; Name='Люди'; Hint='Контакты Microsoft' }
+    @{ Id='Microsoft.MicrosoftOfficeHub'; Name='Office Hub'; Hint='Реклама подписки Microsoft 365' }
+    @{ Id='Microsoft.SkypeApp'; Name='Skype'; Hint='Мессенджер' }
+    @{ Id='Microsoft.WindowsFeedbackHub'; Name='Центр отзывов'; Hint='Отправка отзывов в Microsoft' }
+    @{ Id='Microsoft.Microsoft3DViewer'; Name='3D Viewer'; Hint='Просмотр 3D-моделей' }
+    @{ Id='Microsoft.MixedReality.Portal'; Name='Портал смешанной реальности'; Hint='Нужен только для VR-шлема' }
+    @{ Id='Microsoft.WindowsMaps'; Name='Карты'; Hint='Офлайн-карты Windows' }
+    @{ Id='Microsoft.549981C3F5F10'; Name='Кортана'; Hint='Голосовой помощник' }
+    @{ Id='Clipchamp.Clipchamp'; Name='Clipchamp'; Hint='Видеоредактор с подпиской' }
+    @{ Id='Microsoft.Todos'; Name='Microsoft To Do'; Hint='Список задач' }
+    @{ Id='MicrosoftTeams'; Name='Teams (личный)'; Hint='Чат Teams для дома' }
+    @{ Id='MSTeams'; Name='Teams'; Hint='Чат Teams' }
+    @{ Id='Microsoft.PowerAutomateDesktop'; Name='Power Automate'; Hint='Автоматизация для бизнеса' }
+    @{ Id='Microsoft.Copilot'; Name='Copilot'; Hint='Приложение помощника Microsoft' }
+    @{ Id='Microsoft.OutlookForWindows'; Name='Outlook (новый)'; Hint='Почтовый клиент с рекламой' }
+    @{ Id='Microsoft.MicrosoftJournal'; Name='Journal'; Hint='Рукописные заметки' }
+    @{ Id='Microsoft.Whiteboard'; Name='Whiteboard'; Hint='Доска для рисования' }
+    @{ Id='king.com.CandyCrushSaga'; Name='Candy Crush Saga'; Hint='Игра' }
+    @{ Id='king.com.CandyCrushSodaSaga'; Name='Candy Crush Soda'; Hint='Игра' }
+    @{ Id='SpotifyAB.SpotifyMusic'; Name='Spotify (предустановка)'; Hint='Рекламная предустановка' }
+    @{ Id='Disney.37853FC22B2CE'; Name='Disney+'; Hint='Рекламная предустановка' }
+    @{ Id='BytedancePte.Ltd.TikTok'; Name='TikTok'; Hint='Рекламная предустановка' }
+    @{ Id='Facebook.InstagramBeta'; Name='Instagram'; Hint='Рекламная предустановка' }
+    @{ Id='AmazonVideo.PrimeVideo'; Name='Prime Video'; Hint='Рекламная предустановка' }
+)
+$script:appsFound = -1; $script:appBoxes = @()
+$ui.BtnAppsScan.Add_Click({
+    Set-Busy $true; Set-Status 'Проверяю установленные приложения…'
+    $ui.AppsPanel.Children.Clear(); $script:appBoxes = @()
+    $installed = Get-AppxPackage -AllUsers -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name -Unique
+    $n = 0
+    foreach ($a in $BloatApps) {
+        if ($installed -notcontains $a.Id) { continue }
+        $n++
+        $row = New-CheckRow $a.Name $a.Hint $false $a.Id
+        $row.Box.Add_Click({ $ui.BtnAppsRemove.IsEnabled = (@($script:appBoxes | Where-Object { $_.IsChecked }).Count -gt 0) })
+        $ui.AppsPanel.Children.Add($row.Box) | Out-Null; $script:appBoxes += $row.Box
+    }
+    if ($n -eq 0) { $ui.AppsPanel.Children.Add((New-Text 'Лишних предустановленных приложений не найдено.' 'TextMuted')) | Out-Null }
+    $script:appsFound = $n; Update-BigNumber 'NavApps'; Set-Busy $false
+    Set-Status "Найдено предустановленных приложений: $n. Отметьте ненужные и нажмите «Удалить отмеченные»."
+})
+$ui.BtnAppsRemove.Add_Click({
+    $picked = @($script:appBoxes | Where-Object { $_.IsChecked }); if (-not $picked.Count) { return }
+    $ui.BtnAppsRemove.IsEnabled = $false; Set-Busy $true; $done = 0
+    foreach ($cb in $picked) {
+        $id = [string]$cb.Tag; Set-Status "Удаляю $id…"
+        try {
+            Get-AppxPackage -Name $id -AllUsers -ErrorAction SilentlyContinue | Remove-AppxPackage -AllUsers -ErrorAction SilentlyContinue
+            Get-AppxProvisionedPackage -Online -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -eq $id } | Remove-AppxProvisionedPackage -Online -ErrorAction SilentlyContinue | Out-Null
+            $ui.AppsPanel.Children.Remove($cb); $done++; Write-Log "Удалено приложение $id"
+        } catch { Write-Log "Приложение $id не удалилось: $($_.Exception.Message)" }
+    }
+    $script:appBoxes = @($script:appBoxes | Where-Object { -not $_.IsChecked }); $script:appsFound = $script:appBoxes.Count; Update-BigNumber 'NavApps'; Set-Busy $false
+    Set-Status "Удалено приложений: $done. Вернуть любое можно из Microsoft Store."
+})
+$ui.BtnAppsStore.Add_Click({ Start-Process 'ms-windows-store://home' })
+
+# ----- Автоочистка по расписанию -----
+$TaskName = 'Sweep Auto Clean'
+function Get-SelfPath { if ($PSCommandPath) { return $PSCommandPath }; return [System.Diagnostics.Process]::GetCurrentProcess().MainModule.FileName }
+function Update-SchedText {
+    $t = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
+    if ($t) { $info = Get-ScheduledTaskInfo -TaskName $TaskName -ErrorAction SilentlyContinue; $next = if ($info -and $info.NextRunTime) { $info.NextRunTime.ToString('d MMMM, HH:mm') } else { 'скоро' }; $ui.SchedText.Text = "Включено. Следующий запуск: $next"; $ui.SchedBox.IsChecked = $true }
+    else { $ui.SchedText.Text = 'Выключено'; $ui.SchedBox.IsChecked = $false }
+}
+$ui.SchedBox.Add_Click({
+    try {
+        if ($ui.SchedBox.IsChecked) {
+            $self = Get-SelfPath
+            if ($self -like '*.ps1') { $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$self`" -auto" }
+            else { $action = New-ScheduledTaskAction -Execute $self -Argument '-auto' }
+            $trigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Sunday -At 12:00
+            $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -RunOnlyIfIdle:$false -ExecutionTimeLimit (New-TimeSpan -Minutes 30)
+            Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Settings $settings -RunLevel Highest -User $env:USERNAME -Force | Out-Null
+            Write-Log 'Расписание включено'; Set-Status 'Автоочистка включена: каждое воскресенье в 12:00, или при первом включении компьютера после этого.'
+        } else {
+            Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false -ErrorAction SilentlyContinue
+            Write-Log 'Расписание выключено'; Set-Status 'Автоочистка выключена.'
+        }
+    } catch { Set-Status "Не удалось изменить расписание: $($_.Exception.Message)" }
+    Update-SchedText
+})
+Update-SchedText
+
 # ----- Система -----
 $script:sysReport = ''
 function Add-SysRow([string]$label, [string]$value) {
@@ -1085,7 +1265,7 @@ $ui.BtnQPurge.Add_Click({
 #  ОБНОВЛЕНИЯ через GitHub Releases. Репозиторий указывается в $UpdateRepo (например 'ivanov/sweep').
 #  Проверка идёт в фоне отдельным процессом, окно не замирает. Ничего, кроме номера версии, не отправляется.
 # =====================================================================
-$AppVersion = '0.6'
+$AppVersion = '0.7'
 $UpdateRepo = 'pabloescobarbl-ops/sweep'
 $UpdateDir  = Join-Path $env:TEMP 'Sweep-update'
 New-Item -ItemType Directory -Path $UpdateDir -Force | Out-Null

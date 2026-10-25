@@ -1,52 +1,64 @@
 # Sweep
 
-Чистка, приватность и ускорение Windows одним нажатием. Бесплатно, без установки, без интернета.
+Clean, de-bloat and speed up Windows in one click. Free, open source, works offline.
 
-Работает на Windows 10 и 11. Ничего не отправляет и не скачивает: все действия выполняются только на вашем компьютере.
+Windows 10 and 11. Sweep never connects to the internet except when you press "Check for updates".
 
-## Что умеет
+[Русская версия](README.ru.md)
 
-**Мусор.** Показывает, сколько места занимает каждая категория, и удаляет только то, что вы отметили:
-- временные файлы пользователя и Windows
-- корзина
-- кэш эскизов Проводника
-- кэш обновлений Windows
-- отчёты об ошибках и дампы памяти
-- старые журналы Windows
-- кэш браузеров: Chrome, Edge, Яндекс Браузер, Brave, Vivaldi, Opera, Firefox
-- куки браузеров (по умолчанию выключено, потому что выйдете из всех сайтов)
+## Download
 
-**Приватность.** 17 переключателей в трёх группах: сбор данных (телеметрия, рекламный идентификатор, история активности, отчёты об ошибках), реклама и подсказки (Пуск, экран блокировки, Проводник, строка поиска, новости и виджеты, экран «Что нового»), помощники Microsoft (Кортана, Copilot, сбор данных Edge). Каждый пункт включается обратно тем же переключателем.
+Grab `Sweep-Setup-x.y.exe` from the [latest release](../../releases/latest) and run it. A portable `Sweep.exe` is attached too if you prefer no installation.
 
-**Диски.** Занятость каждого диска и поиск самых крупных файлов вне системных папок с переносом в карантин.
+Windows SmartScreen may warn about an unknown publisher because the build is not code-signed yet. Click **More info**, then **Run anyway**. The full source is in this repository: the whole program is one file, `Sweep.ps1`.
 
-**Реестр.** Безопасные категории с резервной копией каждой ветки в .reg и кнопкой «Вернуть».
+## What it does
 
-**Службы.** Выключение ненужных служб: SysMain, индексирование поиска, Xbox, карты, факс, удалённый реестр и другие. Исходный тип запуска запоминается, всё обратимо.
+**Overview.** A health index (0 to 100) with concrete tips, disk and memory at a glance, and a one-click quick clean.
 
-**Автозагрузка.** Список программ, которые запускаются вместе с Windows. Снимите галочку, чтобы отключить, поставьте обратно, чтобы включить. Ничего не удаляется.
+**Junk.** Shows how much space each category takes and removes only what you tick:
+temp folders, Recycle Bin, thumbnail cache, Windows Update cache, crash dumps and error reports, old Windows logs, browser caches (Chrome, Edge, Yandex, Brave, Vivaldi, Opera, Firefox) and, optionally, cookies.
 
-**Ускорение.** Освобождение оперативной памяти, оптимизация дисков (TRIM для SSD, дефрагментация для HDD), быстрый переход к обновлениям Windows.
+**Privacy.** 17 switches in three groups: data collection (telemetry, advertising ID, activity history, error reporting), ads and suggestions (Start menu, lock screen, Explorer, search box, news and widgets, "what's new" screen), Microsoft assistants (Cortana, Copilot, Edge telemetry). Every switch can be flipped back.
 
-## Как запустить
+**Registry.** Safe categories only: recent-file lists, MuiCache, App Paths and Run entries pointing to deleted programs. Every key is exported to a `.reg` file before it is touched, and a **Restore** button imports it back.
 
-1. Скачайте архив (кнопка Code, затем Download ZIP) и распакуйте в любую папку.
-2. Запустите файл `Start.bat`.
-3. Разрешите запуск от имени администратора: это нужно для чистки системных папок и автозагрузки.
+**Services.** Twelve services that slow down older PCs (SysMain, Windows Search indexing, Xbox services, Maps, Fax, Remote Registry and more). The original startup type is remembered, so everything is reversible.
 
-Установка не требуется. Чтобы удалить программу, просто удалите папку.
+**Startup.** What launches with Windows, with a switch per entry. Nothing is deleted.
 
-## Если Windows или антивирус предупреждают
+**Boost.** Free RAM, optimise drives (TRIM for SSD, defrag for HDD), open Windows Update, and a weekly **scheduled auto-clean** that runs silently.
 
-Программа меняет системные настройки и удаляет файлы, поэтому фильтр SmartScreen может показать предупреждение. Исходный код открыт и лежит в этом репозитории, его можно прочитать целиком: это один файл `Sweep.ps1`.
+**Disks.** Usage bar per drive and a finder for the largest files outside system folders, with one-click move to quarantine.
 
-## Безопасность
+**Apps.** Pre-installed Microsoft and partner apps most people never use (Xbox, Solitaire, News, Weather, Office Hub, Candy Crush and so on). Remove what you tick; anything can be reinstalled from Microsoft Store.
 
-- Удаляются только файлы из временных и кэш-папок. Документы, фотографии и программы не трогаются.
-- Файлы, занятые работающими программами, пропускаются.
-- Отключение автозагрузки обратимо и делается штатным способом Windows (так же, как в Диспетчере задач).
-- Куки не удаляются, пока вы сами не включите эту категорию.
+**System.** Windows build, CPU, GPU, motherboard, BIOS, RAM modules, disks, uptime, temperatures where Windows exposes them. Copy as text.
 
-## Лицензия
+**Quarantine.** Nothing is deleted outright. Files are moved to `ProgramData\Sweep\Quarantine`, and **Restore** puts them back. Purge the quarantine yourself when you are sure.
 
-MIT. Используйте, изменяйте и распространяйте свободно.
+Dark and light themes. Resizable, full-screen friendly.
+
+## Safety rules
+
+- Files are moved, not deleted. Only the Recycle Bin is emptied for real, and it is off by default.
+- Documents, photos, programs and licences are never touched.
+- Privacy switches and services are reversible with the same switch.
+- Registry cleaning backs up every key first.
+- Files in use are skipped.
+
+## Building from source
+
+Releases are built automatically by GitHub Actions on every `v*` tag (see `.github/workflows/release.yml`): `Sweep.exe` via ps2exe and the installer via Inno Setup.
+
+To build locally on Windows: run `build-exe.bat`, then install [Inno Setup 6](https://jrsoftware.org/isdl.php) and run `build-setup.bat`. See `INSTRUCTIONS.md`.
+
+To run without building: `Start.bat` (asks for administrator rights). `Debug.bat` keeps the console open to show errors.
+
+## Command line
+
+`Sweep.exe -auto` runs a silent clean with default categories and exits. This is what the scheduled task uses.
+
+## License
+
+MIT.
