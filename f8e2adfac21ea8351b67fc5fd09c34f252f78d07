@@ -1,0 +1,232 @@
+selftest: success
+run: https://github.com/drakedog-dev/sweep/actions/runs/40225410681
+commit: f8e2adfac21ea8351b67fc5fd09c34f252f78d07
+
+--- selftest.txt (last 200 of 200 lines)
+admin: True  python: 3.12.10
+OK   runner is elevated
+privacy before: 2 of 17
+OK   privacy on: telemetry
+OK   privacy on: adid
+OK   privacy on: activity
+OK   privacy on: feedback
+OK   privacy on: wer
+OK   privacy on: trackprogs
+OK   privacy on: tips
+OK   privacy on: lockscreen
+OK   privacy on: welcome
+OK   privacy on: explorerads
+OK   privacy on: startrec
+OK   privacy on: searchhl
+OK   privacy on: search
+OK   privacy on: feeds
+OK   privacy on: cortana
+OK   privacy on: copilot
+OK   privacy on: edge
+OK   privacy revert: adid
+     state after revert: adid False
+OK   privacy revert: activity
+     state after revert: activity False
+OK   privacy revert: feedback
+     state after revert: feedback False
+OK   privacy revert: wer
+     state after revert: wer False
+OK   privacy revert: trackprogs
+     state after revert: trackprogs False
+OK   privacy revert: tips
+     state after revert: tips False
+OK   privacy revert: lockscreen
+     state after revert: lockscreen False
+OK   privacy revert: welcome
+     state after revert: welcome False
+OK   privacy revert: explorerads
+     state after revert: explorerads False
+OK   privacy revert: startrec
+     state after revert: startrec False
+OK   privacy revert: searchhl
+     state after revert: searchhl False
+OK   privacy revert: search
+     state after revert: search False
+OK   privacy revert: feeds
+     state after revert: feeds False
+OK   privacy revert: copilot
+     state after revert: copilot False
+OK   privacy revert: edge
+     state after revert: edge False
+OK   copilot hidden in Settings counts as off
+OK   startup entry listed (User)
+OK   Cyrillic name and command read correctly (User)
+OK   startup disabled (User)
+OK   startup enabled again (User)
+OK   startup entry listed (System)
+OK   Cyrillic name and command read correctly (System)
+OK   startup disabled (System)
+OK   startup enabled again (System)
+OK   history scan found 368640 bytes
+OK   history freed 331776 bytes
+OK   history removed in User Data
+OK   passwords, autofill, bookmarks kept in Default
+OK   open tabs kept in Default
+OK   history removed in Opera Stable
+OK   passwords, autofill, bookmarks kept in Opera Stable
+OK   open tabs kept in Opera Stable
+OK   firefox visits removed
+OK   firefox bookmark kept
+OK   history restored from quarantine (13 items)
+OK   firefox history restored
+OK   boot diagnostics log readable (0 events)
+     boots: 0 last: 0.0 culprits: []
+OK   guard notices a setting Windows switched back on
+OK   guard puts it back
+OK   windows build read: 26100.33650
+OK   guard scheduled task registered
+OK   guard scheduled task removed
+     restore point created: False
+OK   junk scan temp: 415387982 bytes
+OK   junk scan bin: 0 bytes
+OK   junk scan thumbs: 4209712 bytes
+OK   junk scan wu: 22132216 bytes
+OK   junk scan dumps: 0 bytes
+OK   junk scan logs: 0 bytes
+OK   junk scan cache: 48 bytes
+OK   junk scan history: 368640 bytes
+OK   junk scan cookies: 0 bytes
+     registry mru: 1 found
+     registry muicache: 0 found
+     registry apppaths: 0 found
+     registry deadrun: 0 found
+OK   service states read: 6
+OK   system info: Microsoft Windows Server 2025 Datacenter 10.0.26100 (build 26100) / AMD EPYC 9V74 80-Core Processor
+     profile: {'class': 'mid', 'ram_gb': 16, 'threads': 4, 'ssd': True, 'score': 5}
+OK   volumes: ['C', 'D']
+OK   drive junk C: 113650 bytes
+     built-in apps found: 1
+     fx: balanced power: high schedule: {'next': '', 'enabled': False}
+OK   installed programs listed: 59
+OK   test program listed with its folder: C:\SweepTestApp
+OK   broken uninstaller ran and left the program registered
+     leftovers: [('folder', 'C:\\ProgramData\\SweepTestApp', True), ('folder', 'C:\\SweepTestApp', True), ('folder', 'C:\\Users\\runneradmin\\AppData\\Local\\SweepTestApp', True), ('folder', 'C:\\Users\\runneradmin\\AppData\\Roaming\\SweepTestApp', True), ('shortcut', 'C:\\Users\\runneradmin\\Desktop\\SweepTestApp.lnk', True), ('reg', 'HKCU\\Software\\SweepTestApp', True), ('reg', 'HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\SweepTestApp', True), ('reg', 'HKLM\\SOFTWARE\\WOW6432Node\\SweepTestApp', True), ('run', 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\SweepTestApp', True), ('task', '\\SweepTestApp Update', True), ('service', 'SweepTestAppSvc', True)]
+OK   leftover kind found: folder
+OK   leftover kind found: reg
+OK   leftover kind found: run
+OK   leftover kind found: shortcut
+OK   leftover kind found: task
+OK   leftover kind found: service
+OK   nothing unrelated is ticked []
+     removal: {'removed': 11, 'reboot': 0, 'failed': [], 'freed': 644}
+OK   all leftovers removed []
+OK   program folder gone (or queued for restart)
+OK   AppData folder gone
+OK   uninstall entry gone
+OK   Run entry gone
+OK   task gone
+OK   service gone
+OK   registry backup written
+OK   files are in quarantine
+OK   restore from quarantine works (5 items)
+OK   the uninstall backup is listed on the Registry page
+OK   scheduled task restored from the backup (6 files)
+OK   Run entry restored from the backup
+OK   the restored backup is gone from the list
+OK   a folder that cannot be restored stays in quarantine
+
+== program updates (winget)
+OK   winget found: C:\Users\runneradmin\AppData\Local\Microsoft\WindowsApps\winget.EXE
+     winget updates: 7zip.7zip 26.04>26.05 @github.com/ip7z, Git.Git 2.56.0.2>2.56.0.3 @github.com/git-for-windows, ImageMagick.ImageMagick 7.1.2.25>7.1.2.34 @github.com/ImageMagick, Anaconda.Miniconda3 py314_26.9.3-0>py314_26.9.4-0 @repo.anaconda.com, ShiningLight.OpenSSL.Dev 3.6.5>4.1.0 @slproweb.com, Unity.UnityHub 3.22.3.65535>3.22.4.65535 @public-cdn.cloud.unity3d.com, Amazon.SAM-CLI 1.169.0>1.170.0 @github.com/aws, Microsoft.msodbcsql.17 17.10.6.1>17.11.1.1 @download.microsoft.com, StrawberryPerl.StrawberryPerl 5.42.1>5.42.3.1 @github.com/StrawberryPerl, MongoDB.Shell 2.13.0>2.14.0 @downloads.mongodb.com, MongoDB.Server 7.0.45>9.0.2 @fastdl.mongodb.org, Amazon.AWSCLI 2.38.3.0>2.38.5 @awscli.amazonaws.com
+::notice title=Self test::winget updates: 7zip.7zip 26.04>26.05 @github.com/ip7z, Git.Git 2.56.0.2>2.56.0.3 @github.com/git-for-windows, ImageMagick.ImageMagick 7.1.2.25>7.1.2.34 @github.com/ImageMagick, Anaconda.Miniconda3 py314_26.9.3-0>py314_26.9.4-0 @repo.anaconda.com, ShiningLight.OpenSSL.Dev 3.6.5>4.1.0 @slproweb.com, Unity.UnityHub 3.22.3.65535>3.22.4.65535 @public-cdn.cloud.unity3d.com, Amazon.SAM-CLI 1.169.0>1.170.0 @github.com/aws, Microsoft.msodbcsql.17 17.10.6.1>17.11.1.1 @download.microsoft.com, StrawberryPerl.StrawberryPerl 5.42.1>5.42.3.1 @github.com/StrawberryPerl, MongoDB.Shell 2.13.0>2.14.0 @downloads.mongodb.com, MongoDB.Server 7.0.45>9.0.2 @fastdl.mongodb.org, Amazon.AWSCLI 2.38.3.0>2.38.5 @awscli.amazonaws.com
+OK   outdated programs found on this machine: 24
+OK   every row has an id, a title and a new version
+OK   vendor address and SHA-256 known for most packages (24/24)
+     winget progress via conpty: 3 events, 1 with bytes, phases ['download', 'install'], last ('install', 15414067.2, 15414067.2)
+::notice title=Self test::winget progress via conpty: 3 events, 1 with bytes, phases ['download', 'install'], last ('install', 15414067.2, 15414067.2)
+OK   install phase reported after the download
+     winget temp folder after the update: cache
+::notice title=Self test::winget temp folder after the update: cache
+OK   GitHub.cli updated 2.103.0 -> 2.103.2: {'ok': True, 'code': 0, 'reason': '', 'route': 'upgrade', 'after': '2.103.2', 'via': 'conpty', 'frames': 3}
+     winget upgrade GitHub.cli: 2.103.0 -> 2.103.2, {'ok': True, 'code': 0, 'reason': '', 'route': 'upgrade', 'after': '2.103.2', 'via': 'conpty', 'frames': 3}
+::notice title=Self test::winget upgrade GitHub.cli: 2.103.0 -> 2.103.2, {'ok': True, 'code': 0, 'reason': '', 'route': 'upgrade', 'after': '2.103.2', 'via': 'conpty', 'frames': 3}
+OK   installed version changed (2.103.0 -> 2.103.2, catalogue 2.103.2)
+OK   second run reports up to date: {'ok': True, 'code': 2316632107, 'reason': 'uptodate', 'route': 'upgrade', 'after': '2.103.2', 'via': 'conpty', 'frames': 0}
+OK   updated program left the list
+     upgrade table via conpty: 23 rows, pipe 23 rows; only pipe [], only console []
+::notice title=Self test::upgrade table via conpty: 23 rows, pipe 23 rows; only pipe [], only console []
+OK   tables are read from a pseudo console (conpty)
+OK   pseudo console and pipe list the same packages
+OK   same versions in both
+OK   nothing shortened in the wide console
+     not matched to Installed apps: Microsoft.AppInstaller, Microsoft.WindowsTerminal
+::notice title=Self test::not matched to Installed apps: Microsoft.AppInstaller, Microsoft.WindowsTerminal
+OK   rows matched to Installed apps (22/24)
+     Store apps: Microsoft.AppInstaller -> Microsoft.DesktopAppInstaller AppPackageAppList.targetsize-48_altform-unplated.png, Microsoft.WindowsTerminal -> Microsoft.WindowsTerminal Square44x44Logo.targetsize-48_altform-unplated.png
+::notice title=Self test::Store apps: Microsoft.AppInstaller -> Microsoft.DesktopAppInstaller AppPackageAppList.targetsize-48_altform-unplated.png, Microsoft.WindowsTerminal -> Microsoft.WindowsTerminal Square44x44Logo.targetsize-48_altform-unplated.png
+OK   Store apps found with their logo (2)
+     open programs: Microsoft.WindowsTerminal
+::notice title=Self test::open programs: Microsoft.WindowsTerminal
+     look-alikes: none
+::notice title=Self test::look-alikes: none
+OK   almost no package marked as another program (0)
+     release notes known for 18/24: ['7zip.7zip', 'Git.Git', 'ImageMagick.ImageMagick', 'Anaconda.Miniconda3', 'Amazon.SAM-CLI', 'Microsoft.msodbcsql.17', 'StrawberryPerl.StrawberryPerl', 'GitHub.cli']
+::notice title=Self test::release notes known for 18/24: ['7zip.7zip', 'Git.Git', 'ImageMagick.ImageMagick', 'Anaconda.Miniconda3', 'Amazon.SAM-CLI', 'Microsoft.msodbcsql.17', 'StrawberryPerl.StrawberryPerl', 'GitHub.cli']
+     install over 7zip.7zip: 26.04 -> 26.05, {'ok': True, 'code': 0, 'reason': '', 'via': 'conpty', 'frames': 3}, phases ['download', 'install']
+::notice title=Self test::install over 7zip.7zip: 26.04 -> 26.05, {'ok': True, 'code': 0, 'reason': '', 'via': 'conpty', 'frames': 3}, phases ['download', 'install']
+OK   installing over the old version updates it (7zip.7zip 26.04 -> 26.05)
+     upgrade after install-over: {'ok': True, 'code': 2316632107, 'reason': 'uptodate', 'route': 'upgrade', 'after': '26.05', 'via': 'conpty', 'frames': 0}
+::notice title=Self test::upgrade after install-over: {'ok': True, 'code': 2316632107, 'reason': 'uptodate', 'route': 'upgrade', 'after': '26.05', 'via': 'conpty', 'frames': 0}
+OK   nothing left to update afterwards (uptodate)
+     search vlc: VideoLAN.VLC 3.0.24, Cimbali.pympress 1.8.6, CrySer66.JellyfinVlcBridge 1.18.0, Starpine.Screenbox 0.23.0, Streamlink.Streamlink 8.6.2-2, mmozeiko.wcap 2025.11.27, qwqcode.SubRenamer 2.4.0, univrsal.tuna 1.9.11
+::notice title=Self test::search vlc: VideoLAN.VLC 3.0.24, Cimbali.pympress 1.8.6, CrySer66.JellyfinVlcBridge 1.18.0, Starpine.Screenbox 0.23.0, Streamlink.Streamlink 8.6.2-2, mmozeiko.wcap 2025.11.27, qwqcode.SubRenamer 2.4.0, univrsal.tuna 1.9.11
+OK   search finds VideoLAN.VLC
+OK   search ids are complete
+     catalogue picks: 45/45 found
+::notice title=Self test::catalogue picks: 45/45 found
+OK   every program offered for installing is in the catalogue []
+     pick sources: Mozilla.Firefox@download-installer.cdn.mozilla.net, Yandex.Browser@download.cdn.yandex.net, Brave.Brave@github.com/brave, Opera.Opera@get.geo.opera.com, Telegram.TelegramDesktop@github.com/telegramdesktop, Discord.Discord@stable.dl2.discordapp.net, Zoom.Zoom@zoom.us, Rakuten.Viber@download.cdn.viber.com, VideoLAN.VLC@download.videolan.org, Daum.PotPlayer@t1.daumcdn.net, AIMP.AIMP@aimp.ru, OBSProject.OBSStudio@github.com/obsproject, Audacity.Audacity@github.com/audacity, HandBrake.HandBrake@github.com/HandBrake, TheDocumentFoundation.LibreOffice@download.documentfoundation.org, ONLYOFFICE.DesktopEditors@github.com/ONLYOFFICE, SumatraPDF.SumatraPDF@sumatrapdfreader.org, Adobe.Acrobat.Reader.64-bit@ardownload3.adobe.com, Notepad++.Notepad++@github.com/notepad-plus-plus, Obsidian.Obsidian@github.com/obsidianmd, 7zip.7zip@github.com/ip7z, RARLab.WinRAR@rarlab.com, voidtools.Everything@voidtoo
+::notice title=Self test::pick sources: Mozilla.Firefox@download-installer.cdn.mozilla.net, Yandex.Browser@download.cdn.yandex.net, Brave.Brave@github.com/brave, Opera.Opera@get.geo.opera.com, Telegram.TelegramDesktop@github.com/telegramdesktop, Discord.Discord@stable.dl2.discordapp.net, Zoom.Zoom@zoom.us, Rakuten.Viber@download.cdn.viber.com, VideoLAN.VLC@download.videolan.org, Daum.PotPlayer@t1.daumcdn.net, AIMP.AIMP@aimp.ru, OBSProject.OBSStudio@github.com/obsproject, Audacity.Audacity@github.com/audacity, HandBrake.HandBrake@github.com/HandBrake, TheDocumentFoundation.LibreOffice@download.documentfoundation.org, ONLYOFFICE.DesktopEditors@github.com/ONLYOFFICE, SumatraPDF.SumatraPDF@sumatrapdfreader.org, Adobe.Acrobat.Reader.64-bit@ardownload3.adobe.com, Notepad++.Notepad++@github.com/notepad-plus-plus, Obsidian.Obsidian@github.com/obsidianmd, 7zip.7zip@github.com/ip7z, RARLab.WinRAR@rarlab.com, voidtools.Ever
+     install SumatraPDF.SumatraPDF: {'ok': True, 'code': 0, 'reason': '', 'via': 'conpty', 'frames': 4}, had it before: False, events 4: [('download', 0, 0), ('download', 9, 100), ('download', 1048576, 11010048), ('install', 11010048, 11010048)] ... [('download', 1048576, 11010048), ('install', 11010048, 11010048)]
+::notice title=Self test::install SumatraPDF.SumatraPDF: {'ok': True, 'code': 0, 'reason': '', 'via': 'conpty', 'frames': 4}, had it before: False, events 4: [('download', 0, 0), ('download', 9, 100), ('download', 1048576, 11010048), ('install', 11010048, 11010048)] ... [('download', 1048576, 11010048), ('install', 11010048, 11010048)]
+OK   SumatraPDF.SumatraPDF installed: {'ok': True, 'code': 0, 'reason': '', 'via': 'conpty', 'frames': 4}
+OK   SumatraPDF.SumatraPDF is listed as installed afterwards
+OK   install reports download progress
+     download LLVM.LLVM via conpty: rc=0x0, 13.1 s, events 14, before the end 12: [(0.77, 'download', 0), (1.79, 'download', 1), (2.71, 'download', 11534336), (3.72, 'download', 95420416), (4.74, 'download', 179306496), (5.8, 'download', 242221056), (6.8, 'download', 287309824), (7.81, 'download', 341835776)] ... [(11.85, 'download', 565182464), (12.14, 'download', 623902720), (12.87, 'install', 639631360)]
+::notice title=Self test::download LLVM.LLVM via conpty: rc=0x0, 13.1 s, events 14, before the end 12: [(0.77, 'download', 0), (1.79, 'download', 1), (2.71, 'download', 11534336), (3.72, 'download', 95420416), (4.74, 'download', 179306496), (5.8, 'download', 242221056), (6.8, 'download', 287309824), (7.81, 'download', 341835776)] ... [(11.85, 'download', 565182464), (12.14, 'download', 623902720), (12.87, 'install', 639631360)]
+OK   winget runs inside a pseudo console (conpty)
+OK   live progress while downloading LLVM.LLVM (12 updates before it finished)
+
+== title bar
+     title bar dark on build 26100: dark=0x0, caption=0x0, border=0x0, text=0x0
+::notice title=Self test::title bar dark on build 26100: dark=0x0, caption=0x0, border=0x0, text=0x0
+OK   dark: dark/light frame accepted by Windows
+OK   dark: caption colours accepted by Windows 11
+     title bar light on build 26100: dark=0x0, caption=0x0, border=0x0, text=0x0
+::notice title=Self test::title bar light on build 26100: dark=0x0, caption=0x0, border=0x0, text=0x0
+OK   light: dark/light frame accepted by Windows
+OK   light: caption colours accepted by Windows 11
+
+ALL PASSED
+
+--- ui.txt (last 4 of 4 lines)
+
+2026-10-25 19:25:42  titlebar dark: dark=0x80070006, caption=0x80070006, border=0x80070006, text=0x80070006
+2026-10-25 19:26:26  ui-test: pages 14, programs 60, boots 0, updates 22 (winget=True, checked=True, suspect 0), install picks 45 (installed 5), search 10, QML warnings 0
+
+--- log.txt (last 20 of 20 lines)
+2026-10-25 19:19:29  restore point 'Sweep self-test': fail: This functionality is not supported on this operating system.
+2026-10-25 19:23:58  uninstall SweepTestApp: 'C:\SweepTestApp\uninstall.cmd' exit 0, entry still present: True
+2026-10-25 19:24:04  restore C:\Users\RUNNER~1\AppData\Local\Temp\sweep-selftest-taken: the folder exists again, kept in quarantine
+2026-10-25 19:24:07  updates: winget upgrade rc=0x0 via conpty, 24 updates, 3 s
+2026-10-25 19:24:33  updates: GitHub.cli upgrade rc=0x0 ok=True 12 s via conpty, progress frames 3  o, third-party packages. | Downloading https://github.com/cli/cli/releases/download/v2.103.2/gh_2.103.2_windows_amd64.msi]9;4;3;0\ | ██████████████████████████████  14.7 MB / 14.7 MB]9;4;0;0\ | Successfully verified installer hash | Starting package install...]9;4;3;0\ | Successfully installed
+2026-10-25 19:24:36  updates: GitHub.cli done: ? -> 2.103.2 route=upgrade reason=ok
+2026-10-25 19:24:42  updates: GitHub.cli upgrade rc=0x8a15002b ok=True 3 s via conpty, progress frames 0  ]0;C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.26.510.0_x64__8wekyb3d8bbwe\winget.exe]9;4;3;0\   - ]9;4;0;0\]9;4;3;0\   - ]9;4;0;0\No available upgrade found. | No newer package versions are available from the configured sources.
+2026-10-25 19:24:45  updates: GitHub.cli done: ? -> 2.103.2 route=upgrade reason=uptodate
+2026-10-25 19:24:46  updates: winget upgrade rc=0x0 via conpty, 23 updates, 2 s
+2026-10-25 19:24:50  updates: winget upgrade rc=0x0 via conpty, 23 updates, 1 s
+2026-10-25 19:24:56  install: 7zip.7zip rc=0x0 ok=True 3 s via conpty, progress frames 3  es it grant any licenses to, third-party packages. | Downloading https://github.com/ip7z/7zip/releases/download/26.05/7z2605-x64.exe]9;4;3;0\ | ██████████████████████████████  1.58 MB / 1.58 MB | Successfully verified installer hash | Starting package install...]9;4;3;0\ | Successfully installed
+2026-10-25 19:24:59  updates: 7zip.7zip upgrade rc=0x8a15002b ok=True 1 s via conpty, progress frames 0  ]0;C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.26.510.0_x64__8wekyb3d8bbwe\winget.exe]9;4;3;0\   - ]9;4;0;0\]9;4;3;0\   - ]9;4;0;0\No available upgrade found. | No newer package versions are available from the configured sources.
+2026-10-25 19:25:00  updates: 7zip.7zip done: 26.05 -> 26.05 route=upgrade reason=uptodate
+2026-10-25 19:25:01  install: search 'vlc' rc=0x0 via conpty: 10 found
+2026-10-25 19:25:22  install: SumatraPDF.SumatraPDF rc=0x0 ok=True 6 s via conpty, progress frames 4  -party packages. | Downloading https://www.sumatrapdfreader.org/dl/rel/3.6.1/SumatraPDF-3.6.1-64-install.exe]9;4;3;0\ | ]9;4;1;100\██████████████████████████████  10.5 MB / 10.5 MB]9;4;0;0\ | Successfully verified installer hash | Starting package install...]9;4;3;0\ | Successfully installed
+2026-10-25 19:25:42  titlebar dark: dark=0x80070006, caption=0x80070006, border=0x80070006, text=0x80070006
+2026-10-25 19:25:43  context: Sweep 1.0.19, admin=True, 64bit, user=runnervmdaln5\runneradmin, os=Microsoft Windows Server 2025 Datacenter 26100, antivirus=none reported, exe=C:\hostedtoolcache\windows\Python\3.12.10\x64\python.exe
+2026-10-25 19:26:08  updates: winget upgrade rc=0x0 via conpty, 22 updates, 1 s
+2026-10-25 19:26:19  install: search 'vlc' rc=0x0 via conpty: 10 found
+2026-10-25 19:26:26  ui-test: pages 14, programs 60, boots 0, updates 22 (winget=True, checked=True, suspect 0), install picks 45 (installed 5), search 10, QML warnings 0
