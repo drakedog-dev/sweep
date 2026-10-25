@@ -63,6 +63,14 @@ The original PowerShell version (0.x) is kept in `legacy/`.
 
 `Sweep.exe --auto` runs a silent clean with default categories and exits. This is what the scheduled task uses.
 
+## Code signing policy
+
+Windows releases are being prepared for free code signing provided by [SignPath.io](https://about.signpath.io/), certificate by [SignPath Foundation](https://signpath.org/); until approval they are unsigned. Releases are built only by GitHub Actions from this repository, and every signing request is approved manually. Team: Alex (Drakedog) is committer, reviewer and approver. Details: [CODE_SIGNING_POLICY.md](CODE_SIGNING_POLICY.md).
+
+## Privacy policy
+
+Sweep collects and sends no personal data and no telemetry. It connects only to `api.github.com` and `github.com` to check for and download Sweep updates: on start-up (can be turned off in Settings) or when you press "Check for updates". This program will not transfer any other information to other networked systems unless specifically requested by the user or the person installing or operating it.
+
 ## Feedback and thanks
 
 Found a bug or have an idea? [Open an issue](../../issues/new). If Sweep is useful to you, a star on this repository is the best way to say thanks and helps other people find it.

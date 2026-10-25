@@ -96,6 +96,7 @@ STRINGS: dict[str, dict[str, str]] = {
     "priv.disabled": {"ru": "ОТКЛЮЧЕНО", "en": "DISABLED"},
     "priv.result": {"ru": "Слежка отключена: {0} из {1}", "en": "Tracking disabled: {0} of {1}"},
     "priv.partial": {"ru": "Отключено {0} из {1}. Не получилось: {2}.", "en": "Disabled {0} of {1}. Failed: {2}."},
+    "priv.partly": {"ru": "У пункта «{0}» Windows не приняла одну из настроек, но он всё равно отключён (подробности в журнале)", "en": "Windows refused one setting of {0}, but it is off anyway (details in the log)"},
     "priv.blocked.title": {"ru": "Windows не сохранила часть изменений", "en": "Windows did not keep some changes"},
     "priv.blocked.kaspersky": {"ru": "Запись в реестр блокирует {0}. Добавьте Sweep в доверенные программы: в настройках Kaspersky откройте «Угрозы и исключения» → «Указать доверенные программы» → «Добавить», выберите C:\\Program Files\\Sweep\\Sweep.exe и отметьте «Не контролировать активность программы» и «Не наследовать ограничения родительского процесса». Потом нажмите «Отключить всю слежку» ещё раз.",
                                "en": "{0} is blocking registry changes. Add Sweep to its trusted applications: in Kaspersky settings open Threats and Exclusions → Specify trusted applications → Add, choose C:\\Program Files\\Sweep\\Sweep.exe and tick Do not monitor application activity and Do not inherit restrictions of the parent process. Then press Disable all tracking again."},

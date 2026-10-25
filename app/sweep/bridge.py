@@ -533,6 +533,7 @@ class App(QObject):
     def _apply_privacy(self, items, protect: bool = True) -> list:
         """Runs in a worker thread. Applies every item even if some fail, then re-reads the real state.
         An item that was written fine but is off again a moment later (an antivirus rolled it back) also counts as failed."""
+        self._last_protect = protect
         failed = [p for p in items if tweaks.set_privacy(p, protect)]
         self.privacy_state = {p.id: tweaks.privacy_state(p) for p in tweaks.PRIVACY}
         if protect:
@@ -553,6 +554,11 @@ class App(QObject):
         self._compute_health()
         self.changed.emit()
         ok, total = self.privacyOn, len(tweaks.PRIVACY)
+        want = getattr(self, "_last_protect", True)
+        # a value Windows refused does not matter when the item still ended up in the wanted state
+        # (for example widgets switched off by the other of its two settings): log it, do not alarm
+        partial = [p for p in failed if self.privacy_state.get(p.id) == want]
+        failed = [p for p in failed if self.privacy_state.get(p.id) != want]
         av = P.third_party_av()
         if not failed:
             self._priv_hint = None
@@ -568,6 +574,10 @@ class App(QObject):
         if failed:
             names = ", ".join(self._loc(p.name) for p in failed[:3]) + ("…" if len(failed) > 3 else "")
             self._set_status(self.i18n.t("priv.partial", ok, total, names) + " " + (self.i18n.t("admin.denied") if self._admin else self.i18n.t("admin.need")))
+        elif partial:
+            names = ", ".join(self._loc(p.name) for p in partial[:3])
+            self._set_status(self.i18n.t("priv.result", ok, total) + ". " + self.i18n.t("priv.partly", names))
+            self.toast.emit(self.i18n.t("priv.result", ok, total))
         else:
             self._set_status(self.i18n.t("priv.result", ok, total))
             self.toast.emit(self.i18n.t("priv.result", ok, total))

@@ -11,6 +11,7 @@ on:
 
 permissions:
   contents: write
+  actions: read     # SignPath reads the uploaded artifacts
 
 concurrency:
   group: release
@@ -20,6 +21,9 @@ jobs:
   build:
     runs-on: windows-latest
     defaults: { run: { shell: pwsh } }
+    env:
+      # Code signing by SignPath Foundation switches on by itself once the secret and the variable exist
+      SIGNPATH_ENABLED: ${{ secrets.SIGNPATH_API_TOKEN != '' && vars.SIGNPATH_ORGANIZATION_ID != '' }}
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
@@ -50,7 +54,8 @@ jobs:
         working-directory: app
         run: |
           $ex = @('QtWebEngineCore','QtWebEngineWidgets','QtWebEngineQuick','QtPdf','QtPdfWidgets','QtMultimedia','QtMultimediaWidgets','Qt3DCore','Qt3DRender','Qt3DInput','Qt3DLogic','Qt3DAnimation','Qt3DExtras','QtCharts','QtDataVisualization','QtGraphs','QtQuick3D','QtBluetooth','QtNfc','QtPositioning','QtLocation','QtSensors','QtSerialPort','QtSerialBus','QtSql','QtTest','QtDesigner','QtHelp','QtRemoteObjects','QtScxml','QtStateMachine','QtTextToSpeech','QtWebChannel','QtWebSockets','QtWebView','QtSpatialAudio','QtHttpServer','QtOpenGLWidgets','QtSvgWidgets','QtUiTools','QtXml','QtDBus','QtNetworkAuth','QtQuickWidgets') | % { "--exclude-module=PySide6.$_" }
-          pyinstaller --noconfirm --clean --onedir --windowed --name Sweep --icon sweep.ico --uac-admin `
+          python tools/make_version_file.py version_info.txt
+          pyinstaller --noconfirm --clean --onedir --windowed --name Sweep --icon sweep.ico --uac-admin --version-file version_info.txt `
             --add-data "qml;qml" --add-data "sweep.ico;." `
             --hidden-import PySide6.QtQuick --hidden-import PySide6.QtQml --hidden-import PySide6.QtQuickControls2 --hidden-import PySide6.QtWidgets `
             $ex main.py
@@ -68,13 +73,80 @@ jobs:
           $raw = [IO.File]::ReadAllText((Resolve-Path dist/Sweep/Sweep.exe), [Text.Encoding]::ASCII)
           if ($raw -notmatch 'requireAdministrator') { throw 'Sweep.exe manifest does not request administrator rights' }
           Write-Host 'Manifest: requireAdministrator'
+          $vi = (Get-Item dist/Sweep/Sweep.exe).VersionInfo
+          Write-Host "Version info: $($vi.ProductName) $($vi.ProductVersion)"
+          if ($vi.ProductName -ne 'Sweep') { throw 'Sweep.exe has no product name' }
           Start-Process -FilePath dist/Sweep/Sweep.exe -ArgumentList '--auto','--no-elevate' -Wait -NoNewWindow
           if (Test-Path "$env:ProgramData\Sweep\log.txt") { Get-Content "$env:ProgramData\Sweep\log.txt" | Select-Object -Last 3 }
+
+      # ---- code signing of Sweep.exe (SignPath Foundation), skipped until SignPath is set up ----
+      - name: Upload Sweep.exe for signing
+        id: up_app
+        if: steps.ver.outputs.exists == 'False' && env.SIGNPATH_ENABLED == 'true'
+        uses: actions/upload-artifact@v4
+        with: { name: sweep-app-unsigned, path: app/dist/Sweep/Sweep.exe, if-no-files-found: error }
+
+      - name: Sign Sweep.exe
+        if: steps.ver.outputs.exists == 'False' && env.SIGNPATH_ENABLED == 'true'
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: '${{ secrets.SIGNPATH_API_TOKEN }}'
+          organization-id: '${{ vars.SIGNPATH_ORGANIZATION_ID }}'
+          project-slug: 'sweep'
+          signing-policy-slug: 'release-signing'
+          artifact-configuration-slug: 'app'
+          github-artifact-id: '${{ steps.up_app.outputs.artifact-id }}'
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 7200     # every release waits for manual approval in SignPath
+          output-artifact-directory: 'app/signed-app'
+
+      - name: Use signed Sweep.exe
+        if: steps.ver.outputs.exists == 'False' && env.SIGNPATH_ENABLED == 'true'
+        run: |
+          Copy-Item app/signed-app/Sweep.exe app/dist/Sweep/Sweep.exe -Force
+          $sig = Get-AuthenticodeSignature app/dist/Sweep/Sweep.exe
+          Write-Host "Sweep.exe signature: $($sig.Status) $($sig.SignerCertificate.Subject)"
+          if ($sig.Status -ne 'Valid') { throw 'Sweep.exe is not validly signed' }
 
       - name: Build installer
         if: steps.ver.outputs.exists == 'False'
         working-directory: app
         run: '& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "/DAppVersion=${{ steps.ver.outputs.version }}" Sweep.iss'
+
+      # ---- code signing of the installer ----
+      - name: Prepare installer for signing
+        if: steps.ver.outputs.exists == 'False' && env.SIGNPATH_ENABLED == 'true'
+        run: |
+          New-Item -ItemType Directory app/sign-setup -Force | Out-Null
+          Copy-Item "app/Output/Sweep-Setup-${{ steps.ver.outputs.version }}.exe" app/sign-setup/Sweep-Setup.exe
+
+      - name: Upload installer for signing
+        id: up_setup
+        if: steps.ver.outputs.exists == 'False' && env.SIGNPATH_ENABLED == 'true'
+        uses: actions/upload-artifact@v4
+        with: { name: sweep-setup-unsigned, path: app/sign-setup/Sweep-Setup.exe, if-no-files-found: error }
+
+      - name: Sign installer
+        if: steps.ver.outputs.exists == 'False' && env.SIGNPATH_ENABLED == 'true'
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: '${{ secrets.SIGNPATH_API_TOKEN }}'
+          organization-id: '${{ vars.SIGNPATH_ORGANIZATION_ID }}'
+          project-slug: 'sweep'
+          signing-policy-slug: 'release-signing'
+          artifact-configuration-slug: 'installer'
+          github-artifact-id: '${{ steps.up_setup.outputs.artifact-id }}'
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 7200
+          output-artifact-directory: 'app/signed-setup'
+
+      - name: Use signed installer
+        if: steps.ver.outputs.exists == 'False' && env.SIGNPATH_ENABLED == 'true'
+        run: |
+          Copy-Item app/signed-setup/Sweep-Setup.exe "app/Output/Sweep-Setup-${{ steps.ver.outputs.version }}.exe" -Force
+          $sig = Get-AuthenticodeSignature "app/Output/Sweep-Setup-${{ steps.ver.outputs.version }}.exe"
+          Write-Host "Installer signature: $($sig.Status)"
+          if ($sig.Status -ne 'Valid') { throw 'Installer is not validly signed' }
 
       - name: Create tag
         if: steps.ver.outputs.exists == 'False'
