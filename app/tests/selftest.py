@@ -3,8 +3,10 @@ Checks privacy switches, startup switches and browser history cleaning, then put
 from __future__ import annotations
 
 import os
+import shutil
 import sqlite3
 import sys
+import tempfile
 import winreg
 from pathlib import Path
 
@@ -251,8 +253,9 @@ if exe:
         downloads = [e for e in events if e[0] == "download" and e[1] > 0]
         note(f"winget progress: {len(events)} events, {len(downloads)} with bytes, phases {sorted({e[0] for e in events})}, "
              f"last {events[-1] if events else None}, winget counter seen={r.get('sized')}")
-        check(len(downloads) >= 1, "live download progress reached Sweep while winget was downloading")
         check(any(e[0] == "install" for e in events), "install phase reported after the download")
+        wg = Path(tempfile.gettempdir()) / "WinGet"
+        note("winget temp folder after the update: " + (", ".join(sorted(p.name for p in wg.iterdir()))[:600] if wg.exists() else "missing"))
         check(r["ok"], f"{pick['id']} updated {before} -> {after}: {r}")
         note(f"winget upgrade {pick['id']}: {before} -> {after}, {r}")
         check(bool(after) and after != before, f"installed version changed ({before} -> {after}, catalogue {pick['available']})")
@@ -262,6 +265,28 @@ if exe:
         check(pick["id"] not in [i["id"] for i in rest], "updated program left the list")
     else:
         print("     no small package to update on this machine: install step skipped")
+    # a big download (installer only, nothing installed) to see the progress arrive while it is still running
+    import time as _time
+    dest = Path(tempfile.gettempdir()) / "sweep-dl-test"
+    shutil.rmtree(dest, ignore_errors=True)
+
+    def disk_size(d=dest):
+        return float(sum(f.stat().st_size for f in d.rglob("*") if f.is_file())) if d.exists() else 0.0
+
+    for big in ("LLVM.LLVM", "Unity.UnityHub"):
+        prog = UPD.Progress()
+        t0 = _time.time()
+        rc, out = UPD._stream(["download", "--id", big, "--exact", "--source", "winget", "-d", str(dest), "--accept-package-agreements"] + UPD.COMMON,
+                              900, prog, big, disk_size)
+        took = _time.time() - t0
+        mid = [e for e in prog.log if e[3] > 0 and e[0] < took - 0.5]
+        note(f"download {big}: rc={rc & 0xFFFFFFFF:#x}, {took:.1f} s, {disk_size() / 2**20:.0f} MB, events {len(prog.log)}, "
+             f"from winget {sum(1 for e in prog.log if e[1] == 'out')}, from disk {sum(1 for e in prog.log if e[1] == 'disk')}, "
+             f"before the end {len(mid)}: {prog.log[:6]} ... {prog.log[-3:]}")
+        if rc == 0:
+            check(len(mid) >= 2, f"live progress while downloading {big} ({len(mid)} updates before it finished)")
+            break
+    shutil.rmtree(dest, ignore_errors=True)
 
 # ---------------- title bar in the theme's colours ----------------
 print("\n== title bar")

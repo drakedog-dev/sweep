@@ -257,6 +257,11 @@ def scan(details: bool = True) -> dict:
                 r.update(installer=d["installer"], homepage=d["homepage"], host=host(d["installer"]), sha256=d["sha256"])
                 if d["name"]:
                     r["title"] = d["name"]     # "7-Zip" rather than the installed entry "7-Zip 26.04 (x64)"
+        for r in rows:                         # parallel calls sometimes trip over each other: one quiet retry
+            if not r["installer"]:
+                d = show(r["id"])
+                r.update(installer=d["installer"], homepage=d["homepage"], host=host(d["installer"]), sha256=d["sha256"])
+                r["title"] = d["name"] or r["title"]
     return {"winget": True, "items": rows}
 
 
@@ -289,8 +294,11 @@ class Progress:
         self.got = 0.0
         self.total = 0.0
         self.sized = False          # winget printed "x MB / y MB" at least once
+        self.log: list[tuple] = []  # (seconds since start, source, phase, bytes) for diagnostics
+        self._t0 = time.time()
 
-    def _emit(self):
+    def _emit(self, source: str = "out"):
+        self.log.append((round(time.time() - self._t0, 2), source, self.phase, int(self.got)))
         if self.callback:
             self.callback(self.phase, self.got, self.total)
 
@@ -330,7 +338,7 @@ class Progress:
         if self.phase == "prepare":
             self.phase = "download"
         self.got = size
-        self._emit()
+        self._emit("disk")
 
 
 def _download_size(pid: str) -> float:
@@ -345,7 +353,7 @@ def _download_size(pid: str) -> float:
         return 0.0
 
 
-def _stream(args: list[str], timeout: int, prog: Progress, pid: str) -> tuple[int, bytes]:
+def _stream(args: list[str], timeout: int, prog: Progress, pid: str, on_disk=None) -> tuple[int, bytes]:
     """Run winget and read its output as it comes, so the interface can show the download live."""
     import codecs
     import threading
@@ -387,7 +395,7 @@ def _stream(args: list[str], timeout: int, prog: Progress, pid: str) -> tuple[in
             P.log(f"winget {args[:3]}: timed out after {timeout} s")
             th.join(5)
             return -2, b"".join(chunks)
-        prog.on_disk(_download_size(pid))
+        prog.on_disk(on_disk() if on_disk else _download_size(pid))
         time.sleep(0.4)
     th.join(10)
     return proc.returncode, b"".join(chunks)
