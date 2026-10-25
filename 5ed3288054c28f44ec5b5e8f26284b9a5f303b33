@@ -1,0 +1,29 @@
+build: success
+run: https://github.com/drakedog-dev/sweep/actions/runs/40214032203
+commit: 5ed3288054c28f44ec5b5e8f26284b9a5f303b33
+
+--- build.txt (last 16 of 16 lines)
+version 1.0.19, tag existed before: False
+- Store apps (App Installer, Teams, ChatGPT, Claude and others) show their own logo in the updates list
+- An "open" badge on programs that are running right now: an open program often cannot be replaced by its installer
+- When an update leaves the version unchanged, the row says why (for example, the program was open), stays in the list and can be updated again with one click
+- The update counter and the badges count only updates that surely belong to your programs; look-alikes are shown but not counted
+- Look-alikes are named without the version: "FlClashX" instead of "FlClashX, версия 0.4.2"
+
+### Download
+
+| File | Size | SHA-256 |
+|---|---|---|
+| [Sweep-Setup-1.0.19.exe](https://github.com/drakedog-dev/sweep/releases/download/v1.0.19/Sweep-Setup-1.0.19.exe) | 34.8 MB | `b5d37721525f5f1b20692330bd09f56292e1abc7244aae4f282b7237b3632609` |
+
+Windows 10 and 11, 64-bit. Installer not signed yet. Check the file in PowerShell: `Get-FileHash .\Sweep-Setup-1.0.19.exe`
+
+Sweep offers this update by itself when it starts. Full list of commits: [v1.0.18...v1.0.19](https://github.com/drakedog-dev/sweep/compare/v1.0.18...v1.0.19)
+
+--- log.txt (last 6 of 6 lines)
+2026-10-25 16:57:19  auto clean 20261025_165710: freed 441729958
+2026-10-25 16:57:24  titlebar dark: dark=0x80070006, caption=0x80070006, border=0x80070006, text=0x80070006
+2026-10-25 16:57:26  context: Sweep 1.0.19, admin=True, 64bit, user=runnervmdaln5\runneradmin, os=Microsoft Windows Server 2025 Datacenter 26100, antivirus=none reported, exe=D:\a\sweep\sweep\app\dist\Sweep\Sweep.exe
+2026-10-25 16:57:59  updates: winget upgrade rc=0x0 via conpty, 24 updates, 5 s
+2026-10-25 16:58:48  install: search 'vlc' rc=0x0 via conpty: 10 found
+2026-10-25 16:58:55  ui-test: pages 14, programs 59, boots 0, updates 24 (winget=True, checked=True, suspect 0), install picks 45 (installed 4), search 10, QML warnings 0
