@@ -551,7 +551,6 @@ STRINGS: dict[str, dict[str, str]] = {
     "ins.d.crystaldewworldcrystaldiskinfo": {"ru": "Здоровье дисков", "en": "Drive health"},
     "ins.d.cpuidcpuz": {"ru": "Всё о процессоре и памяти", "en": "CPU and memory details"},
     "ins.d.anydeskanydesk": {"ru": "Удалённый доступ к компьютеру", "en": "Remote access to a PC"},
-    "ins.d.rustdeskrustdesk": {"ru": "Удалённый доступ с открытым кодом", "en": "Open-source remote access"},
     "ins.d.keepassxcteamkeepassxc": {"ru": "Пароли в зашифрованном файле", "en": "Passwords in an encrypted file"},
     "ins.d.bitwardenbitwarden": {"ru": "Менеджер паролей с синхронизацией", "en": "Password manager with sync"},
     "ins.d.malwarebytesmalwarebytes": {"ru": "Поиск вредоносных программ", "en": "Malware scanner"},

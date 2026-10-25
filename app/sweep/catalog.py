@@ -43,7 +43,6 @@ PROGRAMS = [
     ("CrystalDewWorld.CrystalDiskInfo", "CrystalDiskInfo", "tools"),
     ("CPUID.CPU-Z", "CPU-Z", "tools"),
     ("AnyDesk.AnyDesk", "AnyDesk", "tools"),
-    ("RustDesk.RustDesk", "RustDesk", "tools"),
     ("KeePassXCTeam.KeePassXC", "KeePassXC", "security"),
     ("Bitwarden.Bitwarden", "Bitwarden", "security"),
     ("Malwarebytes.Malwarebytes", "Malwarebytes", "security"),

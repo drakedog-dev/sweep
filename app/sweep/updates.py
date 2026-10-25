@@ -884,7 +884,7 @@ def upgrade(pid: str, timeout: int = 1800, progress=None, before: str = "", over
         route = "install"
         P.log(f"updates: {pid} install over the old version rc={code:#x} ok={ok} via {how}  {_tail(raw)}")
     after = installed_version(pid) if ok and reason != "reboot" else ""
-    if ok and before and after and after == before and before[:1] not in "<>":
+    if ok and not reason and before and after and after == before and before[:1] not in "<>":
         reason = "nochange"
     P.log(f"updates: {pid} done: {before or '?'} -> {after or '?'} route={route} reason={reason or 'ok'}")
     return {"ok": ok, "code": code, "reason": reason, "route": route, "after": after, "via": how, "frames": len(prog.log)}

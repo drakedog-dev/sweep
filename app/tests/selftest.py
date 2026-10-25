@@ -299,7 +299,7 @@ if exe:
         check(r["ok"] and after and after != before, f"installing over the old version updates it ({over['id']} {before} -> {after})")
         again = UPD.upgrade(over["id"], before=after)
         note(f"upgrade after install-over: {again}")
-        check(again["ok"] and again["reason"] in ("uptodate", "nochange"), f"nothing left to update afterwards ({again['reason']})")
+        check(again["ok"] and again["reason"] == "uptodate", f"nothing left to update afterwards ({again['reason']})")
 
     # search the whole catalogue
     found = UPD.search("vlc")
