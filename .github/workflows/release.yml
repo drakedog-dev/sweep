@@ -25,7 +25,7 @@ jobs:
       # Code signing by SignPath Foundation switches on by itself once the secret and the variable exist
       SIGNPATH_ENABLED: ${{ secrets.SIGNPATH_API_TOKEN != '' && vars.SIGNPATH_ORGANIZATION_ID != '' }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with: { fetch-depth: 0 }
 
       - name: Read version
@@ -39,7 +39,7 @@ jobs:
           "exists=$exists" >> $env:GITHUB_OUTPUT
           Write-Host "Version $ver, tag exists: $exists"
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         if: steps.ver.outputs.exists == 'False'
         with: { python-version: '3.12' }
 
@@ -87,7 +87,7 @@ jobs:
       - name: Upload Sweep.exe for signing
         id: up_app
         if: steps.ver.outputs.exists == 'False' && env.SIGNPATH_ENABLED == 'true'
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with: { name: sweep-app-unsigned, path: app/dist/Sweep/Sweep.exe, if-no-files-found: error }
 
       - name: Sign Sweep.exe
@@ -127,7 +127,7 @@ jobs:
       - name: Upload installer for signing
         id: up_setup
         if: steps.ver.outputs.exists == 'False' && env.SIGNPATH_ENABLED == 'true'
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with: { name: sweep-setup-unsigned, path: app/sign-setup/Sweep-Setup.exe, if-no-files-found: error }
 
       - name: Sign installer
@@ -190,7 +190,7 @@ jobs:
 
       - name: Publish release
         if: steps.ver.outputs.exists == 'False'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: v${{ steps.ver.outputs.version }}
           name: Sweep ${{ steps.ver.outputs.version }}
