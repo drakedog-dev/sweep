@@ -13,6 +13,10 @@ from sweep import updates as U  # noqa: E402
 FX = HERE / "fixtures"
 
 
+def collect(store: list):
+    return lambda *a: store.append(a)
+
+
 def raw(name: str) -> bytes:
     return (FX / name).read_bytes()
 
@@ -108,6 +112,27 @@ def test_live_progress_in_a_pseudo_console():
     for i in range(0, len(text), 5):
         p.feed_text(text[i:i + 5])
     assert [(e[0], e[1]) for e in events] == [("download", 0.0), ("download", 10.0), ("download", 60.0), ("install", 60.0)]
+
+
+def test_progress_survives_any_chunking():
+    """The pseudo console hands output over in pieces of any size, even in the middle of an escape sequence."""
+    import random
+    frames = "".join(f"\x1b]9;4;1;{k * 10}\x1b\\\x1b[2K  \u2588\u2592  {k * 1.5:.1f} MB / 15.0 MB\x1b[1G" for k in range(1, 10))
+    text = ("Found x\r\nDownloading https://github.com/cli/x.msi\x1b]9;4;3;0\x1b\\\r\n" + frames
+            + "\x1b]9;4;0;0\x1b\\Successfully verified installer hash\r\nStarting package install...\r\n")
+    rnd = random.Random(7)
+    for _ in range(300):
+        events: list = []
+        p = U.Progress(collect(events))
+        i = 0
+        while i < len(text):
+            n = rnd.randint(1, 9)
+            p.feed_text(text[i:i + n])
+            i += n
+        p.feed_text("\n")
+        sizes = [e[1] for e in events if e[0] == "download" and e[2] > 1000]
+        assert len(sizes) == 9 and sizes == sorted(sizes), events
+        assert events[-1][0] == "install" and not any(e[0] == "install" for e in events[:-1]), events
 
 
 def test_exit_codes():

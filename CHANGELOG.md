@@ -6,8 +6,10 @@ All notable changes to Sweep. The newest version is at the top; the in-app updat
 - Program updates: a selection bar above the list with a select-all checkbox, "All", "All but major" and "None", and a counter of selected programs
 - Click anywhere on a program's row to tick or untick it
 - "Update selected" installs the ticked programs one after another, and each waiting program shows its place in the queue
-- Live progress for every update: a bar with the megabytes downloaded, the total size and the speed, then an installing stage, so it is always clear that Sweep is working
+- Live progress for every update: a bar with the megabytes downloaded, the total size and the speed, then an installing stage, so it is always clear that Sweep is working. winget now runs inside a hidden pseudo console, the only way it reports its download as it happens
 - The window title bar follows Sweep's theme: dark in the dark theme and light in the light one (exact colours on Windows 11, a dark frame on Windows 10)
+- The project moved to github.com/drakedog-dev/sweep; Sweep checks for its own updates at the new address
+- Build tools updated (GitHub Actions on Node 24)
 
 ## 1.0.16
 - Program updates: a new Updates tab on the Programs page finds installed programs that have a newer version, using winget, the package manager built into Windows 10 and 11

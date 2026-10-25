@@ -319,19 +319,32 @@ class Progress:
             self.callback(self.phase, self.got, self.total)
 
     def feed_text(self, text: str) -> None:
-        """Raw output as it arrives, in chunks of any size: complete frames are read, the rest waits for more."""
+        """Raw output as it arrives, in chunks of any size: complete frames are read in order, the rest waits for more."""
         buf = self._buf + text
         hold = len(buf)
-        esc = buf.rfind("\x1b")
-        if esc >= 0 and not _escape_complete(buf[esc:]):
-            hold = esc                                   # an escape sequence cut in half by the chunk border
+        osc = buf.rfind("\x1b]")
+        if osc >= 0 and not _escape_complete(buf[osc:]):
+            hold = osc                                   # a taskbar message cut in half by the chunk border
+        else:
+            esc = buf.rfind("\x1b")
+            if esc >= 0 and not _escape_complete(buf[esc:]):
+                hold = esc                               # any other escape sequence cut in half
         work, rest = buf[:hold], buf[hold:]
-        for m in _OSC_PROGRESS.finditer(work):
-            self._taskbar(int(m[1]), int(m[2] or 0))
-        parts = _FRAME.split(_OSC.sub("", work))
-        self._buf = parts.pop() + rest                   # the frame being drawn right now is finished by the next one
-        for part in parts:
-            self.feed(part)
+        pending = ""
+        for piece in re.split(r"(\x1b\][^\x07\x1b]*(?:\x07|\x1b\\))", work):
+            if piece.startswith("\x1b]"):
+                for frame in _FRAME.split(pending):    # a taskbar update closes the frame drawn before it
+                    self.feed(frame)
+                pending = ""
+                m = _OSC_PROGRESS.match(piece)
+                if m:
+                    self._taskbar(int(m[1]), int(m[2] or 0))
+            else:
+                pending += piece
+        frames = _FRAME.split(pending)
+        self._buf = frames.pop() + rest                  # the frame being drawn right now is finished by the next one
+        for frame in frames:
+            self.feed(frame)
 
     def _taskbar(self, state: int, value: int) -> None:
         if self.phase != "download":
@@ -346,7 +359,7 @@ class Progress:
 
     def feed(self, segment: str) -> None:
         """One frame of text."""
-        seg = _ANSI.sub("", _OSC.sub("", segment)).strip()
+        seg = re.sub(r"\x1b[^\[\]]?", "", _ANSI.sub("", _OSC.sub("", segment))).strip()
         if not seg:
             return
         if self.phase == "prepare":
