@@ -1,0 +1,34 @@
+build: success
+run: https://github.com/drakedog-dev/sweep/actions/runs/40210708332
+commit: e7e3c77aa6871f04544d2c7d517e426a94ac12f1
+
+--- build.txt (last 21 of 21 lines)
+version 1.0.18, tag existed before: False
+- Program updates: nothing is ticked by itself any more. Tick what you want and press "Update selected", or take everything with "Update all"
+- A progress bar with a percentage while Sweep looks for updates, in three steps: the winget catalogue, the sources, the final check
+- Every update shows a percentage for its download and install, and the queue shows an overall one
+- Correct versions: winget's tables are read in full, so no name, id or version is cut short; where winget only knows "older than 3.14.7", Sweep shows the real version from Windows
+- After an update Sweep reads the installed version again and shows "Updated to x.y"; if the version did not change, it says so
+- Forks and look-alikes are caught: when the catalogue entry is another program (FlClash X was offered FlClash by another author), the row is marked and cannot be ticked; "Same program" overrides it if you are sure
+- "Package not found" fixed: when winget lists an update but then does not see the program installed, Sweep installs the new version over the old one, as long as Windows still lists the program
+- What's new: the release notes of each update, straight from the catalogue
+- New Install tab on the Programs page: 45 popular free programs by category, ready-made sets (fresh Windows, gaming, work) and a search through the whole winget catalogue, with the same live progress and SHA-256 check
+- Terms of use and the privacy policy describe catalogue search and installs, so they are shown once more for your consent
+
+### Download
+
+| File | Size | SHA-256 |
+|---|---|---|
+| [Sweep-Setup-1.0.18.exe](https://github.com/drakedog-dev/sweep/releases/download/v1.0.18/Sweep-Setup-1.0.18.exe) | 34.8 MB | `964b4c24ca1b03f2da9fefda1e9f863c62bf86c9401fa22bafc3ad9d1ffeb1e1` |
+
+Windows 10 and 11, 64-bit. Installer not signed yet. Check the file in PowerShell: `Get-FileHash .\Sweep-Setup-1.0.18.exe`
+
+Sweep offers this update by itself when it starts. Full list of commits: [v1.0.17...v1.0.18](https://github.com/drakedog-dev/sweep/compare/v1.0.17...v1.0.18)
+
+--- log.txt (last 6 of 6 lines)
+2026-10-25 16:15:08  auto clean 20261025_161502: freed 441730054
+2026-10-25 16:15:09  titlebar dark: dark=0x80070006, caption=0x80070006, border=0x80070006, text=0x80070006
+2026-10-25 16:15:10  context: Sweep 1.0.18, admin=True, 64bit, user=runnervmdaln5\runneradmin, os=Microsoft Windows Server 2025 Datacenter 26100, antivirus=none reported, exe=D:\a\sweep\sweep\app\dist\Sweep\Sweep.exe
+2026-10-25 16:15:40  updates: winget upgrade rc=0x0 via conpty, 24 updates, 3 s
+2026-10-25 16:15:48  install: search 'vlc' rc=0x0 via conpty: 10 found
+2026-10-25 16:15:55  ui-test: pages 14, programs 59, boots 0, updates 24 (winget=True, checked=True, suspect 0), install picks 45 (installed 4), search 10, QML warnings 0
