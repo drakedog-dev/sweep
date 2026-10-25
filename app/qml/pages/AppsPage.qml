@@ -264,8 +264,9 @@ Page {
                     Chip { small: true; label: tr("pu.pick.none"); enabled: !pu.running && selBar.sel > 0; onHit: app.pickUpdates("none") } }
             }
             Repeater { model: pu.items || []
-                Rectangle { id: urow; width: parent.width; height: urow.suspect ? 96 : 66; radius: 12
+                Rectangle { id: urow; width: parent.width; height: urow.suspect ? 96 : urow.warn ? 86 : 66; radius: 12
                     property bool done_: modelData.state === "ok"
+                    property bool warn: modelData.state === "warn"
                     property bool fail: modelData.state === "failed"
                     property bool active: modelData.state === "working" || modelData.state === "queued"
                     property bool suspect: modelData.suspect === true && !done_
@@ -291,15 +292,25 @@ Page {
                             Txt { visible: !urow.done_; text: modelData.available; font.pixelSize: 12; bold: true; color: Theme.accent2; anchors.verticalCenter: parent.verticalCenter }
                             Rectangle { visible: modelData.major === true && !urow.done_ && !urow.fail && !urow.suspect; height: 18; width: mj.implicitWidth + 14; radius: 9; color: "transparent"; border.color: Theme.warn; anchors.verticalCenter: parent.verticalCenter
                                 Txt { id: mj; anchors.centerIn: parent; text: tr("pu.major"); color: Theme.warn; font.pixelSize: 10; bold: true } }
+                            // the program is open right now: its installer may not be able to replace it
+                            Rectangle { visible: modelData.running === true && !urow.done_ && !urow.active; height: 18; width: rnRow.implicitWidth + 14; radius: 9; color: Qt.rgba(Theme.warn.r, Theme.warn.g, Theme.warn.b, 0.14); anchors.verticalCenter: parent.verticalCenter
+                                Row { id: rnRow; anchors.centerIn: parent; spacing: 4
+                                    Rectangle { width: 6; height: 6; radius: 3; color: Theme.warn; anchors.verticalCenter: parent.verticalCenter }
+                                    Txt { text: tr("pu.running"); color: Theme.warn; font.pixelSize: 10; bold: true; anchors.verticalCenter: parent.verticalCenter } }
+                                MouseArea { id: rnHov; anchors.fill: parent; hoverEnabled: true }
+                                Tip { show: rnHov.containsMouse; text: tr("pu.running.tip"); anchors.bottom: parent.top; anchors.bottomMargin: 6; anchors.left: parent.left } }
                             // result
-                            Icon { visible: urow.done_; name: modelData.reason === "nochange" ? "circle-alert" : "circle-check"; size: 14; color: modelData.reason === "nochange" ? Theme.warn : Theme.good; anchors.verticalCenter: parent.verticalCenter }
+                            Icon { visible: urow.done_; name: "circle-check"; size: 14; color: modelData.reason === "reboot" ? Theme.warn : Theme.good; anchors.verticalCenter: parent.verticalCenter }
                             Txt { visible: urow.done_; font.pixelSize: 12; bold: true; anchors.verticalCenter: parent.verticalCenter; elide: Text.ElideRight; wrapMode: Text.NoWrap
-                                  color: modelData.reason === "nochange" || modelData.reason === "reboot" ? Theme.warn : Theme.good
-                                  text: modelData.reason === "nochange" ? tr("pu.r.nochange") : modelData.reason === "reboot" ? tr("pu.r.reboot")
-                                      : modelData.reason === "uptodate" ? tr("pu.r.uptodate") : tr1("pu.st.okTo", modelData.now || modelData.available) }
+                                  color: modelData.reason === "reboot" ? Theme.warn : Theme.good
+                                  text: modelData.reason === "reboot" ? tr("pu.r.reboot") : modelData.reason === "uptodate" ? tr("pu.r.uptodate") : tr1("pu.st.okTo", modelData.now || modelData.available) }
                             Txt { visible: urow.fail; text: tr("pu.r." + (modelData.reason || "code")) + (modelData.reason === "code" && modelData.code ? " " + modelData.code : "")
                                   color: Theme.bad; font.pixelSize: 12; elide: Text.ElideRight; wrapMode: Text.NoWrap; anchors.verticalCenter: parent.verticalCenter }
                             Txt { visible: modelData.state === "queued"; text: tr1("pu.st.queuedN", String(modelData.queue || "")); muted: true; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter } }
+                        Row { visible: urow.warn; spacing: 6; width: parent.width
+                            Icon { name: "circle-alert"; size: 13; color: Theme.warn; anchors.top: parent.top; anchors.topMargin: 2 }
+                            Txt { width: parent.width - 20; color: Theme.warn; font.pixelSize: 12; elide: Text.ElideRight; maximumLineCount: 2
+                                  text: tr("pu.r." + (modelData.reason || "nochange")) } }
                         Row { visible: urow.suspect; spacing: 6; width: parent.width
                             Icon { name: "triangle-alert"; size: 13; color: Theme.warn; anchors.top: parent.top; anchors.topMargin: 2 }
                             Txt { width: parent.width - 20; color: Theme.warn; font.pixelSize: 12; elide: Text.ElideRight; maximumLineCount: 2
@@ -329,7 +340,7 @@ Page {
                                   text: pg.rowPct(modelData) >= 0 ? Math.round(pg.rowPct(modelData)) + "%" : ""; bold: true; font.pixelSize: 15; color: Theme.accent2 }
                             Icon { anchors.right: parent.right; anchors.rightMargin: 8; anchors.verticalCenter: parent.verticalCenter; visible: modelData.state === "queued"; name: "hourglass"; size: 16; color: Theme.faint }
                             Icon { anchors.right: parent.right; anchors.rightMargin: 8; anchors.verticalCenter: parent.verticalCenter; visible: urow.done_; name: "circle-check"; size: 22
-                                   color: modelData.reason === "nochange" ? Theme.warn : Theme.good } }
+                                   color: Theme.good } }
                         Rectangle { width: 30; height: 30; radius: 10; color: skHov.containsMouse ? Theme.soft : "transparent"; anchors.verticalCenter: parent.verticalCenter; opacity: urow.done_ || pu.running ? 0.25 : 1
                             Icon { anchors.centerIn: parent; name: "eye-off"; size: 15; color: Theme.muted }
                             MouseArea { id: skHov; anchors.fill: parent; hoverEnabled: true; enabled: !urow.done_ && !pu.running; cursorShape: Qt.PointingHandCursor; onClicked: app.skipUpdate(modelData.id) }

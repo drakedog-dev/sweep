@@ -8,7 +8,7 @@ import traceback
 from datetime import datetime
 from urllib.parse import quote, unquote
 
-from PySide6.QtCore import Property, QFileInfo, QObject, QSize, QThread, QTimer, QUrl, Signal, Slot
+from PySide6.QtCore import Property, QFileInfo, QObject, QSize, Qt, QThread, QTimer, QUrl, Signal, Slot
 from PySide6.QtGui import QDesktopServices, QPixmap
 from PySide6.QtQuick import QQuickImageProvider
 
@@ -77,7 +77,12 @@ class AppIconProvider(QQuickImageProvider):
         if path not in self._cache:
             from PySide6.QtWidgets import QFileIconProvider
             side = requested.width() if requested and requested.width() > 0 else 40
-            self._cache[path] = QFileIconProvider().icon(QFileInfo(path)).pixmap(QSize(side, side))
+            pm = QPixmap(path) if path.lower().endswith((".png", ".jpg", ".jpeg")) else QPixmap()
+            if not pm.isNull():       # a Store app's logo is a picture, not a program file
+                pm = pm.scaled(side, side, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+            else:
+                pm = QFileIconProvider().icon(QFileInfo(path)).pixmap(QSize(side, side))
+            self._cache[path] = pm
         return self._cache[path]
 
 
@@ -670,7 +675,7 @@ class App(QObject):
         pend = guard.state(self.settings).get("pending") or {}
         if pend.get("privacy") or pend.get("apps"):
             tips.insert(0, self.i18n.t("ov.tip.guard", len(pend.get("privacy", [])) + len(pend.get("apps", []))))
-        n_upd = len(self._pu_open())
+        n_upd = len(self._pu_safe())
         if n_upd:
             score -= 6 if n_upd >= 5 else 3
             tips.append(self.i18n.t("ov.tip.updates", n_upd))
@@ -1437,7 +1442,8 @@ class App(QObject):
         skip = set(self._pu_conf().get("skip", []))
         items = [{k: v for k, v in it.items() if not k.startswith("_")} for it in self._pu_items if it["id"] not in skip]
         open_ = [it for it in items if it.get("state") != "ok"]
-        return dict(self._pu, items=items, count=len(open_), safe=sum(1 for it in open_ if not it.get("suspect")),
+        safe = sum(1 for it in open_ if not it.get("suspect"))
+        return dict(self._pu, items=items, count=safe, safe=safe, suspects=len(open_) - safe,
                     picked=sum(1 for it in open_ if it.get("picked")), skipped=len(skip), auto=bool(self._pu_conf().get("auto")),
                     busy=self._wg_running())
 
@@ -1475,7 +1481,7 @@ class App(QObject):
                 if it.get("suspect"):
                     it["title"] = it.get("installedName") or it["name"]     # show what is installed, not the catalogue's name
                 arp = it.get("_arp")
-                path = U.uninstall_icon_key(arp) if arp and P.IS_WINDOWS else ""
+                path = U.uninstall_icon_key(arp) if arp and P.IS_WINDOWS else (it.get("_store") or {}).get("icon", "")
                 it["icon"] = ("image://appicon/" + quote(path, safe="")) if path else ""
                 major = self._major(it.get("current") or it["version"]) != self._major(it["available"])
                 keep = old[it["id"]]["picked"] if it["id"] in old else False      # nothing is ticked by itself
@@ -1490,7 +1496,7 @@ class App(QObject):
             self._compute_health()
             self.updatesChanged.emit()
             self.changed.emit()
-            n = len(self._pu_open())
+            n = len(self._pu_safe())
             if not quiet:
                 self._set_status(self.i18n.t("pu.found", n) if n else self.i18n.t("pu.none") if res["winget"] else self.i18n.t("pu.nowinget.short"))
             if self._pu_pending:
@@ -1630,9 +1636,13 @@ class App(QObject):
                 self.updatesChanged.emit()
                 r = UPD.upgrade(it["id"], progress=lambda ph, got, total, it=it: self._q_progress(self._pu, self.updatesChanged, it, ph, got, total),
                                 before=it.get("version", ""), over=still_there(it), target=it.get("available", ""))
-                it.update(state="ok" if r["ok"] else "failed", reason=r["reason"], code=f"{r['code']:#x}" if r["code"] else "",
-                          now=r.get("after", ""), route=r.get("route", ""), picked=not r["ok"] and it.get("picked", False))
-                ok += bool(r["ok"])
+                reason = r["reason"]
+                if reason in ("nochange", "inuse") and UPD.is_running(it):
+                    reason = "running"           # the program was open, so its installer could not replace it
+                state = "warn" if reason in ("nochange", "running") else "ok" if r["ok"] else "failed"
+                it.update(state=state, reason=reason, code=f"{r['code']:#x}" if r["code"] else "", now=r.get("after", ""),
+                          route=r.get("route", ""), picked=state != "ok" and it.get("picked", False), running=reason == "running")
+                ok += state == "ok"
                 self._pu.update(done=n + 1, frac=0.0)
                 self.updatesChanged.emit()
             return ok

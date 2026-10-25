@@ -281,6 +281,10 @@ if exe:
     if any(not r.get("_arp") for r in items):
         note("not matched to Installed apps: " + ", ".join(r["id"] for r in items if not r.get("_arp"))[:400])
     check(sum(1 for r in items if r.get("_arp")) >= len(items) * 0.7, f"rows matched to Installed apps ({sum(1 for r in items if r.get('_arp'))}/{len(items)})")
+    store = [r for r in items if not r.get("_arp")]
+    note("Store apps: " + ", ".join(f"{r['id']} -> {(r.get('_store') or {}).get('name')} {os.path.basename((r.get('_store') or {}).get('icon', ''))}" for r in store))
+    check(all(r.get("_store") and os.path.isfile(r["_store"]["icon"]) for r in store), f"Store apps found with their logo ({len(store)})")
+    note("open programs: " + (", ".join(r["id"] for r in items if r.get("running")) or "none"))
     sus = [r for r in items if r.get("suspect")]
     note("look-alikes: " + (", ".join(f"{r['id']} ({r['why']}: {r.get('installedName')} / {r.get('catName')})" for r in sus) or "none"))
     check(len(sus) <= 2, f"almost no package marked as another program ({len(sus)})")

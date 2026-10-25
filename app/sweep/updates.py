@@ -505,13 +505,112 @@ def check_identity(r: dict) -> None:
         why = "owner"
     elif rel == "edition":
         why = "edition"
-    r.update(suspect=bool(why), why=why, installedName=inst_name.rstrip("\u2026. "),
+    r.update(suspect=bool(why), why=why, installedName=clean_title(inst_name.rstrip("\u2026. ")),
              mineOwner=sorted(mine)[0] if mine else "", theirOwner=sorted(theirs)[0] if theirs else "")
     v = r.get("version", "")
     if (v[:1] in "<>" or v.lower() == "unknown") and arp.get("version"):
         r["current"] = arp["version"]      # winget only knows "older than x": Windows knows the real number
     else:
         r["current"] = v
+
+
+def clean_title(name: str) -> str:
+    """"FlClashX, версия 0.4.2" -> "FlClashX": the version is shown next to the name anyway."""
+    t = re.sub(r"[,\s]+(?:version|versi\u00f3n|\u0432\u0435\u0440\u0441\u0438\u044f|\u0432\u0435\u0440\.|v)\s*\d[\w.+-]*.*$", "", name or "", flags=re.I)
+    t = re.sub(r"\s+\d+(?:\.\d+){1,3}\s*$", "", t)
+    return t.strip(" ,-") or (name or "")
+
+
+# ---------------- Microsoft Store (MSIX) apps: no Installed apps entry, so their icon and folder come from the package ----------------
+_STORE_PS = r"""
+Get-AppxPackage | Where-Object { -not $_.IsFramework -and $_.InstallLocation } | ForEach-Object {
+  $logo = ''; $sq = ''
+  try {
+    [xml]$x = Get-Content -LiteralPath (Join-Path $_.InstallLocation 'AppxManifest.xml') -Raw
+    $logo = [string]$x.Package.Properties.Logo
+    $app = @($x.Package.Applications.ChildNodes | Where-Object { $_.LocalName -eq 'Application' })[0]
+    if ($app) { $ve = @($app.ChildNodes | Where-Object { $_.LocalName -eq 'VisualElements' })[0]; if ($ve) { $sq = [string]$ve.Square44x44Logo } }
+  } catch {}
+  [pscustomobject]@{ n = $_.Name; d = $_.InstallLocation; l = $logo; s = $sq }
+}
+"""
+
+
+def _asset(folder: str, rel: str) -> str:
+    """The real file behind a manifest image name: Assets\\Logo.png is shipped as Logo.scale-200.png, Logo.targetsize-48.png..."""
+    if not rel or not folder:
+        return ""
+    base = os.path.join(folder, rel.replace("/", "\\"))
+    if os.path.isfile(base):
+        return base
+    stem, ext = os.path.splitext(base)
+    cands = [c for c in glob.glob(glob.escape(stem) + ".*" + ext) if "contrast-" not in os.path.basename(c).lower()]
+
+    def score(c: str):
+        n = os.path.basename(c).lower()
+        m = re.search(r"targetsize-(\d+)", n)
+        if m:
+            return (0 if "altform-unplated" in n else 1 if "unplated" not in n else 2, abs(int(m.group(1)) - 48))
+        m = re.search(r"scale-(\d+)", n)
+        return (3, abs(int(m.group(1)) - 200)) if m else (4, 0)
+
+    return min(cands, key=score) if cands else ""
+
+
+def store_apps() -> list[dict]:
+    """[{name, folder, icon}] for the user's Store and other MSIX apps."""
+    if not P.IS_WINDOWS:
+        return []
+    data = P.ps_json(_STORE_PS, 90) or []
+    if isinstance(data, dict):
+        data = [data]
+    out = []
+    for d in data:
+        folder = d.get("d") or ""
+        icon = _asset(folder, d.get("s") or "") or _asset(folder, d.get("l") or "")
+        out.append({"name": d.get("n") or "", "folder": folder, "icon": icon})
+    return out
+
+
+def match_store(rows: list[dict], apps: list[dict] | None = None) -> None:
+    """Store apps (App Installer, Windows Terminal, Teams, ChatGPT...) by their package name."""
+    todo = [r for r in rows if not r.get("_arp")]
+    if not todo:
+        return
+    apps = store_apps() if apps is None else apps
+    for r in todo:
+        keys = {_norm("".join(t for t in _tokens(r.get("title") or r["name"]) if t != "microsoft")), _norm(r["id"].split(".")[-1])}
+        keys = {k for k in keys if len(k) >= 4}
+        hits = [a for a in apps if a["name"] and any(k in _norm(a["name"]) for k in keys)]
+        if hits:
+            r["_store"] = min(hits, key=lambda a: len(a["name"]))
+
+
+def mark_running(rows: list[dict]) -> None:
+    """Which programs are open right now: an open program often cannot be replaced by its installer."""
+    if not P.IS_WINDOWS:
+        for r in rows:
+            r["running"] = r["id"] == "Telegram.TelegramDesktop"
+        return
+    try:
+        import psutil
+        exes = [(p.info.get("exe") or "").lower() for p in psutil.process_iter(["exe"])]
+    except Exception:  # noqa: BLE001
+        return
+    for r in rows:
+        r["running"] = is_running(r, exes)
+
+
+def is_running(r: dict, exes: list[str] | None = None) -> bool:
+    if not P.IS_WINDOWS:
+        return bool(r.get("running"))
+    loc = ((r.get("_arp") or {}).get("location") or (r.get("_store") or {}).get("folder") or "").lower().rstrip("\\")
+    if len(loc) < 4:
+        return False
+    if exes is None:
+        import psutil
+        exes = [(p.info.get("exe") or "").lower() for p in psutil.process_iter(["exe"])]
+    return any(e.startswith(loc + "\\") for e in exes)
 
 
 # ---------------- public API: scan ----------------
@@ -611,6 +710,11 @@ def scan(details: bool = True, progress=None, programs: list[dict] | None = None
     match_installed(rows, programs if programs is not None else _programs())
     for r in rows:
         check_identity(r)
+    try:
+        match_store(rows)
+        mark_running(rows)
+    except Exception as e:  # noqa: BLE001
+        P.log(f"updates: store apps or running programs not read: {e}")
     return {"winget": True, "items": rows, "listSecs": round(list_secs, 1)}
 
 
@@ -863,8 +967,9 @@ def upgrade(pid: str, timeout: int = 1800, progress=None, before: str = "", over
         prog = Progress(progress)
         _demo_run(prog)
         d = next((d for d in _DEMO if d["id"] == pid), {})
-        return {"ok": True, "code": 0, "reason": "", "route": "install" if pid == "Microsoft.PowerShell" else "upgrade",
-                "after": d.get("available", ""), "via": "demo", "frames": len(prog.log)}
+        stuck = pid == "Telegram.TelegramDesktop"        # demo: an open program its installer could not replace
+        return {"ok": True, "code": 0, "reason": "nochange" if stuck else "", "route": "install" if pid == "Microsoft.PowerShell" else "upgrade",
+                "after": d.get("version", "") if stuck else d.get("available", ""), "via": "demo", "frames": len(prog.log)}
     t0 = time.time()
     prog = Progress(progress)
     rc, raw, how = _stream(["upgrade", "--id", pid, "--exact", "--source", SOURCE, "--silent", "--accept-package-agreements"] + COMMON, timeout, prog)

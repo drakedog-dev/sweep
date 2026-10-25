@@ -196,6 +196,20 @@ def test_fork_is_not_offered_as_an_update():
     assert rows[1]["current"] == "7.6.6.0"
 
 
+def test_titles_and_store_apps():
+    assert U.clean_title("FlClashX, версия 0.4.2") == "FlClashX"
+    assert U.clean_title("Notepad++ v8.6.9") == "Notepad++"
+    assert U.clean_title("VLC media player") == "VLC media player"
+    rows = [{"id": "Microsoft.AppInstaller", "name": "App Installer"}, {"id": "Microsoft.Teams", "name": "Microsoft Teams"},
+            {"id": "OpenAI.ChatGPT", "name": "ChatGPT"}, {"id": "Microsoft.WindowsTerminal", "name": "Windows Terminal"},
+            {"id": "Git.Git", "name": "Git", "_arp": {"name": "Git"}}]
+    apps = [{"name": n, "folder": "C:\\x", "icon": ""} for n in ("Microsoft.DesktopAppInstaller", "MSTeams", "MicrosoftTeams", "OpenAI.ChatGPT-Desktop",
+                                                               "Microsoft.WindowsTerminalPreview", "Microsoft.WindowsTerminal", "Microsoft.GitHub")]
+    U.match_store(rows, apps)
+    assert [(r.get("_store") or {}).get("name") for r in rows] == [
+        "Microsoft.DesktopAppInstaller", "MSTeams", "OpenAI.ChatGPT-Desktop", "Microsoft.WindowsTerminal", None]
+
+
 def test_exit_codes():
     assert U.REASONS[0x8A15002B] == "uptodate" and "uptodate" in U.SUCCESS_REASONS
     assert U.REASONS[0x8A150011] == "hash"
