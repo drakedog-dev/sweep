@@ -1,0 +1,24 @@
+name: Self test
+
+# Runs Sweep's privacy, startup and browser-history code on a real Windows machine.
+on:
+  push:
+    branches: [main]
+    paths: ['app/sweep/**', 'app/tests/**', '.github/workflows/selftest.yml']
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: windows-latest
+    defaults: { run: { shell: pwsh } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - name: Install dependencies
+        run: pip install -r app/requirements.txt
+      - name: Self test
+        run: python app/tests/selftest.py
+      - name: Log
+        if: always()
+        run: if (Test-Path "$env:ProgramData\Sweep\log.txt") { Get-Content "$env:ProgramData\Sweep\log.txt" -Tail 40 }

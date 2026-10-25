@@ -32,13 +32,12 @@ Page {
             Txt { text: tr("set.anim"); font.pixelSize: 15; bold: true; anchors.verticalCenter: parent.verticalCenter }
             Toggle { checked: Theme.anim; onToggled: v => app.setAnimations(v) } }
     } }
-    Card { Column { width: parent.width; spacing: 10
-        Txt { text: tr("set.renderer"); font.pixelSize: 15; bold: true }
-        Txt { text: tr("set.renderer.hint"); muted: true; width: parent.width }
-        Row { spacing: 8
-            Chip { label: tr("set.renderer.gpu"); on: app.renderer === "gpu"; onPick: app.setRenderer("gpu") }
-            Chip { label: tr("set.renderer.cpu"); on: app.renderer === "cpu"; onPick: app.setRenderer("cpu") }
-            AccentButton { text: tr("set.restart"); compact: true; primary: false; onClicked: app.restartApp() } }
+    Card { Row { width: parent.width; spacing: 12
+        Rectangle { width: 12; height: 12; radius: 6; anchors.verticalCenter: parent.verticalCenter; color: app.isAdmin ? Theme.good : Theme.warn }
+        Column { width: parent.width - 24 - (grant.visible ? grant.width + 12 : 0); spacing: 2; anchors.verticalCenter: parent.verticalCenter
+            Txt { text: tr("set.rights"); font.pixelSize: 15; bold: true }
+            Txt { text: app.isAdmin ? tr("set.rights.yes") : tr("set.rights.no"); muted: true; width: parent.width } }
+        AccentButton { id: grant; visible: !app.isAdmin; text: tr("admin.grant"); compact: true; anchors.verticalCenter: parent.verticalCenter; onClicked: app.requestAdmin("settings") }
     } }
     Card { Column { width: parent.width; spacing: 10
         Txt { text: tr("set.updates"); font.pixelSize: 15; bold: true }

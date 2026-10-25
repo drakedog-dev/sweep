@@ -85,3 +85,67 @@ def ps_json(script: str, timeout: int = 120):
 
 def expand(p: str) -> str:
     return os.path.expandvars(p)
+
+
+# ---------------- administrator rights ----------------
+def is_admin() -> bool:
+    """True when the process runs elevated (or on a non-Windows demo machine)."""
+    if not IS_WINDOWS:
+        return True
+    try:
+        import ctypes
+        return bool(ctypes.windll.shell32.IsUserAnAdmin())
+    except Exception:
+        return False
+
+
+_SKIP_WITH_VALUE = ("--page", "--do")
+_SKIP_FLAGS = ("--limited", "--no-elevate")
+
+
+def _own_args() -> list[str]:
+    """Current command line without the one-shot flags used for relaunching."""
+    out, skip = [], False
+    for a in sys.argv[1:]:
+        if skip:
+            skip = False
+            continue
+        if a in _SKIP_WITH_VALUE:
+            skip = True
+            continue
+        if a in _SKIP_FLAGS:
+            continue
+        out.append(a)
+    return out
+
+
+def relaunch_elevated(extra: list[str] | None = None) -> bool:
+    """Start an elevated copy of Sweep through the UAC prompt.
+    Returns True when the new copy was started (the caller should quit), False when the user declined."""
+    if not IS_WINDOWS:
+        return False
+    import ctypes
+    from ctypes import wintypes
+    args = _own_args() + list(extra or [])
+    if getattr(sys, "frozen", False):
+        exe = sys.executable
+    else:
+        exe = sys.executable
+        args = [os.path.abspath(sys.argv[0])] + args
+    params = subprocess.list2cmdline(args)
+    fn = ctypes.windll.shell32.ShellExecuteW
+    fn.argtypes = [wintypes.HWND, wintypes.LPCWSTR, wintypes.LPCWSTR, wintypes.LPCWSTR, wintypes.LPCWSTR, ctypes.c_int]
+    fn.restype = ctypes.c_void_p
+    try:
+        rc = fn(None, "runas", exe, params, None, 1) or 0
+    except Exception as e:
+        log(f"elevate: {e}")
+        return False
+    if rc <= 32:
+        log(f"elevate: declined or failed ({rc})")
+        return False
+    return True
+
+
+def is_access_denied(e: BaseException) -> bool:
+    return isinstance(e, PermissionError) or getattr(e, "winerror", None) == 5 or "WinError 5" in str(e)

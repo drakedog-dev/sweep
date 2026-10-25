@@ -17,7 +17,7 @@ from .i18n import I18n
 
 class Worker(QThread):
     done = Signal(object)
-    failed = Signal(str)
+    failed = Signal(object)
 
     def __init__(self, fn, parent=None):
         super().__init__(parent)
@@ -28,7 +28,7 @@ class Worker(QThread):
             self.done.emit(self.fn())
         except Exception as e:  # noqa: BLE001
             P.log(traceback.format_exc())
-            self.failed.emit(str(e))
+            self.failed.emit(e)
 
 
 class App(QObject):
@@ -51,8 +51,12 @@ class App(QObject):
         self._health = {"score": 0, "tips": []}
         self._lang_counter = 0
         # data
+        self._admin = P.is_admin() and "--limited" not in sys.argv
+        self._start_page = self._arg("--page")
+        self._pending = self._arg("--do")
         self.categories = cleaner.CATEGORIES
-        self.checked = {c.id: c.default for c in self.categories}
+        saved = self.settings.get("junk", {})
+        self.checked = {c.id: bool(saved.get(c.id, c.default)) for c in self.categories}
         self.privacy_state = {p.id: tweaks.privacy_state(p) for p in tweaks.PRIVACY}
         self.services = []
         self.startup = []
@@ -85,6 +89,11 @@ class App(QObject):
 
     # ---------- helpers ----------
     @staticmethod
+    def _arg(name: str) -> str:
+        a = sys.argv
+        return a[a.index(name) + 1] if name in a and a.index(name) + 1 < len(a) else ""
+
+    @staticmethod
     def _system_is_ru() -> bool:
         try:
             import locale
@@ -93,7 +102,25 @@ class App(QObject):
         except Exception:
             return False
 
-    def _run(self, fn, on_done=None, status: str | None = None):
+    def _err_text(self, e) -> str:
+        if P.is_access_denied(e):
+            return self.i18n.t("admin.denied") if self._admin else self.i18n.t("admin.need")
+        return self.i18n.t("common.error", str(e))
+
+    def _need_admin(self, action: str, page: str) -> bool:
+        """Without administrator rights: show the UAC prompt and repeat the action in the elevated copy.
+        Returns True when the caller must stop (Sweep is restarting or the user said no)."""
+        if self._admin:
+            return False
+        if P.relaunch_elevated(["--page", page] + (["--do", action] if action else [])):
+            from PySide6.QtWidgets import QApplication
+            QApplication.quit()
+        else:
+            self._set_status(self.i18n.t("admin.declined"))
+            self.toast.emit(self.i18n.t("admin.declined"))
+        return True
+
+    def _run(self, fn, on_done=None, status: str | None = None, on_fail=None):
         if status:
             self._set_status(status)
         self._set_busy(True)
@@ -110,10 +137,16 @@ class App(QObject):
                     P.log(traceback.format_exc())
                     self._set_status(self.i18n.t("common.error", str(e)))
 
-        def failed(msg):
+        def failed(e):
             self._set_busy(False)
             self._workers.remove(w)
-            self._set_status(self.i18n.t("common.error", msg))
+            if on_fail:
+                try:
+                    on_fail(e)
+                except Exception:  # noqa: BLE001
+                    P.log(traceback.format_exc())
+            self._set_status(self._err_text(e))
+            self.changed.emit()
 
         w.done.connect(finished)
         w.failed.connect(failed)
@@ -159,27 +192,18 @@ class App(QObject):
     def accent(self):
         return self.settings.get("accent", "violet")
 
-    @Property(str, notify=langChanged)
-    def renderer(self):
-        return self.settings.get("renderer", "gpu")
+    @Property(bool, constant=True)
+    def isAdmin(self):
+        return self._admin
+
+    @Property(str, constant=True)
+    def startPage(self):
+        return self._start_page
 
     @Slot(str)
-    def setRenderer(self, mode):
-        self.settings["renderer"] = mode
-        P.save_settings(self.settings)
-        self.langChanged.emit()
-        self._set_status(self.i18n.t("set.renderer.restart"))
-
-    @Slot()
-    def restartApp(self):
-        import subprocess
-        exe = sys.executable if getattr(sys, "frozen", False) else None
-        if exe:
-            subprocess.Popen([exe])
-        else:
-            subprocess.Popen([sys.executable, os.path.abspath(sys.argv[0])])
-        from PySide6.QtWidgets import QApplication
-        QApplication.quit()
+    def requestAdmin(self, page):
+        """Banner button: restart Sweep with administrator rights on the same page."""
+        self._need_admin("", page or "overview")
 
     @Property(bool, notify=langChanged)
     def autoUpdate(self):
@@ -211,7 +235,7 @@ class App(QObject):
         w = Worker(work, self)
         self._workers.append(w)
         w.done.connect(lambda r: (self._workers.remove(w), done(r)))
-        w.failed.connect(lambda m: (self._workers.remove(w), P.log(f"auto update: {m}")))
+        w.failed.connect(lambda e: (self._workers.remove(w), P.log(f"auto update: {e}")))
         w.start()
 
     @Property(bool, notify=langChanged)
@@ -364,8 +388,38 @@ class App(QObject):
             self.schedule = res["schedule"]
             self.changed.emit()
             self.scan()
+            if self._pending:
+                QTimer.singleShot(1200, self._do_pending)
 
         self._run(work, done)
+
+    def _do_pending(self):
+        """Continue the action the user started before Sweep restarted with administrator rights."""
+        if self._busy:
+            QTimer.singleShot(800, self._do_pending)
+            return
+        act, self._pending = self._pending, ""
+        kind, _, rest = act.partition(":")
+        name, _, flag = rest.rpartition(":")
+        on = flag == "1"
+        if kind == "allPrivacy":
+            self.allPrivacy()
+        elif kind == "applyRecommendations":
+            self.applyRecommendations()
+        elif kind == "clean":
+            self.clean()
+        elif kind == "quickClean":
+            self.quickClean()
+        elif kind == "privacy":
+            self.setPrivacy(name, on)
+        elif kind == "service":
+            self.setService(name, on)
+        elif kind == "schedule":
+            self.setSchedule(flag == "1")
+        elif kind == "startup":
+            idx = next((i for i, e in enumerate(self.startup) if e["name"] == name), -1)
+            if idx >= 0:
+                self.setStartup(idx, on)
 
     def _load_services(self):
         out = []
@@ -437,10 +491,14 @@ class App(QObject):
     @Slot(str, bool)
     def setChecked(self, cid, val):
         self.checked[cid] = val
+        self.settings["junk"] = dict(self.checked)
+        P.save_settings(self.settings)
         self.changed.emit()
 
     @Slot()
     def clean(self):
+        if self._need_admin("clean", "junk"):
+            return
         session = cleaner.new_session()
         todo = [c for c in self.categories if self.checked[c.id]]
 
@@ -463,27 +521,45 @@ class App(QObject):
 
     @Slot()
     def quickClean(self):
+        if self._need_admin("quickClean", "overview"):
+            return
         self.checked = {c.id: c.default for c in self.categories}
         self.changed.emit()
         self.clean()
 
     # ---------- privacy ----------
+    def _apply_privacy(self, items, protect: bool = True) -> list:
+        """Runs in a worker thread. Applies every item even if some fail, then re-reads the real state."""
+        failed = [p for p in items if tweaks.set_privacy(p, protect)]
+        self.privacy_state = {p.id: tweaks.privacy_state(p) for p in tweaks.PRIVACY}
+        return failed
+
+    def _privacy_report(self, failed: list) -> None:
+        self._compute_health()
+        self.changed.emit()
+        ok, total = self.privacyOn, len(tweaks.PRIVACY)
+        if failed:
+            names = ", ".join(self._loc(p.name) for p in failed[:3]) + ("…" if len(failed) > 3 else "")
+            self._set_status(self.i18n.t("priv.partial", ok, total, names) + " " + (self.i18n.t("admin.denied") if self._admin else self.i18n.t("admin.need")))
+        else:
+            self._set_status(self.i18n.t("priv.result", ok, total))
+            self.toast.emit(self.i18n.t("priv.result", ok, total))
+
     @Slot(str, bool)
     def setPrivacy(self, pid, on):
+        if self._need_admin(f"privacy:{pid}:{int(on)}", "privacy"):
+            self.changed.emit()      # put the switch back
+            return
         p = next(x for x in tweaks.PRIVACY if x.id == pid)
         self.privacy_state[pid] = on
         self.changed.emit()
-        self._run(lambda: tweaks.set_privacy(p, on), lambda _: (self._compute_health(), self.changed.emit()))
+        self._run(lambda: self._apply_privacy([p], on), self._privacy_report)
 
     @Slot()
     def allPrivacy(self):
-        def work():
-            for p in tweaks.PRIVACY:
-                tweaks.set_privacy(p, True)
-                self.privacy_state[p.id] = True
-            return True
-
-        self._run(work, lambda _: (self._compute_health(), self.changed.emit(), self._set_status(self.i18n.t("priv.disabled").capitalize())), self.i18n.t("common.working"))
+        if self._need_admin("allPrivacy", "privacy"):
+            return
+        self._run(lambda: self._apply_privacy(tweaks.PRIVACY, True), self._privacy_report, self.i18n.t("common.working"))
 
     # ---------- registry ----------
     @Slot()
@@ -497,6 +573,8 @@ class App(QObject):
 
     @Slot("QVariantList")
     def regClean(self, ids):
+        if self._need_admin("", "registry"):
+            return
         session = cleaner.new_session()
         cats = [c for c in extras.REG_CATEGORIES if c.id in ids]
 
@@ -517,18 +595,47 @@ class App(QObject):
     # ---------- services / startup ----------
     @Slot(str, bool)
     def setService(self, name, on):
-        for s in self.services:
-            if s["name"] == name:
-                s["enabled"] = on
+        if self._need_admin(f"service:{name}:{int(on)}", "services"):
+            self.changed.emit()
+            return
+        row = next((s for s in self.services if s["name"] == name), None)
+        if row is None:
+            return
+        row["enabled"] = on
         self.changed.emit()
-        self._run(lambda: tweaks.set_service(name, on))
+
+        def work():
+            tweaks.set_service(name, on)
+            return tweaks.service_state(name)
+
+        def done(state):
+            if state is not None:
+                row["enabled"] = bool(state)
+            self.changed.emit()
+            if state is not None and bool(state) != on:
+                self._set_status(self.i18n.t("svc.failed", row["title"]))
+            else:
+                self._set_status(self.i18n.t("common.done"))
+
+        self._run(work, done, on_fail=lambda _: row.__setitem__("enabled", not on))
 
     @Slot(int, bool)
     def setStartup(self, index, on):
+        if index < 0 or index >= len(self.startup):
+            return
         e = self.startup[index]
+        if e.get("source", "").startswith("System") and self._need_admin(f"startup:{e['name']}:{int(on)}", "startup"):
+            self.changed.emit()
+            return
         e["enabled"] = on
         self.changed.emit()
-        self._run(lambda: tweaks.set_startup(e, on), lambda _: (self._compute_health(), self.changed.emit()))
+
+        def done(_):
+            self._compute_health()
+            self.changed.emit()
+            self._set_status(self.i18n.t("start.on" if on else "start.off", e["name"]))
+
+        self._run(lambda: tweaks.set_startup(e, on), done, on_fail=lambda _: e.__setitem__("enabled", not on))
 
     # ---------- boost ----------
     @Slot()
@@ -583,6 +690,9 @@ class App(QObject):
 
     @Slot(bool)
     def setSchedule(self, on):
+        if self._need_admin(f"schedule:{int(on)}", "boost"):
+            self.changed.emit()
+            return
         exe = sys.executable if getattr(sys, "frozen", False) else os.path.abspath(sys.argv[0])
 
         def done(_):
@@ -598,12 +708,12 @@ class App(QObject):
 
     @Slot()
     def applyRecommendations(self):
+        if self._need_admin("applyRecommendations", "overview"):
+            return
         cls = self.profile.get("class", "mid")
 
         def work():
-            for p in tweaks.PRIVACY:
-                tweaks.set_privacy(p, True)
-                self.privacy_state[p.id] = True
+            self._apply_privacy(tweaks.PRIVACY, True)
             if cls in ("weak", "mid"):
                 for s in self.services:
                     svc = next(x for x in tweaks.SERVICES if x.name == s["name"])
@@ -649,6 +759,8 @@ class App(QObject):
 
     @Slot()
     def cleanDrives(self):
+        if self._need_admin("", "disks"):
+            return
         session = cleaner.new_session()
         todo = [(d["letter"], r["id"]) for d in self.driveJunk for r in d["rows"] if r["checked"]]
 
@@ -687,6 +799,8 @@ class App(QObject):
 
     @Slot("QVariantList")
     def removeApps(self, ids):
+        if self._need_admin("", "apps"):
+            return
         ids = set(ids)
 
         def work():

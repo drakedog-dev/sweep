@@ -12,19 +12,15 @@ from sweep import platform as P  # noqa: E402
 
 
 def ensure_admin() -> None:
-    """On Windows relaunch elevated when not already administrator."""
-    if not P.IS_WINDOWS or "--no-elevate" in sys.argv:
+    """On Windows ask for administrator rights (UAC) when the process is not elevated.
+    If the user declines, Sweep keeps running with limited rights and shows a banner with a button to ask again."""
+    if not P.IS_WINDOWS or "--no-elevate" in sys.argv or "--limited" in sys.argv:
         return
-    import ctypes
-    try:
-        if ctypes.windll.shell32.IsUserAnAdmin():
-            return
-    except Exception:
+    if P.is_admin():
         return
-    exe = sys.executable
-    params = " ".join(f'"{a}"' for a in sys.argv[1:]) if getattr(sys, "frozen", False) else " ".join(f'"{a}"' for a in sys.argv)
-    ctypes.windll.shell32.ShellExecuteW(None, "runas", exe, params, None, 1)
-    sys.exit(0)
+    if P.relaunch_elevated():
+        sys.exit(0)
+    P.log("started without administrator rights")
 
 
 def run_auto() -> None:
@@ -32,8 +28,9 @@ def run_auto() -> None:
     from sweep import cleaner
     session = cleaner.new_session()
     freed = 0
+    chosen = P.load_settings().get("junk", {})   # the ticks saved on the Junk page
     for c in cleaner.CATEGORIES:
-        if c.default and c.id != "bin":
+        if chosen.get(c.id, c.default) and c.id != "bin":
             freed += cleaner.quarantine(c, session)
     cleaner.purge(max_age_days=30)
     P.log(f"auto clean {session}: freed {freed}")
@@ -46,12 +43,9 @@ def main() -> int:
         return 0
     ensure_admin()
     os.environ.setdefault("QT_QUICK_CONTROLS_STYLE", "Basic")
-    renderer = P.load_settings().get("renderer", "gpu")
-    if "--software" in sys.argv or renderer == "cpu":
-        os.environ["QT_QUICK_BACKEND"] = "software"      # no GPU involvement at all
-    elif P.IS_WINDOWS:
-        os.environ.setdefault("QSG_RHI_BACKEND", "d3d11")
-        os.environ.setdefault("QSG_RENDER_LOOP", "basic")  # single-threaded render loop, calmer frame pacing
+    # The interface is always drawn by the CPU (Qt Quick software renderer): the graphics card is not used at all,
+    # which keeps the mouse cursor and games smooth while Sweep is open.
+    os.environ["QT_QUICK_BACKEND"] = "software"
     from PySide6.QtGui import QIcon
     from PySide6.QtQml import QQmlApplicationEngine
     from PySide6.QtWidgets import QApplication

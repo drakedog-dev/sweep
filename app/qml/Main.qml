@@ -13,7 +13,11 @@ ApplicationWindow {
     color: Theme.bg
     font.family: Theme.font
 
-    Component.onCompleted: { Theme.dark = app.theme !== "light"; Theme.accentName = app.accent; Theme.anim = app.animations }
+    Component.onCompleted: {
+        Theme.dark = app.theme !== "light"; Theme.accentName = app.accent; Theme.anim = app.animations
+        var i = navKeys.indexOf(app.startPage)          // after a restart with administrator rights
+        if (i > 0) current = i
+    }
     Connections { target: app
         function onLangChanged() { Theme.dark = app.theme !== "light"; Theme.accentName = app.accent; Theme.anim = app.animations; langTick++ }
         function onToast(msg) { toastText.text = msg; toastAnim.restart() }
@@ -101,7 +105,21 @@ ApplicationWindow {
         anchors.left: side.right; anchors.right: parent.right; anchors.top: parent.top; anchors.bottom: statusBar.top
         anchors.margins: 26; anchors.bottomMargin: 14
 
-        StackLayout_ { id: stack; anchors.fill: parent; currentIndex: current
+        // no administrator rights: say so and offer the UAC prompt
+        Rectangle {
+            id: adminBar; visible: !app.isAdmin
+            anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top
+            height: visible ? Math.max(52, adminRow.implicitHeight + 20) : 0; radius: 14
+            color: Theme.dark ? "#3A2A12" : "#FEF3C7"; border.color: Theme.warn
+            Row { id: adminRow; anchors.left: parent.left; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; anchors.leftMargin: 16; anchors.rightMargin: 12; spacing: 12
+                Text { text: "\u26A0"; color: Theme.warn; font.pixelSize: 18; anchors.verticalCenter: parent.verticalCenter }
+                Txt { text: tr("admin.banner"); width: parent.width - grantBtn.width - 48; anchors.verticalCenter: parent.verticalCenter; font.pixelSize: 13 }
+                AccentButton { id: grantBtn; text: tr("admin.grant"); compact: true; anchors.verticalCenter: parent.verticalCenter; onClicked: app.requestAdmin(navKeys[current]) }
+            }
+        }
+        StackLayout_ { id: stack; anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom
+            anchors.top: adminBar.visible ? adminBar.bottom : parent.top; anchors.topMargin: adminBar.visible ? 14 : 0
+            currentIndex: current
             OverviewPage {} JunkPage {} PrivacyPage {} RegistryPage {} ServicesPage {} StartupPage {}
             BoostPage {} DisksPage {} AppsPage {} SystemPage {} QuarantinePage {} SettingsPage {}
         }

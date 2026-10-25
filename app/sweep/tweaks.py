@@ -30,7 +30,7 @@ class Privacy:
     reg: list[RegValue]
     services: list[str] = field(default_factory=list)
     tasks: list[str] = field(default_factory=list)
-    strong_skip: bool = False  # not recommended on powerful PCs? (unused for privacy)
+    alt: list[RegValue] = field(default_factory=list)  # other places where Windows Settings or other tools record the same choice
 
 
 def _rv(root, path, name, off, on=None):
@@ -62,6 +62,16 @@ PRIVACY: list[Privacy] = [
     Privacy("edge", "assist", {"ru": "Сбор данных браузером Edge", "en": "Edge data collection"}, {"ru": "Edge перестанет отправлять историю и данные об использовании", "en": "Edge stops sending browsing and usage data"}, [_rv(HKLM, r"SOFTWARE\Policies\Microsoft\Edge", "MetricsReportingEnabled", 0), _rv(HKLM, r"SOFTWARE\Policies\Microsoft\Edge", "PersonalizationReportingEnabled", 0)]),
 ]
 
+_ALT = {
+    "telemetry": [_rv(HKLM, r"SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\DataCollection", "AllowTelemetry", 0), _rv(HKLM, r"SYSTEM\CurrentControlSet\Services\DiagTrack", "Start", 4)],
+    "wer": [_rv(HKLM, r"SOFTWARE\Microsoft\Windows\Windows Error Reporting", "Disabled", 1), _rv(HKLM, r"SYSTEM\CurrentControlSet\Services\WerSvc", "Start", 4)],
+    "feeds": [_rv(HKCU, r"Software\Microsoft\Windows\CurrentVersion\Feeds", "ShellFeedsTaskbarViewMode", 2), _rv(HKCU, r"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced", "TaskbarDa", 0)],
+    "copilot": [_rv(HKCU, r"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced", "ShowCopilotButton", 0)],
+    "edge": [_rv(HKLM, r"SOFTWARE\Policies\Microsoft\Edge", "DiagnosticData", 0)],
+}
+for _p in PRIVACY:
+    _p.alt = _ALT.get(_p.id, [])
+
 _demo_privacy = {"adid", "tips", "feedback"}
 
 
@@ -73,59 +83,98 @@ def reg_get(root: str, path: str, name: str):
     if not P.IS_WINDOWS:
         return None
     try:
-        with winreg.OpenKey(_hive(root), path) as k:
+        with winreg.OpenKey(_hive(root), path, 0, winreg.KEY_READ | winreg.KEY_WOW64_64KEY) as k:
             return winreg.QueryValueEx(k, name)[0]
     except OSError:
         return None
 
 
+def _reg_exe(args: list[str]) -> bool:
+    """Fallback through reg.exe (64-bit view). Returns True on success."""
+    import subprocess
+    si = subprocess.STARTUPINFO()
+    si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+    try:
+        r = subprocess.run(["reg.exe"] + args + ["/reg:64", "/f"], capture_output=True, text=True, timeout=30, startupinfo=si)
+        if r.returncode != 0:
+            P.log(f"reg.exe {' '.join(args[:2])}: {(r.stderr or r.stdout).strip()}")
+        return r.returncode == 0
+    except Exception as e:
+        P.log(f"reg.exe: {e}")
+        return False
+
+
 def reg_set(root: str, path: str, name: str, value):
+    """Write a DWORD or binary value. Raises PermissionError when Windows refuses access."""
     if not P.IS_WINDOWS:
         return
-    with winreg.CreateKeyEx(_hive(root), path, 0, winreg.KEY_SET_VALUE) as k:
-        if isinstance(value, bytes):
-            winreg.SetValueEx(k, name, 0, winreg.REG_BINARY, value)
-        else:
-            winreg.SetValueEx(k, name, 0, winreg.REG_DWORD, int(value))
+    try:
+        with winreg.CreateKeyEx(_hive(root), path, 0, winreg.KEY_SET_VALUE | winreg.KEY_WOW64_64KEY) as k:
+            if isinstance(value, bytes):
+                winreg.SetValueEx(k, name, 0, winreg.REG_BINARY, value)
+            else:
+                winreg.SetValueEx(k, name, 0, winreg.REG_DWORD, int(value))
+    except OSError as e:
+        if not P.is_access_denied(e):
+            raise
+        kind, data = ("REG_BINARY", value.hex()) if isinstance(value, bytes) else ("REG_DWORD", str(int(value)))
+        if not _reg_exe(["add", f"{root}\\{path}", "/v", name, "/t", kind, "/d", data]):
+            raise PermissionError(5, f"{root}\\{path}\\{name}") from e
 
 
 def reg_del(root: str, path: str, name: str):
     if not P.IS_WINDOWS:
         return
     try:
-        with winreg.OpenKey(_hive(root), path, 0, winreg.KEY_SET_VALUE) as k:
+        with winreg.OpenKey(_hive(root), path, 0, winreg.KEY_SET_VALUE | winreg.KEY_WOW64_64KEY) as k:
             winreg.DeleteValue(k, name)
-    except OSError:
+    except FileNotFoundError:
         pass
+    except OSError as e:
+        if not P.is_access_denied(e):
+            return
+        if reg_get(root, path, name) is not None and not _reg_exe(["delete", f"{root}\\{path}", "/v", name]):
+            raise PermissionError(5, f"{root}\\{path}\\{name}") from e
 
 
 def privacy_state(p: Privacy) -> bool:
+    """True when tracking is switched off. Counts both Sweep's own values and the places where
+    Windows Settings (or other tools) store the same choice, so manual changes are recognised."""
     if not P.IS_WINDOWS:
         return p.id in _demo_privacy
-    r = p.reg[0]
-    return reg_get(r.root, r.path, r.name) == r.off
+    hits = sum(1 for r in p.reg if reg_get(r.root, r.path, r.name) == r.off)
+    if hits >= (len(p.reg) + 1) // 2:
+        return True
+    return any(reg_get(r.root, r.path, r.name) == r.off for r in p.alt)
 
 
-def set_privacy(p: Privacy, protect: bool) -> None:
+def set_privacy(p: Privacy, protect: bool) -> list[str]:
+    """Apply one privacy item value by value. Never stops halfway: returns the list of values Windows refused."""
     if not P.IS_WINDOWS:
         if protect:
             _demo_privacy.add(p.id)
         else:
             _demo_privacy.discard(p.id)
-        return
+        return []
+    failed: list[str] = []
     for r in p.reg:
-        if protect:
-            reg_set(r.root, r.path, r.name, r.off)
-        elif r.on is None:
-            reg_del(r.root, r.path, r.name)
-        else:
-            reg_set(r.root, r.path, r.name, r.on)
+        try:
+            if protect:
+                reg_set(r.root, r.path, r.name, r.off)
+            elif r.on is None:
+                reg_del(r.root, r.path, r.name)
+            else:
+                reg_set(r.root, r.path, r.name, r.on)
+        except OSError as e:
+            P.log(f"privacy {p.id}: {r.root}\\{r.path}\\{r.name}: {e}")
+            failed.append(f"{r.root}\\{r.path}\\{r.name}")
     for s in p.services:
         set_service(s, not protect)
     for t in p.tasks:
         name, path = t.rsplit("\\", 1)[1], t.rsplit("\\", 1)[0] + "\\"
         verb = "Disable" if protect else "Enable"
         P.powershell(f"{verb}-ScheduledTask -TaskName '{name}' -TaskPath '{path}' -ErrorAction SilentlyContinue | Out-Null", 30)
+    return failed
 
 
 # ---------------- services ----------------
@@ -222,12 +271,25 @@ if(Test-Path $sf){ foreach($f in (Get-ChildItem $sf -File | ? Name -ne 'desktop.
     return data if isinstance(data, list) else []
 
 
+def _split_ps_path(ps_path: str) -> tuple[str, str]:
+    """'HKLM:\\Software\\...' -> ('HKLM', 'Software\\...')"""
+    root, _, rest = ps_path.partition(":\\")
+    return root.upper(), rest
+
+
 def set_startup(entry: dict, enabled: bool) -> None:
+    """Same switch as Task Manager: StartupApproved value, first byte 02 = enabled, 03 = disabled.
+    Raises PermissionError when Windows refuses (system-wide entries need administrator rights)."""
     if not P.IS_WINDOWS:
         entry["enabled"] = enabled
         return
-    first = 2 if enabled else 3
-    P.powershell(f"if(-not (Test-Path '{entry['approved']}')){{New-Item -Path '{entry['approved']}' -Force|Out-Null}}; Set-ItemProperty -Path '{entry['approved']}' -Name '{entry['name']}' -Value ([byte[]](@({first})+@(0,0,0,0,0,0,0,0,0,0,0))) -Type Binary", 30)
+    root, path = _split_ps_path(entry["approved"])
+    value = bytes([2 if enabled else 3]) + bytes(11)
+    reg_set(root, path, entry["name"], value)
+    got = reg_get(root, path, entry["name"])
+    if not got or got[0] != value[0]:
+        raise PermissionError(5, f"{root}\\{path}\\{entry['name']}")
+    entry["enabled"] = enabled
 
 
 # ---------------- visual effects ----------------

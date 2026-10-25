@@ -22,11 +22,18 @@ CHROMIUM_ROOTS = [
     rf"{LA}\BraveSoftware\Brave-Browser\User Data", rf"{LA}\Vivaldi\User Data", rf"{LA}\Chromium\User Data",
     rf"{LA}\Opera Software\Opera Stable", rf"{LA}\Opera Software\Opera GX Stable",
 ]
-_cache, _cookies = [], []
+# Browsing history in Chromium browsers lives in these profile files. Passwords (Login Data), bookmarks,
+# autofill and cards (Web Data), extensions, settings and open tabs (Sessions) are never touched.
+CHROMIUM_HISTORY = ("History", "History-journal", "Visited Links", "Top Sites", "Top Sites-journal", "Shortcuts", "Shortcuts-journal",
+                    "Network Action Predictor", "Network Action Predictor-journal", "History Provider Cache", "Media History", "Media History-journal")
+_cache, _cookies, _history = [], [], []
 for _r in CHROMIUM_ROOTS:
     for _sub in (r"Cache\*", r"Code Cache\*", r"GPUCache\*", r"Service Worker\CacheStorage\*", r"Media Cache\*"):
         _cache += [rf"{_r}\*\{_sub}", rf"{_r}\{_sub}"]
     _cookies += [rf"{_r}\*\Network\Cookies*", rf"{_r}\Network\Cookies*"]
+    for _f in CHROMIUM_HISTORY:
+        _history += [rf"{_r}\*\{_f}", rf"{_r}\{_f}"]
+FIREFOX_PROFILES = [rf"{RA}\Mozilla\Firefox\Profiles\*", rf"{RA}\LibreWolf\Profiles\*", rf"{RA}\Waterfox\Profiles\*"]
 
 
 @dataclass
@@ -48,10 +55,14 @@ CATEGORIES: list[Category] = [
     Category("dumps", {"ru": "Отчёты об ошибках и дампы", "en": "Error reports and dumps"}, {"ru": "Файлы о сбоях программ, нужны только разработчикам", "en": "Crash files, useful only to developers"}, True, [rf"{LA}\CrashDumps\*", rf"{WINDIR}\Minidump\*", rf"{PD}\Microsoft\Windows\WER\ReportQueue\*", rf"{PD}\Microsoft\Windows\WER\ReportArchive\*"]),
     Category("logs", {"ru": "Старые журналы Windows", "en": "Old Windows logs"}, {"ru": "Логи установки и обслуживания старше 30 дней", "en": "Setup and servicing logs older than 30 days"}, True, [rf"{WINDIR}\Logs\CBS\*.log", rf"{WINDIR}\Logs\DISM\*.log", rf"{WINDIR}\Panther\*.log"], 30),
     Category("cache", {"ru": "Кэш браузеров", "en": "Browser caches"}, {"ru": "Chrome, Edge, Яндекс, Brave, Vivaldi, Opera, Firefox. Лучше закрыть браузеры", "en": "Chrome, Edge, Yandex, Brave, Vivaldi, Opera, Firefox. Close browsers first"}, True, _cache + [rf"{LA}\Mozilla\Firefox\Profiles\*\cache2\*", rf"{LA}\Mozilla\Firefox\Profiles\*\startupCache\*"]),
+    Category("history", {"ru": "История браузеров", "en": "Browser history"},
+             {"ru": "Посещённые сайты, загрузки, подсказки адресной строки во всех браузерах. Пароли, закладки, автозаполнение и открытые вкладки не трогаются. Закройте браузеры",
+              "en": "Visited sites, downloads list, address bar suggestions in every browser. Passwords, bookmarks, autofill and open tabs stay. Close browsers first"},
+             False, _history),
     Category("cookies", {"ru": "Куки браузеров", "en": "Browser cookies"}, {"ru": "Выйдете из всех сайтов. По умолчанию выключено", "en": "You will be signed out of all sites. Off by default"}, False, _cookies + [rf"{RA}\Mozilla\Firefox\Profiles\*\cookies.sqlite*"]),
 ]
 
-DEMO_SIZES = {"temp": 1.8 * 2**30, "bin": 612 * 2**20, "thumbs": 140 * 2**20, "wu": 1.1 * 2**30, "dumps": 96 * 2**20, "logs": 38 * 2**20, "cache": 1.5 * 2**30, "cookies": 24 * 2**20}
+DEMO_SIZES = {"history": 212 * 2**20, "temp": 1.8 * 2**30, "bin": 612 * 2**20, "thumbs": 140 * 2**20, "wu": 1.1 * 2**30, "dumps": 96 * 2**20, "logs": 38 * 2**20, "cache": 1.5 * 2**30, "cookies": 24 * 2**20}
 
 
 def _items(cat: Category) -> list[Path]:
@@ -99,7 +110,83 @@ def scan(cat: Category) -> int:
         cat.size = recycle_bin_size()
     else:
         cat.size = sum(_size(p) for p in _items(cat))
+        if cat.id == "history":
+            cat.size += sum(_size(Path(db)) for db in _firefox_places())
     return cat.size
+
+
+# ---------------- Firefox history ----------------
+# In Firefox history and bookmarks share one database (places.sqlite), so the file cannot simply be moved away.
+# Sweep copies it to quarantine first, then deletes only visits and pages that are not bookmarked.
+FIREFOX_SQL = [
+    "PRAGMA foreign_keys = ON",
+    "DELETE FROM moz_historyvisits",
+    "DELETE FROM moz_inputhistory",
+    "DELETE FROM moz_places_metadata",
+    "DELETE FROM moz_places_metadata_search_queries",
+    "DELETE FROM moz_places WHERE id NOT IN (SELECT fk FROM moz_bookmarks WHERE fk IS NOT NULL)"
+    " AND id NOT IN (SELECT place_id FROM moz_keywords WHERE place_id IS NOT NULL)"
+    " AND id NOT IN (SELECT place_id FROM moz_annos WHERE place_id IS NOT NULL)",
+    "UPDATE moz_places SET visit_count = 0, last_visit_date = NULL",
+    "DELETE FROM moz_origins WHERE id NOT IN (SELECT origin_id FROM moz_places WHERE origin_id IS NOT NULL)",
+]
+
+
+def _firefox_places() -> list[str]:
+    out = []
+    for pat in FIREFOX_PROFILES:
+        out += glob.glob(os.path.join(pat, "places.sqlite"))
+    return out
+
+
+def clean_firefox_history(db: str, backup_dir: Path | None = None, manifest: Path | None = None) -> int:
+    """Remove history from one places.sqlite, keeping bookmarks. Returns bytes freed, 0 if the browser is open."""
+    import sqlite3
+    src = Path(db)
+    before = _size(src) + _size(Path(db + "-wal"))
+    copy = None
+    if backup_dir is not None:
+        backup_dir.mkdir(parents=True, exist_ok=True)
+        copy = backup_dir / f"{src.parent.name}_places.sqlite"
+    try:
+        con = sqlite3.connect(f"file:{src.as_posix()}?mode=rw", uri=True, timeout=1, isolation_level=None)
+    except Exception as e:
+        P.log(f"firefox {db}: {e}")
+        return 0
+    try:
+        con.execute("BEGIN EXCLUSIVE")          # fails at once while Firefox has the database open
+        if copy is not None:
+            con.execute("COMMIT")
+            con.execute(f"VACUUM INTO '{str(copy).replace(chr(39), chr(39) * 2)}'")
+            con.execute("BEGIN EXCLUSIVE")
+        tables = {r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        for q in FIREFOX_SQL:
+            words = q.split()
+            target = words[2] if words[0] in ("DELETE",) else words[1] if words[0] == "UPDATE" else None
+            if target and target not in tables:
+                continue
+            if "moz_annos" in q and "moz_annos" not in tables:
+                q = q.replace(" AND id NOT IN (SELECT place_id FROM moz_annos WHERE place_id IS NOT NULL)", "")
+            if "moz_keywords" in q and "moz_keywords" not in tables:
+                q = q.replace(" AND id NOT IN (SELECT place_id FROM moz_keywords WHERE place_id IS NOT NULL)", "")
+            con.execute(q)
+        con.execute("COMMIT")
+        con.execute("VACUUM")
+    except Exception as e:
+        P.log(f"firefox {db}: {e}")
+        try:
+            con.execute("ROLLBACK")
+        except Exception:
+            pass
+        con.close()
+        if copy is not None and copy.exists():
+            copy.unlink(missing_ok=True)
+        return 0
+    con.close()
+    if copy is not None and manifest is not None:
+        with manifest.open("a", encoding="utf-8") as m:
+            m.write(f"{copy}|{src}\n")
+    return max(0, before - _size(src) - _size(Path(db + "-wal")))
 
 
 def new_session() -> str:
@@ -133,7 +220,21 @@ def quarantine(cat: Category, session: str) -> int:
             pass  # file in use
     if cat.id == "wu":
         P.powershell("Start-Service wuauserv -ErrorAction SilentlyContinue", 30)
+    if cat.id == "history":
+        if _running(("firefox.exe", "librewolf.exe", "waterfox.exe")):
+            P.log("firefox is open, its history was skipped")
+        else:
+            for db in _firefox_places():
+                moved += clean_firefox_history(db, dest / "firefox", manifest)
     return moved
+
+
+def _running(names: tuple[str, ...]) -> bool:
+    try:
+        import psutil
+        return any((p.info.get("name") or "").lower() in names for p in psutil.process_iter(["name"]))
+    except Exception:
+        return False
 
 
 def quarantine_files(paths: list[str], session: str, bucket: str = "files") -> int:

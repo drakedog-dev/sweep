@@ -64,6 +64,10 @@ jobs:
         if: steps.ver.outputs.exists == 'False'
         working-directory: app
         run: |
+          # the exe must ask for administrator rights (UAC) on its own, otherwise privacy and services cannot be changed
+          $raw = [IO.File]::ReadAllText((Resolve-Path dist/Sweep/Sweep.exe), [Text.Encoding]::ASCII)
+          if ($raw -notmatch 'requireAdministrator') { throw 'Sweep.exe manifest does not request administrator rights' }
+          Write-Host 'Manifest: requireAdministrator'
           Start-Process -FilePath dist/Sweep/Sweep.exe -ArgumentList '--auto','--no-elevate' -Wait -NoNewWindow
           if (Test-Path "$env:ProgramData\Sweep\log.txt") { Get-Content "$env:ProgramData\Sweep\log.txt" | Select-Object -Last 3 }
 
