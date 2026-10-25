@@ -126,32 +126,94 @@ def system_drive() -> str:
     return os.environ.get("SystemDrive", "C:").rstrip(":") if P.IS_WINDOWS else "C"
 
 
-def large_files(letter: str, min_size: int = 50 * 2**20, limit: int = 30) -> list[dict]:
+DRIVE_JUNK = [
+    ("bin", {"ru": "Корзина на этом диске", "en": "Recycle Bin on this drive"}, {"ru": "Удалённые файлы, которые ещё занимают место", "en": "Deleted files that still take up space"}),
+    ("tmp", {"ru": "Временные и недокачанные файлы", "en": "Temporary and unfinished downloads"}, {"ru": "*.tmp, *.temp, *.crdownload, *.part, ~$-файлы Office", "en": "*.tmp, *.temp, *.crdownload, *.part, Office ~$ files"}),
+    ("logs", {"ru": "Старые журналы и дампы", "en": "Old logs and dumps"}, {"ru": "*.log старше 30 дней, *.dmp, *.chk, папки found.000 после проверки диска", "en": "*.log older than 30 days, *.dmp, *.chk, found.000 folders left by disk check"}),
+    ("thumbs", {"ru": "Служебные файлы эскизов", "en": "Thumbnail leftovers"}, {"ru": "Thumbs.db, ehthumbs.db, .DS_Store", "en": "Thumbs.db, ehthumbs.db, .DS_Store"}),
+    ("oldwin", {"ru": "Старые установки Windows", "en": "Old Windows installations"}, {"ru": "Windows.old и $WINDOWS.~BT после обновления системы", "en": "Windows.old and $WINDOWS.~BT left after a system upgrade"}),
+]
+_TMP_EXT = {".tmp", ".temp", ".crdownload", ".part", ".partial", ".download", ".bak~"}
+_LOG_EXT = {".dmp", ".chk", ".mdmp", ".hdmp"}
+_THUMBS = {"thumbs.db", "ehthumbs.db", "ehthumbs_vista.db", ".ds_store"}
+_DEMO_DRIVE_JUNK = {"C": {"bin": (612 * 2**20, 38), "tmp": (210 * 2**20, 52), "logs": (96 * 2**20, 14), "thumbs": (4 * 2**20, 120), "oldwin": (11.2 * 2**30, 1)},
+                    "D": {"bin": (1.3 * 2**30, 9), "tmp": (2.8 * 2**30, 7), "logs": (0, 0), "thumbs": (9 * 2**20, 300), "oldwin": (0, 0)}}
+
+
+def drive_junk(letter: str) -> dict:
+    """Scan one drive for junk. Returns {cat: {"size": int, "count": int, "paths": [..]}}."""
+    res = {c[0]: {"size": 0, "count": 0, "paths": []} for c in DRIVE_JUNK}
     if not P.IS_WINDOWS:
-        return [{"name": "Игра престолов S01.mkv", "dir": r"D:\Видео", "size": 14.2 * 2**30, "path": "demo1"},
-                {"name": "Windows11.iso", "dir": r"D:\Загрузки", "size": 5.4 * 2**30, "path": "demo2"},
-                {"name": "backup-2024.zip", "dir": r"D:\Архив", "size": 3.1 * 2**30, "path": "demo3"},
-                {"name": "Call of Duty.part1.rar", "dir": r"D:\Загрузки", "size": 2.0 * 2**30, "path": "demo4"}]
+        for k, (sz, n) in _DEMO_DRIVE_JUNK.get(letter, {}).items():
+            res[k]["size"], res[k]["count"] = int(sz), n
+        return res
     root = f"{letter}:\\"
-    skip = {p.lower().rstrip("\\") for p in (os.environ.get("WINDIR", ""), os.environ.get("ProgramFiles", ""), os.environ.get("ProgramFiles(x86)", ""), os.environ.get("ProgramData", ""), root + "$Recycle.Bin", root + "System Volume Information") if p}
-    found = []
-    for dirpath, dirnames, filenames in os.walk(root):
-        low = dirpath.lower().rstrip("\\")
-        if any(low == s or low.startswith(s + "\\") for s in skip):
-            dirnames[:] = []
+    # recycle bin size for this drive
+    try:
+        rb = os.path.join(root, "$Recycle.Bin")
+        for dp, _, fs in os.walk(rb):
+            for f in fs:
+                try:
+                    res["bin"]["size"] += os.path.getsize(os.path.join(dp, f)); res["bin"]["count"] += 1
+                except OSError:
+                    pass
+    except OSError:
+        pass
+    # old windows installs
+    for name in ("Windows.old", "$WINDOWS.~BT", "$WINDOWS.~WS"):
+        pth = os.path.join(root, name)
+        if os.path.isdir(pth):
+            total = 0
+            for dp, _, fs in os.walk(pth):
+                for f in fs:
+                    try:
+                        total += os.path.getsize(os.path.join(dp, f))
+                    except OSError:
+                        pass
+            res["oldwin"]["size"] += total; res["oldwin"]["count"] += 1; res["oldwin"]["paths"].append(pth)
+    skip_names = {"$recycle.bin", "system volume information", "windows", "windows.old", "$windows.~bt", "$windows.~ws", "program files", "program files (x86)", "programdata"}
+    limit = time.time() - 30 * 86400
+    for dp, dns, fs in os.walk(root):
+        if dp == root:
+            dns[:] = [d for d in dns if d.lower() not in skip_names]
+        low = os.path.basename(dp).lower()
+        if low.startswith("found.") and low[6:].isdigit():
+            total = 0
+            for dp2, _, fs2 in os.walk(dp):
+                for f in fs2:
+                    try:
+                        total += os.path.getsize(os.path.join(dp2, f))
+                    except OSError:
+                        pass
+            res["logs"]["size"] += total; res["logs"]["count"] += 1; res["logs"]["paths"].append(dp); dns[:] = []
             continue
-        if low == root.lower().rstrip("\\"):
-            continue  # skip root files like pagefile/hiberfil
-        for f in filenames:
-            try:
-                fp = os.path.join(dirpath, f)
-                sz = os.path.getsize(fp)
-                if sz > min_size:
-                    found.append({"name": f, "dir": dirpath, "size": sz, "path": fp})
-            except OSError:
-                pass
-    found.sort(key=lambda x: -x["size"])
-    return found[:limit]
+        for f in fs:
+            fl = f.lower(); ext = os.path.splitext(fl)[1]
+            cat = None
+            if fl in _THUMBS:
+                cat = "thumbs"
+            elif ext in _TMP_EXT or (fl.startswith("~$") and ext in (".docx", ".xlsx", ".pptx", ".doc", ".xls", ".ppt")):
+                cat = "tmp"
+            elif ext in _LOG_EXT:
+                cat = "logs"
+            elif ext == ".log":
+                try:
+                    if os.path.getmtime(os.path.join(dp, f)) < limit:
+                        cat = "logs"
+                except OSError:
+                    pass
+            if cat:
+                fp = os.path.join(dp, f)
+                try:
+                    res[cat]["size"] += os.path.getsize(fp); res[cat]["count"] += 1; res[cat]["paths"].append(fp)
+                except OSError:
+                    pass
+    return res
+
+
+def empty_drive_bin(letter: str) -> None:
+    if P.IS_WINDOWS:
+        P.powershell(f"Clear-RecycleBin -DriveLetter {letter} -Force -ErrorAction SilentlyContinue", 120)
 
 
 # ---------------- apps ----------------

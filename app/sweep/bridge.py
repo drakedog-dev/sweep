@@ -59,7 +59,8 @@ class App(QObject):
         self.reg_backups = []
         self.volumes = extras.volumes()
         self.selected_drive = extras.system_drive()
-        self.large = []
+        self.drive_junk: dict = {}
+        self.drive_checked: dict = {}
         self.apps = []
         self.sysinfo = {}
         self.profile = {"class": "mid"}
@@ -214,8 +215,24 @@ class App(QObject):
         return self.selected_drive
 
     @Property("QVariantList", notify=changed)
-    def largeFiles(self):
-        return self.large
+    def driveJunk(self):
+        out = []
+        for v in self.volumes:
+            cats = self.drive_junk.get(v["letter"])
+            rows = []
+            if cats:
+                for cid, name, hint in extras.DRIVE_JUNK:
+                    c = cats.get(cid, {"size": 0, "count": 0})
+                    if c["size"] <= 0:
+                        continue
+                    rows.append({"id": cid, "name": self._loc(name), "hint": self._loc(hint), "size": float(c["size"]), "count": c["count"],
+                                 "checked": self.drive_checked.get((v["letter"], cid), cid != "oldwin")})
+            out.append({"letter": v["letter"], "scanned": cats is not None, "rows": rows, "total": float(sum(r["size"] for r in rows if r["checked"]))})
+        return out
+
+    @Property(float, notify=changed)
+    def driveJunkTotal(self):
+        return float(sum(d["total"] for d in self.driveJunk))
 
     @Property("QVariantList", notify=changed)
     def appList(self):
@@ -555,26 +572,49 @@ class App(QObject):
         self.changed.emit()
 
     @Slot()
-    def scanLarge(self):
-        letter = self.selected_drive
-        self._run(lambda: extras.large_files(letter), lambda res: (setattr(self, "large", res), self.changed.emit(), self._set_status(self.i18n.t("common.done"))), self.i18n.t("disk.scanning", letter))
-
-    @Slot("QVariantList")
-    def quarantineLarge(self, paths):
-        session = cleaner.new_session()
-        paths = list(paths)
+    def scanDrives(self):
+        letters = [v["letter"] for v in self.volumes]
 
         def work():
-            if not P.IS_WINDOWS:
-                return sum(f["size"] for f in self.large if f["path"] in paths)
-            return cleaner.quarantine_files(paths, session, "files")
+            return {l: extras.drive_junk(l) for l in letters}
 
-        def done(moved):
-            self.large = [f for f in self.large if f["path"] not in paths]
+        def done(res):
+            self.drive_junk = res
+            self.changed.emit()
+            self._set_status(self.i18n.t("junk.scanned", self.i18n.size(self.driveJunkTotal)))
+
+        self._run(work, done, self.i18n.t("disk.scanning", ", ".join(letters)))
+
+    @Slot(str, str, bool)
+    def setDriveChecked(self, letter, cid, val):
+        self.drive_checked[(letter, cid)] = val
+        self.changed.emit()
+
+    @Slot()
+    def cleanDrives(self):
+        session = cleaner.new_session()
+        todo = [(d["letter"], r["id"]) for d in self.driveJunk for r in d["rows"] if r["checked"]]
+
+        def work():
+            freed = 0
+            for letter, cid in todo:
+                c = self.drive_junk[letter][cid]
+                if cid == "bin":
+                    extras.empty_drive_bin(letter)
+                    freed += c["size"]
+                elif P.IS_WINDOWS:
+                    freed += cleaner.quarantine_files(c["paths"], session, f"{letter}_{cid}")
+                else:
+                    freed += c["size"]
+                c["size"], c["count"], c["paths"] = 0, 0, []
+            return freed
+
+        def done(freed):
             self.quarantine = cleaner.sessions()
             self.volumes = extras.volumes()
             self.changed.emit()
-            self._set_status(self.i18n.t("junk.done", self.i18n.size(moved)))
+            self._set_status(self.i18n.t("junk.done", self.i18n.size(freed)))
+            self.toast.emit(self.i18n.t("junk.done", self.i18n.size(freed)))
 
         self._run(work, done, self.i18n.t("common.working"))
 

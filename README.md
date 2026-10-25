@@ -31,7 +31,7 @@ temp folders, Recycle Bin, thumbnail cache, Windows Update cache, crash dumps an
 
 **Boost.** Free RAM, optimise drives (TRIM for SSD, defrag for HDD), Windows visual-effects presets (performance, balanced, appearance), power plan, Windows Update, and a weekly **scheduled auto-clean** that runs silently.
 
-**Disks.** Usage bar per drive and a finder for the largest files outside system folders, with one-click move to quarantine.
+**Disks.** Every drive is scanned for junk that is safe to remove: its Recycle Bin, temporary and unfinished downloads, old logs and dumps, thumbnail leftovers, remains of previous Windows installations. Each item has its own switch; selected items go to quarantine.
 
 **Apps.** Pre-installed Microsoft and partner apps most people never use (Xbox, Solitaire, News, Weather, Office Hub, Candy Crush and so on). Remove what you tick; anything can be reinstalled from Microsoft Store.
 
