@@ -1,0 +1,47 @@
+name: Build Sweep
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Sweep.exe (ps2exe)
+        shell: pwsh
+        run: |
+          Install-Module ps2exe -Scope CurrentUser -Force -AllowClobber
+          Import-Module ps2exe
+          $ver = "${{ github.ref_name }}".TrimStart('v'); if (-not $ver -or $ver -eq 'main') { $ver = '0.0.0' }
+          $v4 = ($ver.Split('.') + @('0','0','0'))[0..3] -join '.'
+          Invoke-ps2exe -inputFile .\Sweep.ps1 -outputFile .\Sweep.exe -iconFile .\sweep.ico -noConsole -STA -requireAdmin -x64 `
+            -title 'Sweep' -description 'Чистка, приватность и ускорение Windows' -company 'Sweep' -product 'Sweep' -version $v4 -copyright 'MIT'
+          (Get-Content .\Sweep.iss) -replace '#define AppVersion ".*"', "#define AppVersion `"$ver`"" | Set-Content .\Sweep.iss -Encoding UTF8
+
+      - name: Build installer (Inno Setup)
+        shell: cmd
+        run: '"%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe" Sweep.iss'
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sweep-build
+          path: |
+            Sweep.exe
+            Output/*.exe
+
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            Output/Sweep-Setup-*.exe
+            Sweep.exe
+          generate_release_notes: true
