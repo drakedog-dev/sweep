@@ -27,7 +27,7 @@ STRINGS: dict[str, dict[str, str]] = {
     "hdr.apps": {"ru": "Предустановленный мусор Windows", "en": "Pre-installed Windows bloat"},
     "hdr.system": {"ru": "Железо и Windows на одном экране", "en": "Hardware and Windows on one screen"},
     "hdr.quarantine": {"ru": "Всё, что убрано, можно вернуть", "en": "Everything removed can be restored"},
-    "hdr.settings": {"ru": "Язык, тема, обновления", "en": "Language, theme, updates"},
+    "hdr.settings": {"ru": "Язык, тема, обновления, о программе", "en": "Language, theme, updates, about"},
     # common
     "common.scan": {"ru": "Проверить", "en": "Scan"},
     "common.rescan": {"ru": "Проверить заново", "en": "Scan again"},
@@ -178,6 +178,16 @@ STRINGS: dict[str, dict[str, str]] = {
     "set.downloading": {"ru": "Скачиваю {0}…", "en": "Downloading {0}…"},
     "set.about": {"ru": "Sweep не выходит в интернет, кроме проверки обновлений по вашему нажатию. Открытый код: github.com/pabloescobarbl-ops/sweep", "en": "Sweep stays offline except for update checks you start. Open source: github.com/pabloescobarbl-ops/sweep"},
     "set.version": {"ru": "Версия", "en": "Version"},
+    # about
+    "about.title": {"ru": "О программе", "en": "About"},
+    "about.text": {"ru": "Sweep бесплатна и распространяется с открытым исходным кодом по лицензии MIT. Весь код лежит на GitHub: любой может прочитать его, проверить и предложить улучшения. Программа не выходит в интернет, кроме проверки обновлений по вашему нажатию, и не собирает никаких данных.", "en": "Sweep is free and open source under the MIT licence. All the code is on GitHub: anyone can read it, verify it and suggest improvements. The app stays offline except for update checks you start, and collects no data."},
+    "about.star": {"ru": "Если Sweep вам полезен, поставьте звёздочку на GitHub: это лучшая благодарность автору и помогает другим найти программу.", "en": "If Sweep is useful to you, star it on GitHub: it is the best thanks to the author and helps others find it."},
+    "about.star.btn": {"ru": "Поставить звёздочку", "en": "Star on GitHub"},
+    "about.issues": {"ru": "Нашли ошибку или есть идея? Напишите в Issues на GitHub, там же можно посмотреть, что уже в работе.", "en": "Found a bug or have an idea? Open an issue on GitHub, where you can also see what is already in progress."},
+    "about.issues.btn": {"ru": "Сообщить об ошибке или предложить", "en": "Report a bug or suggest"},
+    "about.source": {"ru": "Исходный код", "en": "Source code"},
+    "about.licence": {"ru": "Лицензия MIT", "en": "MIT licence"},
+    "about.author": {"ru": "Автор: Alex (Drakedog), Москва", "en": "Author: Alex (Drakedog), Moscow"},
     # units
     "u.gb": {"ru": "ГБ", "en": "GB"}, "u.mb": {"ru": "МБ", "en": "MB"}, "u.kb": {"ru": "КБ", "en": "KB"}, "u.b": {"ru": "Б", "en": "B"},
     "u.days": {"ru": "{0} д {1} ч {2} мин", "en": "{0} d {1} h {2} min"},

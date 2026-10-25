@@ -26,8 +26,7 @@ Rectangle {
         visible: hero.bigValue !== ""
         Column { id: bigCol; anchors.centerIn: parent; spacing: -2
             Text { text: hero.bigLabel; color: "#E9E3FF"; font.family: Theme.font; font.pixelSize: 10; font.weight: Font.DemiBold; font.letterSpacing: 0.8; renderType: Text.NativeRendering }
-            Text { text: hero.bigValue; color: "white"; font.family: Theme.font; font.pixelSize: 30; font.weight: Font.Bold; renderType: Text.NativeRendering
-                Behavior on text { SequentialAnimation { NumberAnimation { target: null; duration: 1 } } } }
+            Text { text: hero.bigValue; color: "white"; font.family: Theme.font; font.pixelSize: 30; font.weight: Font.Bold; renderType: Text.NativeRendering }
         }
     }
 }

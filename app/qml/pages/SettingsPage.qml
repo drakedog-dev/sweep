@@ -39,4 +39,22 @@ Page {
             AccentButton { text: tr("set.check"); primary: false; compact: true; enabled: !app.busy; onClicked: app.checkUpdates() }
             AccentButton { text: tr1("set.install", app.updateInfo["tag"] || ""); compact: true; visible: app.updateInfo["newer"] === true; onClicked: app.installUpdate() } }
     } }
+    Card { Column { width: parent.width; spacing: 10
+        Row { spacing: 12
+            Rectangle { width: 44; height: 44; radius: 13
+                gradient: Gradient { orientation: Gradient.Horizontal; GradientStop { position: 0; color: Theme.accent } GradientStop { position: 1; color: Theme.accent2 } }
+                Text { anchors.centerIn: parent; text: "S"; color: "white"; font.pixelSize: 22; font.weight: Font.Bold; font.family: Theme.font } }
+            Column { anchors.verticalCenter: parent.verticalCenter
+                Txt { text: tr("about.title") + "  ·  Sweep " + app.version; font.pixelSize: 15; bold: true }
+                Txt { text: tr("about.author") + "  ·  " + tr("about.licence"); muted: true; font.pixelSize: 12 } }
+        }
+        Txt { text: tr("about.text"); muted: true; width: parent.width }
+        Txt { text: tr("about.star"); width: parent.width }
+        Txt { text: tr("about.issues"); width: parent.width }
+        Row { spacing: 10; topPadding: 4
+            AccentButton { text: "\u2605  " + tr("about.star.btn"); compact: true; onClicked: app.openUrl("https://github.com/pabloescobarbl-ops/sweep") }
+            AccentButton { text: tr("about.issues.btn"); compact: true; primary: false; onClicked: app.openUrl("https://github.com/pabloescobarbl-ops/sweep/issues/new") }
+            AccentButton { text: tr("about.source"); compact: true; primary: false; onClicked: app.openUrl("https://github.com/pabloescobarbl-ops/sweep") }
+            AccentButton { text: tr("about.licence"); compact: true; primary: false; onClicked: app.openUrl("https://github.com/pabloescobarbl-ops/sweep/blob/main/LICENSE") } }
+    } }
 }

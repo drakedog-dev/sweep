@@ -11,10 +11,13 @@ Item {
     onValueChanged: shown = value
     Component.onCompleted: shown = value
     width: 104; height: 104
-    onShownChanged: canvas.requestPaint()
+    onShownChanged: if (Math.abs(shown - _last) > 0.5) { _last = shown; canvas.requestPaint() }
+    property real _last: -1
     onRingColorChanged: canvas.requestPaint()
     Canvas {
         id: canvas; anchors.fill: parent; antialiasing: true
+    renderStrategy: Canvas.Threaded
+    renderTarget: Canvas.FramebufferObject
         onPaint: {
             var ctx = getContext("2d"); ctx.reset();
             var c = width / 2, r = c - ring.thickness / 2 - 2;

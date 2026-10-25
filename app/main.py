@@ -46,6 +46,10 @@ def main() -> int:
         return 0
     ensure_admin()
     os.environ.setdefault("QT_QUICK_CONTROLS_STYLE", "Basic")
+    if P.IS_WINDOWS:
+        os.environ.setdefault("QSG_RHI_BACKEND", "d3d11")
+        if "--software" in sys.argv:
+            os.environ["QT_QUICK_BACKEND"] = "software"
     from PySide6.QtGui import QIcon
     from PySide6.QtQml import QQmlApplicationEngine
     from PySide6.QtWidgets import QApplication

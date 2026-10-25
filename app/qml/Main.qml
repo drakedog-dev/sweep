@@ -25,6 +25,7 @@ ApplicationWindow {
     property int current: 0
     property var visited: ({})
     onCurrentChanged: {
+        app.setMonitorActive(current === 0)
         var key = navKeys[current]
         if (!visited[key]) {
             var v = visited; v[key] = true; visited = v

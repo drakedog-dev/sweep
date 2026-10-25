@@ -71,10 +71,10 @@ class App(QObject):
         # live monitor
         self.monitor = extras.Monitor()
         self._mon = {"cpu": 0, "ram": 0, "ram_used": 0, "ram_total": 1, "disk_mbps": 0}
-        self.cpu_hist = [0.0] * 40
-        self.ram_hist = [0.0] * 40
+        self.cpu_hist = [0.0] * 30
+        self.ram_hist = [0.0] * 30
         self._timer = QTimer(self)
-        self._timer.setInterval(1000)
+        self._timer.setInterval(1500)
         self._timer.timeout.connect(self._tick)
         self._timer.start()
         self._set_status(self.i18n.t("common.ready"))
@@ -268,6 +268,13 @@ class App(QObject):
     @Property("QVariantList", notify=monitorChanged)
     def ramHistory(self):
         return self.ram_hist
+
+    @Slot(bool)
+    def setMonitorActive(self, active):
+        if active and not self._timer.isActive():
+            self._timer.start()
+        elif not active and self._timer.isActive():
+            self._timer.stop()
 
     # ---------- lifecycle ----------
     def boot(self):

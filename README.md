@@ -61,6 +61,10 @@ The original PowerShell version (0.x) is kept in `legacy/`.
 
 `Sweep.exe --auto` runs a silent clean with default categories and exits. This is what the scheduled task uses.
 
+## Feedback and thanks
+
+Found a bug or have an idea? [Open an issue](../../issues/new). If Sweep is useful to you, a star on this repository is the best way to say thanks and helps other people find it.
+
 ## License
 
-MIT.
+MIT. Free to use, modify and share.

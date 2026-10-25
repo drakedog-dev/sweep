@@ -9,6 +9,8 @@ Canvas {
     onValuesChanged: requestPaint()
     onLineColorChanged: requestPaint()
     antialiasing: true
+    renderStrategy: Canvas.Threaded
+    renderTarget: Canvas.FramebufferObject
     onPaint: {
         var ctx = getContext("2d"); ctx.reset();
         var n = values.length; if (n < 2) return;
