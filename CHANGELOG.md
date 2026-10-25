@@ -2,6 +2,21 @@
 
 All notable changes to Sweep. The newest version is at the top; the in-app update dialog and the GitHub release notes are built from this file.
 
+## 1.0.20
+Bug fixes and polish, nothing new.
+- Russian Windows: startup entries, folders and program paths with Cyrillic names are read correctly, so their switches work (PowerShell answered in the console code page)
+- Quarantine: restoring never deletes what could not be put back; such files stay in the quarantine
+- Uninstall leftovers that are locked keep a copy in quarantine before they are removed at the next restart
+- Scheduled tasks removed with a program come back with the rest of its backup on the Registry page
+- Junk cleaning never reaches outside known folders, even when a Windows folder variable is empty
+- The drive scan no longer follows links into other folders and drives
+- One task at a time: a second click while Sweep works shows a hint instead of starting a parallel job
+- Numbers in Russian use a decimal comma (4,7 ГБ, 29,4 с); big sizes have no ".0"
+- Nothing is cut or runs out of its card in a narrow window: Programs tabs, Overview, Boost buttons, Disks, About buttons, Boot chart labels
+- Settings and About describe correctly when Sweep goes online
+- Restore points: the Windows frequency limit is always put back
+- No console window flashes while leftovers are removed
+
 ## 1.0.19
 - Store apps (App Installer, Teams, ChatGPT, Claude and others) show their own logo in the updates list
 - An "open" badge on programs that are running right now: an open program often cannot be replaced by its installer
