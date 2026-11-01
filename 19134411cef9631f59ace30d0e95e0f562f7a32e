@@ -1,0 +1,33 @@
+build: success
+run: https://github.com/drakedog-dev/sweep/actions/runs/41295339329
+commit: 19134411cef9631f59ace30d0e95e0f562f7a32e
+
+--- build.txt (last 20 of 20 lines)
+version 1.0.21, tag existed before: False
+- Startup is read again every time you open the page, come back to Sweep's window or press "Scan again": programs that add themselves while Sweep is open now show up, marked "new"
+- Startup shows everything Task Manager shows: Microsoft Store apps (new Teams, Spotify and others) and the all-users Startup folder join the Run keys and your own Startup folder
+- Startup states are read like Task Manager reads them, so items switched off elsewhere no longer look switched on; entries whose name starts with "PS" are no longer dropped
+- Nothing is checked by itself at start: system facts are read quietly in the background and junk is measured only when you press Check
+- Quarantine and registry backups can be deleted one by one; "Delete everything" also removes registry, task and service backups
+- After an uninstall, "All works, delete the copies" removes the program's last traces; copies older than 30 days go by themselves (can be turned off in Settings)
+- Leftover registry keys that an installer locked against deletion are unlocked, backed up in full and removed; system keys are never touched
+- Read-only files in quarantine are deleted too
+- Started from a PowerShell 7 window, Sweep no longer loses PowerShell features such as scheduled tasks and permissions
+
+### Download
+
+| File | Size | SHA-256 |
+|---|---|---|
+| [Sweep-Setup-1.0.21.exe](https://github.com/drakedog-dev/sweep/releases/download/v1.0.21/Sweep-Setup-1.0.21.exe) | 34.8 MB | `dae44be6146ad82aca1d8355f74211bd11e1b2e5ee07ce3ec4e26c383179997c` |
+
+Windows 10 and 11, 64-bit. Installer not signed yet. Check the file in PowerShell: `Get-FileHash .\Sweep-Setup-1.0.21.exe`
+
+Sweep offers this update by itself when it starts. Full list of commits: [v1.0.20...v1.0.21](https://github.com/drakedog-dev/sweep/compare/v1.0.20...v1.0.21)
+
+--- log.txt (last 6 of 6 lines)
+2026-11-01 09:58:44  auto clean 20261101_095839: freed 454697902
+2026-11-01 09:58:46  titlebar dark: dark=0x80070006, caption=0x80070006, border=0x80070006, text=0x80070006
+2026-11-01 09:58:48  context: Sweep 1.0.21, admin=True, 64bit, user=runnervmdaln5\runneradmin, os=Microsoft Windows Server 2025 Datacenter 26100, antivirus=none reported, exe=D:\a\sweep\sweep\app\dist\Sweep\Sweep.exe
+2026-11-01 09:59:10  updates: winget upgrade rc=0x0 via conpty, 27 updates, 4 s
+2026-11-01 09:59:22  install: search 'vlc' rc=0x0 via conpty: 10 found
+2026-11-01 09:59:28  ui-test: pages 14, programs 59, boots 0, updates 27 (winget=True, checked=True, suspect 0), install picks 45 (installed 4), search 10, QML warnings 0
