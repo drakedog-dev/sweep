@@ -66,10 +66,13 @@ def powershell(script: str, timeout: int = 120) -> str:
         return ""
     si = subprocess.STARTUPINFO()
     si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+    # Windows PowerShell must load its own modules: a PSModulePath inherited from PowerShell 7 (Sweep started
+    # from a pwsh window) points it at modules it cannot load, and Get-Acl, Get-ScheduledTask and others vanish
+    env = {k: v for k, v in os.environ.items() if k.upper() != "PSMODULEPATH"}
     try:
         r = subprocess.run(
             ["powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", _UTF8 + script],
-            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout, startupinfo=si,
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout, startupinfo=si, env=env,
         )
         return r.stdout
     except Exception as e:
