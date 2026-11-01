@@ -1,0 +1,7 @@
+lint: success
+run: https://github.com/drakedog-dev/sweep/actions/runs/41305020611
+commit: cf56e92a13b57313e11ae84812e5345e93798dfe
+
+--- log.txt (last 2 of 2 lines)
+2026-11-01 12:09:07  ui-test: analysis done, junk=done:4.7 GB can be freed, drives=done:3.1 GB can be freed, registry=done:problems: 171, startup=done:7 programs start with Windows, privacy=done:tracking on: 14 of 17, updates=done:6 updates available
+2026-11-01 12:09:07  ui-test: pages 14, programs 15, boots 10, updates 6 (winget=True, checked=True, suspect 1), install picks 45 (installed 6), search 1, QML warnings 0
