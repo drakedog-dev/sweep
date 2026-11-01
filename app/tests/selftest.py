@@ -299,9 +299,11 @@ shutil.rmtree(taken, ignore_errors=True)
 
 # ---------------- a leftover key the installer locked, and deleting copies for good ----------------
 print("\n== locked leftovers and deleting copies")
-P.powershell(r"""$p='HKLM:\SOFTWARE\SweepLockedTest'; New-Item "$p\Sub" -Force | Out-Null; Set-ItemProperty "$p\Sub" -Name V -Value 'x'
-foreach($k in @("$p\Sub",$p)){ $acl=Get-Acl $k; $acl.SetAccessRuleProtection($true,$false); foreach($r in @($acl.Access)){ [void]$acl.RemoveAccessRuleAll($r) }
-  $acl.AddAccessRule((New-Object System.Security.AccessControl.RegistryAccessRule('NT AUTHORITY\SYSTEM','FullControl','ContainerInherit','None','Allow'))); Set-Acl $k $acl }""", 60)
+lock_out = P.powershell(r"""try{ $p='HKLM:\SOFTWARE\SweepLockedTest'; New-Item "$p\Sub" -Force | Out-Null; Set-ItemProperty "$p\Sub" -Name V -Value 'x'
+  # the way protective software locks its keys: only SYSTEM may write, Administrators are denied deletion
+  foreach($k in @("$p\Sub",$p)){ $acl=Get-Acl $k; $acl.SetSecurityDescriptorSddlForm('D:P(A;CI;KA;;;SY)(A;CI;KR;;;BA)(D;CI;SD;;;BA)','Access'); Set-Acl $k $acl }
+  (Get-Acl $p).Sddl }catch{ 'error: ' + $_ }""", 60)
+note(f"locked test key: {lock_out.strip()[-160:]}")
 locked = subprocess.run(["reg.exe", "delete", r"HKLM\SOFTWARE\SweepLockedTest", "/f", "/reg:64"], capture_output=True)
 check(locked.returncode != 0, "test key is locked: reg.exe alone cannot delete it")
 lsession = cleaner.new_session()

@@ -570,8 +570,9 @@ function Free($path){{
   $k=$root.OpenSubKey($path,$rw,[System.Security.AccessControl.RegistryRights]::TakeOwnership); if(-not $k){{return}}
   $acl=$k.GetAccessControl([System.Security.AccessControl.AccessControlSections]::None); $acl.SetOwner($admins); $k.SetAccessControl($acl); $k.Close()
   $k=$root.OpenSubKey($path,$rw,[System.Security.AccessControl.RegistryRights]'ChangePermissions,ReadPermissions')
-  $acl=$k.GetAccessControl(); $acl.SetAccessRuleProtection($false,$false)
-  $acl.AddAccessRule((New-Object System.Security.AccessControl.RegistryAccessRule($admins,'FullControl','ContainerInherit','None','Allow')))
+  $acl=$k.GetAccessControl([System.Security.AccessControl.AccessControlSections]::Access)
+  # a fresh list of permissions: full control for Administrators and SYSTEM, no "deny" entries left behind
+  $acl.SetSecurityDescriptorSddlForm('D:(A;CI;KA;;;BA)(A;CI;KA;;;SY)',[System.Security.AccessControl.AccessControlSections]::Access)
   $k.SetAccessControl($acl); $k.Close()
   $k=$root.OpenSubKey($path,$true); foreach($s in $k.GetSubKeyNames()){{ Free ($path+'\\'+$s) }}; $k.Close() }}
 try{{ Free '{sub_ps}'; 'freed' }}catch{{ 'error: ' + $_.Exception.Message }}
