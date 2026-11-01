@@ -223,6 +223,86 @@ print("     fx:", tweaks.visual_fx_mode(), "power:", tweaks.power_plan(), "sched
 progs = U.list_programs()
 check(len(progs) > 3, f"installed programs listed: {len(progs)}")
 
+# ---------- cleaning keeps the programs chosen to open files ----------
+ASSOC_PS = r"""$r=@{}
+foreach($k in (Get-ChildItem 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts' -EA SilentlyContinue)){
+  foreach($s in 'UserChoice','UserChoiceLatest','UserChoiceLatest\ProgId','OpenWithProgids','OpenWithList'){
+    $i=Get-ItemProperty -LiteralPath (Join-Path $k.PSPath $s) -EA SilentlyContinue
+    if($i){ $r["$($k.PSChildName)|$s"]=(($i.PSObject.Properties | ? Name -notlike 'PS*' | % { "$($_.Name)=$($_.Value)" }) -join ';') } } }
+foreach($k in (Get-ChildItem 'HKCU:\Software\Microsoft\Windows\Shell\Associations\UrlAssociations' -EA SilentlyContinue)){
+  $v=(Get-ItemProperty -LiteralPath (Join-Path $k.PSPath 'UserChoice') -EA SilentlyContinue).ProgId; if($v){ $r["$($k.PSChildName)|url"]=$v } }
+$r['classes keys']=@(Get-ChildItem 'HKCU:\Software\Classes' -EA SilentlyContinue).Count
+$r"""
+FE = r"Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\.sweeptest"
+MUI = r"Software\Classes\Local Settings\Software\Microsoft\Windows\Shell\MuiCache"
+APPP = r"Software\Microsoft\Windows\CurrentVersion\App Paths"
+GONE = r"C:\SweepGone\gone.exe"
+
+
+def _set(path, name, value, kind=winreg.REG_SZ):
+    with winreg.CreateKeyEx(winreg.HKEY_CURRENT_USER, path, 0, winreg.KEY_SET_VALUE) as k:
+        winreg.SetValueEx(k, name, 0, kind, value)
+
+
+def _has(path, name=""):
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, path) as k:
+            winreg.QueryValueEx(k, name)
+        return True
+    except OSError:
+        return False
+
+
+# a file type with a chosen program, the way Windows stores it
+_set(r"Software\Classes\.sweeptest", "", "SweepTest.File")
+_set(r"Software\Classes\SweepTest.File\shell\open\command", "", r'"C:\Windows\System32\notepad.exe" "%1"')
+_set(FE + r"\OpenWithProgids", "SweepTest.File", b"", winreg.REG_NONE)
+try:
+    _set(FE + r"\UserChoice", "ProgId", "SweepTest.File")
+    _set(FE + r"\UserChoice", "Hash", "SweepSelfTest")
+except OSError as e:
+    note(f"UserChoice for .sweeptest not written ({e}), the real ones are compared anyway")
+# names of an installed and of a removed program; App Paths and Run entries that only look missing
+_set(MUI, sys.executable + ".FriendlyAppName", "Python (Sweep self-test)")
+_set(MUI, GONE + ".FriendlyAppName", "Gone (Sweep self-test)")
+_set(APPP + r"\sweeptest-here.exe", "", sys.executable)
+_set(APPP + r"\sweeptest-gone.exe", "", GONE)
+alias = next(iter(sorted((Path(os.environ["LOCALAPPDATA"]) / "Microsoft" / "WindowsApps").glob("*.exe"))), None)
+if alias:
+    _set(APPP + r"\sweeptest-alias.exe", "", str(alias))
+_set(RUN, "SweepTest bare", "rundll32.exe shell32.dll,Control_RunDLL")
+_set(RUN, "SweepTest gone", f'"{GONE}" /quiet')
+
+before_assoc = P.ps_json(ASSOC_PS, 120) or {}
+check(len(before_assoc) > 1, f"associations read: {len(before_assoc)} entries")
+s_junk = cleaner.new_session()
+for c in cleaner.CATEGORIES:
+    if c.default and c.id != "bin":
+        cleaner.scan(c)
+        cleaner.quarantine(c, s_junk)
+check(not any("iconcache" in str(x).lower() for c in cleaner.CATEGORIES for x in c.paths), "icon cache is never cleaned")
+s_reg = s_junk + "9"            # its own .reg files, restored below
+fixed = {c.id: extras.reg_clean(c, s_reg) for c in extras.REG_CATEGORIES if extras.reg_scan(c) > 0}
+print("     registry cleaned:", fixed)
+after_assoc = P.ps_json(ASSOC_PS, 120) or {}
+changed = sorted(k for k in set(before_assoc) | set(after_assoc) if before_assoc.get(k) != after_assoc.get(k))
+check(not changed, f"file associations unchanged after junk and registry cleaning ({len(before_assoc)} entries){': ' + str(changed[:8]) if changed else ''}")
+check(_has(FE + r"\OpenWithProgids", "SweepTest.File") and _has(r"Software\Classes\SweepTest.File\shell\open\command"), "test file type and its program kept")
+check(_has(MUI, sys.executable + ".FriendlyAppName"), "MuiCache: name of an installed program kept")
+check(not _has(MUI, GONE + ".FriendlyAppName"), "MuiCache: name of a removed program cleaned")
+check(_has(APPP + r"\sweeptest-here.exe") and not _has(APPP + r"\sweeptest-gone.exe"), "App Paths: only the entry of a missing file removed")
+if alias:
+    check(_has(APPP + r"\sweeptest-alias.exe"), f"App Paths: a Store app alias ({alias.name}) is not taken for missing")
+check(_has(RUN, "SweepTest bare") and not _has(RUN, "SweepTest gone"), "Run: a bare command kept, a missing file removed")
+
+# put everything back
+print("     junk restored:", cleaner.restore(str(P.QUARANTINE / s_junk)), " registry restored:", extras.reg_restore(s_reg))
+for path in (r"Software\Classes\SweepTest.File", r"Software\Classes\.sweeptest", FE, APPP + r"\sweeptest-here.exe", APPP + r"\sweeptest-gone.exe", APPP + r"\sweeptest-alias.exe"):
+    subprocess.run(["reg", "delete", "HKCU\\" + path, "/f"], capture_output=True)
+for path, name in ((MUI, sys.executable + ".FriendlyAppName"), (MUI, GONE + ".FriendlyAppName"), (RUN, "SweepTest bare"), (RUN, "SweepTest gone")):
+    tweaks.reg_del("HKCU", path, name)
+check(not _has(r"Software\Classes\.sweeptest") and not _has(RUN, "SweepTest gone"), "association test entries removed")
+
 # ---------- forced uninstall of a program that leaves things everywhere ----------
 APPD = Path("C:/SweepTestApp")
 APPD.mkdir(exist_ok=True)

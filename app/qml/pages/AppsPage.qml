@@ -479,7 +479,9 @@ Page {
         Column { width: parent.width
             Empty { msg: tr("apps.empty"); visible: app.appList.length === 0 }
             Repeater { model: app.appList
-                ToggleRow { title: modelData.name; hint: modelData.hint; checked: picked[modelData.id] === true; onToggled: v => { var p = picked; p[modelData.id] = v; picked = p } } }
+                ToggleRow { title: modelData.name; meta: modelData.isDefault ? tr("apps.default") : ""
+                    hint: modelData.isDefault ? tr1("apps.default.hint", modelData.exts) : modelData.hint
+                    checked: picked[modelData.id] === true; onToggled: v => { var p = picked; p[modelData.id] = v; picked = p } } }
         }
     }
     footer: [

@@ -26,21 +26,28 @@ class RegCategory:
 REG_CATEGORIES = [
     RegCategory("mru", {"ru": "Списки недавних документов и команд", "en": "Recent documents and commands"}, {"ru": "RecentDocs, RunMRU, история диалогов «Открыть» и «Сохранить»", "en": "RecentDocs, RunMRU, Open and Save dialog history"},
                 [r"HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\RecentDocs", r"HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\RunMRU", r"HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\ComDlg32\OpenSavePidlMRU", r"HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\ComDlg32\LastVisitedPidlMRU", r"HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\TypedPaths"], "clear"),
-    RegCategory("muicache", {"ru": "Кэш названий программ (MuiCache)", "en": "Program name cache (MuiCache)"}, {"ru": "Названия давно удалённых программ, Windows пересоздаёт при необходимости", "en": "Names of long-removed programs, Windows rebuilds it"}, [r"HKCU\Software\Classes\Local Settings\Software\Microsoft\Windows\Shell\MuiCache"], "clear"),
+    # Only names of programs that are gone: clearing the whole cache makes "Open with" and Default apps lose their names until Windows reads them again
+    RegCategory("muicache", {"ru": "Кэш названий программ (MuiCache)", "en": "Program name cache (MuiCache)"}, {"ru": "Названия удалённых программ. Записи установленных программ остаются", "en": "Names of removed programs. Entries of installed programs stay"}, [r"HKCU\Software\Classes\Local Settings\Software\Microsoft\Windows\Shell\MuiCache"], "muidead"),
     RegCategory("apppaths", {"ru": "Пути к удалённым программам (App Paths)", "en": "Paths to removed programs (App Paths)"}, {"ru": "Записи, у которых исполняемый файл уже не существует", "en": "Entries whose executable no longer exists"}, [r"HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths", r"HKCU\Software\Microsoft\Windows\CurrentVersion\App Paths"], "dead"),
     RegCategory("deadrun", {"ru": "Автозагрузка несуществующих программ", "en": "Startup entries for missing programs"}, {"ru": "Записи Run, чей файл удалён с диска", "en": "Run entries whose file was deleted"}, [r"HKCU\Software\Microsoft\Windows\CurrentVersion\Run", r"HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run"], "deadvalues"),
 ]
-_DEMO_REG = {"mru": 143, "muicache": 61, "apppaths": 4, "deadrun": 1}
+_DEMO_REG = {"mru": 143, "muicache": 23, "apppaths": 4, "deadrun": 1}
 
 _REG_PS = r'''
 function P($k){ $k -replace '^HKCU\\','HKCU:\' -replace '^HKLM\\','HKLM:\' }
 function Exe($c){ if(-not $c){return $null}; $c=[Environment]::ExpandEnvironmentVariables($c.Trim()); if($c.StartsWith('"')){$e=$c.IndexOf('"',1); if($e -gt 0){return $c.Substring(1,$e-1)}}; $m=[regex]::Match($c,'^(.*?\.(exe|cmd|bat|com))','IgnoreCase'); if($m.Success){return $m.Groups[1].Value}; return $c.Split(' ')[0] }
+# Missing only when surely missing. A bare name (rundll32.exe) is found through PATH; a Store app alias in WindowsApps
+# is a reparse point that Test-Path in Windows PowerShell reports as absent, so the folder listing decides.
+function Here($p){ if(-not $p -or $p -notmatch '^[A-Za-z]:\\|^\\\\'){return $true}; if($p -match '\\WindowsApps\\'){return $true}
+  try{ if(Test-Path -LiteralPath $p){return $true}; $d=[IO.Path]::GetDirectoryName($p); $n=[IO.Path]::GetFileName($p); if(-not $d -or -not $n){return $true}
+    if(-not [IO.Directory]::Exists($d)){return $false}; return @([IO.Directory]::GetFileSystemEntries($d,$n)).Count -gt 0 } catch { return $true } }
 function Find($keys,$mode){ $items=@()
   foreach($k in $keys){ $ps=P $k; if(-not (Test-Path $ps)){continue}
     switch($mode){
+      'muidead'{ foreach($p in (Get-ItemProperty $ps -EA SilentlyContinue).PSObject.Properties){ $m=[regex]::Match($p.Name,'^([A-Za-z]:\\.+?)\.(FriendlyAppName|ApplicationCompany)$'); if($m.Success -and -not (Here $m.Groups[1].Value)){$items+=@{Key=$k;Value=$p.Name}} } }
       'clear'{ $n=@(Get-ChildItem $ps -EA SilentlyContinue).Count + @((Get-ItemProperty $ps -EA SilentlyContinue).PSObject.Properties | ? Name -notlike 'PS*').Count; if($n -gt 0){$items+=@{Key=$k;Value=$null}} }
-      'dead'{ foreach($s in (Get-ChildItem $ps -EA SilentlyContinue)){ $e=(Get-ItemProperty $s.PSPath -EA SilentlyContinue).'(default)'; $p=Exe $e; if($p -and -not (Test-Path -LiteralPath $p)){$items+=@{Key="$k\$($s.PSChildName)";Value=$null}} } }
-      'deadvalues'{ foreach($p in (Get-ItemProperty $ps -EA SilentlyContinue).PSObject.Properties){ if($p.Name -like 'PS*'){continue}; $x=Exe ([string]$p.Value); if($x -and -not (Test-Path -LiteralPath $x)){$items+=@{Key=$k;Value=$p.Name}} } }
+      'dead'{ foreach($s in (Get-ChildItem $ps -EA SilentlyContinue)){ $e=(Get-ItemProperty $s.PSPath -EA SilentlyContinue).'(default)'; $p=Exe $e; if($p -and -not (Here $p)){$items+=@{Key="$k\$($s.PSChildName)";Value=$null}} } }
+      'deadvalues'{ foreach($p in (Get-ItemProperty $ps -EA SilentlyContinue).PSObject.Properties){ if($p.Name -like 'PS*'){continue}; $x=Exe ([string]$p.Value); if($x -and -not (Here $x)){$items+=@{Key=$k;Value=$p.Name}} } }
     } }
   return ,$items }
 '''
@@ -283,13 +290,42 @@ BLOAT = [
 ]
 
 
-def installed_bloat() -> list[dict]:
+# Which Store app opens which file types now: UserChoice (or UserChoiceLatest on newer Windows 11) holds a ProgId,
+# and a Store app's ProgId names its package in Application\AppUserModelID ("Microsoft.ZuneMusic_8wekyb3d8bbwe!App").
+_DEFAULTS_PS = r'''
+$r=@{}
+foreach($k in (Get-ChildItem 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts' -EA SilentlyContinue)){
+  $prog=$null
+  foreach($s in 'UserChoiceLatest\ProgId','UserChoiceLatest','UserChoice'){ if(-not $prog){ $prog=(Get-ItemProperty -LiteralPath (Join-Path $k.PSPath $s) -EA SilentlyContinue).ProgId } }
+  if(-not $prog){continue}
+  $a=(Get-ItemProperty -LiteralPath "Registry::HKEY_CLASSES_ROOT\$prog\Application" -EA SilentlyContinue).AppUserModelID
+  if(-not $a){continue}
+  $n=($a -split '_')[0]
+  if(-not $r.ContainsKey($n)){$r[$n]=@()}
+  $r[$n]+=$k.PSChildName
+}
+$r'''
+
+
+def default_apps() -> dict[str, list[str]]:
+    """{package name: [".mp4", ...]} for Store apps the user picked to open some file types."""
     if not P.IS_WINDOWS:
-        demo = {"Microsoft.XboxApp", "Microsoft.MicrosoftSolitaireCollection", "Microsoft.BingNews", "Microsoft.BingWeather", "Microsoft.MicrosoftOfficeHub", "Clipchamp.Clipchamp", "king.com.CandyCrushSaga"}
-        return [{"id": i, "name": n, "hint": h} for i, n, h in BLOAT if i in demo]
+        return {"Microsoft.ZuneMusic": [".mp3", ".mp4", ".mkv", ".avi", ".wav", ".flac", ".mov"]}
+    out = P.ps_json(_DEFAULTS_PS, 60)
+    if not isinstance(out, dict):
+        return {}
+    return {k: sorted(v if isinstance(v, list) else [v]) for k, v in out.items() if v}
+
+
+def installed_bloat() -> list[dict]:
+    """Removable built-in apps. 'defaultFor' lists the file types an app opens now, so removing it would reset that choice."""
+    defaults = default_apps()
+    if not P.IS_WINDOWS:
+        demo = {"Microsoft.XboxApp", "Microsoft.MicrosoftSolitaireCollection", "Microsoft.BingNews", "Microsoft.BingWeather", "Microsoft.MicrosoftOfficeHub", "Clipchamp.Clipchamp", "king.com.CandyCrushSaga", "Microsoft.ZuneMusic"}
+        return [{"id": i, "name": n, "hint": h, "defaultFor": defaults.get(i, [])} for i, n, h in BLOAT if i in demo]
     names = P.ps_json("Get-AppxPackage -AllUsers | Select-Object -ExpandProperty Name -Unique", 90) or []
     names = set(names if isinstance(names, list) else [names])
-    return [{"id": i, "name": n, "hint": h} for i, n, h in BLOAT if i in names]
+    return [{"id": i, "name": n, "hint": h, "defaultFor": defaults.get(i, [])} for i, n, h in BLOAT if i in names]
 
 
 def remove_app(app_id: str) -> None:

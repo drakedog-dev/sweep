@@ -53,7 +53,12 @@ def check(settings: dict) -> dict:
     reverted = [p.id for p in tweaks.PRIVACY if p.id in watched and not tweaks.privacy_state(p)]
     back = []
     if g["apps"]:
-        present = {a["id"] for a in extras.installed_bloat()}
+        present = {a["id"]: a for a in extras.installed_bloat()}
+        # Picked again to open files (Media Player for videos, say): the user wants it now, so stop removing it
+        used = [a for a in g["apps"] if a in present and present[a].get("defaultFor")]
+        if used:
+            P.log(f"guard: {used} open files by default now, no longer removed")
+            g["apps"] = [a for a in g["apps"] if a not in used]
         back = [a for a in g["apps"] if a in present]
     build = windows_build()
     return {"privacy": reverted, "apps": back, "build": build, "t": datetime.now().isoformat(timespec="minutes"),
@@ -67,7 +72,11 @@ def fix(found: dict) -> list[str]:
         if p.id in found.get("privacy", []):
             if tweaks.set_privacy(p, True) or not tweaks.privacy_state(p):
                 failed.append(p.id)
+    in_use = extras.default_apps() if found.get("apps") else {}
     for app_id in found.get("apps", []):
+        if in_use.get(app_id):          # removing it would reset which program opens these files
+            P.log(f"guard: {app_id} opens {in_use[app_id][:5]} by default, kept")
+            continue
         try:
             extras.remove_app(app_id)
         except Exception as e:  # noqa: BLE001

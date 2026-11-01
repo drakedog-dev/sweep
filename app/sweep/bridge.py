@@ -564,7 +564,10 @@ class App(QObject):
 
     @Property("QVariantList", notify=changed)
     def appList(self):
-        return [{"id": a["id"], "name": a["name"], "hint": self._loc(a["hint"])} for a in self.apps]
+        def exts(a):
+            e = a.get("defaultFor") or []
+            return ", ".join(e[:6]) + (f" +{len(e) - 6}" if len(e) > 6 else "")
+        return [{"id": a["id"], "name": a["name"], "hint": self._loc(a["hint"]), "isDefault": bool(a.get("defaultFor")), "exts": exts(a)} for a in self.apps]
 
     @Property("QVariantList", notify=changed)
     def quarantineList(self):

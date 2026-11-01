@@ -185,6 +185,8 @@ STRINGS: dict[str, dict[str, str]] = {
     "apps.hint": {"ru": "Предустановленные приложения, которые редко кому нужны. Удаление освобождает место и чистит меню Пуск. Вернуть можно из Microsoft Store.", "en": "Pre-installed apps most people never use. Removing them frees space and declutters Start. Reinstall any from Microsoft Store."},
     "apps.remove": {"ru": "Удалить отмеченные", "en": "Remove selected"},
     "apps.store": {"ru": "Открыть Microsoft Store", "en": "Open Microsoft Store"},
+    "apps.default": {"ru": "открывает файлы", "en": "opens files"},
+    "apps.default.hint": {"ru": "Сейчас у вас открывает {0}. Если удалить, Windows сбросит этот выбор и снова спросит, чем открывать такие файлы", "en": "Opens {0} on this PC now. Removing it resets that choice, and Windows will ask again which app opens these files"},
     "apps.empty": {"ru": "Лишних предустановленных приложений не найдено", "en": "No bloat apps found"},
     "apps.found": {"ru": "НАЙДЕНО", "en": "FOUND"},
     # system
