@@ -517,7 +517,7 @@ def remove_leftovers(items: list[dict], session: str, label: str) -> dict:
             elif kind == "reg":
                 _reg_export(path, session, n)
                 r = subprocess.run(["reg.exe", "delete", path, "/f", "/reg:64"], capture_output=True, timeout=60, **_hidden())
-                if r.returncode != 0:
+                if r.returncode != 0 and not _reg_delete_hard(path, session, n):
                     raise OSError((r.stderr or r.stdout or b"").decode("cp866", "replace").strip())
             elif kind == "run":
                 key, _, value = path.rpartition("\\")
@@ -543,6 +543,46 @@ def remove_leftovers(items: list[dict], session: str, label: str) -> dict:
             P.log(f"uninstall leftover {kind} {path}: {e}")
             res["failed"].append(path)
     return res
+
+
+_NEVER_UNLOCK = ("software", "software\\microsoft", "software\\classes", "software\\policies", "software\\wow6432node",
+                 "software\\wow6432node\\microsoft", "software\\wow6432node\\classes", "software\\wow6432node\\policies")
+
+
+def _reg_delete_hard(path: str, session: str, n: int) -> bool:
+    """Second try for a key reg.exe could not delete: some installers lock their keys so that only they may change them.
+    Administrators take ownership of the program's own key and its subkeys (never a system key), get full control,
+    the key is backed up and then deleted. Returns True when the key is gone."""
+    hive, _, sub = path.partition("\\")
+    hives = {"HKLM": "LocalMachine", "HKEY_LOCAL_MACHINE": "LocalMachine", "HKCU": "CurrentUser", "HKEY_CURRENT_USER": "CurrentUser"}
+    low = sub.lower().strip("\\")
+    if hive.upper() not in hives or "\\" not in low or low in _NEVER_UNLOCK or low.startswith(("system\\", "software\\microsoft\\windows")):
+        return False
+    sub_ps = sub.replace("'", "''")
+    out = P.powershell(f"""
+$sig='[DllImport("ntdll.dll")] public static extern int RtlAdjustPrivilege(int p, bool e, bool t, out bool w);'
+Add-Type -MemberDefinition $sig -Name Priv -Namespace Sweep -ErrorAction SilentlyContinue
+$w=$false; [void][Sweep.Priv]::RtlAdjustPrivilege(9,$true,$false,[ref]$w)    # SeTakeOwnershipPrivilege
+$root=[Microsoft.Win32.RegistryKey]::OpenBaseKey([Microsoft.Win32.RegistryHive]::{hives[hive.upper()]},[Microsoft.Win32.RegistryView]::Registry64)
+$admins=New-Object System.Security.Principal.SecurityIdentifier('S-1-5-32-544')
+$rw=[Microsoft.Win32.RegistryKeyPermissionCheck]::ReadWriteSubTree
+function Free($path){{
+  $k=$root.OpenSubKey($path,$rw,[System.Security.AccessControl.RegistryRights]::TakeOwnership); if(-not $k){{return}}
+  $acl=$k.GetAccessControl([System.Security.AccessControl.AccessControlSections]::None); $acl.SetOwner($admins); $k.SetAccessControl($acl); $k.Close()
+  $k=$root.OpenSubKey($path,$rw,[System.Security.AccessControl.RegistryRights]'ChangePermissions,ReadPermissions')
+  $acl=$k.GetAccessControl(); $acl.SetAccessRuleProtection($false,$false)
+  $acl.AddAccessRule((New-Object System.Security.AccessControl.RegistryAccessRule($admins,'FullControl','ContainerInherit','None','Allow')))
+  $k.SetAccessControl($acl); $k.Close()
+  $k=$root.OpenSubKey($path,$true); foreach($s in $k.GetSubKeyNames()){{ Free ($path+'\\'+$s) }}; $k.Close() }}
+try{{ Free '{sub_ps}'; 'freed' }}catch{{ 'error: ' + $_.Exception.Message }}
+""", 120)
+    if "freed" not in out:
+        P.log(f"uninstall leftover reg {path}: could not unlock: {out.strip()[-200:]}")
+        return False
+    _reg_export(path, session, n)            # now that it can be read, the backup is complete
+    r = subprocess.run(["reg.exe", "delete", path, "/f", "/reg:64"], capture_output=True, timeout=60, **_hidden())
+    P.log(f"uninstall leftover reg {path}: locked key unlocked and {'removed' if r.returncode == 0 else 'still not removed'}")
+    return r.returncode == 0
 
 
 def uninstall_icon_key(prog: dict) -> str:

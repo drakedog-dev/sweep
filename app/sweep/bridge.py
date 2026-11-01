@@ -123,7 +123,8 @@ class App(QObject):
         self._startup_new: set[str] = set()     # entries that appeared in startup while Sweep was watching
         self._startup_scan_at = 0.0
         self._startup_scanning = False
-        self.reg_backups = []
+        self.reg_backups = extras.reg_backups()
+        self._junk_scanned = False
         self.volumes = extras.volumes()
         self.selected_drive = extras.system_drive()
         self.drive_junk: dict = {}
@@ -636,12 +637,14 @@ class App(QObject):
             self._startup_scan_at = __import__("time").monotonic()
             self.schedule = res["schedule"]
             self.boot_data = res.get("boot") or {}
+            self._compute_health()
             self.changed.emit()
-            self.scan()
             if self._pending:
                 QTimer.singleShot(1200, self._do_pending)
+            self._auto_purge()
 
-        self._run(work, done)
+        # read quietly in the background: Sweep is usable at once, and junk is only measured when the user asks
+        self._bg(work, done)
 
     def _do_pending(self):
         """Continue the action the user started before Sweep restarted with administrator rights."""
@@ -700,7 +703,7 @@ class App(QObject):
 
     def _compute_health(self):
         score, tips = 100, []
-        junk = self.junkTotal
+        junk = self.junkTotal if self._junk_scanned else 0
         if junk > 5 * 2**30:
             score -= 25; tips.append(self.i18n.t("ov.tip.junk"))
         elif junk > 1 * 2**30:
@@ -738,6 +741,8 @@ class App(QObject):
         if up_days > 14:
             score -= 8; tips.append(self.i18n.t("ov.tip.uptime", up_days))
         score = max(5, min(100, score))
+        if not self._junk_scanned:
+            tips.append(self.i18n.t("ov.tip.notscanned"))
         if not tips:
             tips.append(self.i18n.t("ov.tip.ok"))
         self._health = {"score": score, "tips": tips[:3]}
@@ -751,11 +756,16 @@ class App(QObject):
             return True
 
         def done(_):
+            self._junk_scanned = True
             self._compute_health()
             self.changed.emit()
             self._set_status(self.i18n.t("junk.scanned", self.i18n.size(self.junkTotal)))
 
         self._run(work, done, self.i18n.t("junk.scanning", "…"))
+
+    @Property(bool, notify=changed)
+    def junkScanned(self):
+        return self._junk_scanned
 
     @Slot(str, bool)
     def setChecked(self, cid, val):
@@ -1452,6 +1462,7 @@ class App(QObject):
         p = self._prog(u.get("id")) or {"name": u.get("name", "program")}
         items = [it for it in u.get("leftovers", []) if it.get("checked")]
         session = cleaner.new_session()
+        u["session"] = session
         u["stage"] = "removing"
         self.changed.emit()
 
@@ -1463,6 +1474,23 @@ class App(QObject):
             self._set_status(self.i18n.t("un.done.text", res.get("removed", 0), self.i18n.size(res.get("freed", 0))))
 
         self._run(lambda: U.remove_leftovers(items, session, p["name"]), done, self.i18n.t("common.working"))
+
+    @Slot()
+    def deleteUninstallCopies(self):
+        """The program is gone and everything works: its copies in quarantine and the registry backups go too."""
+        u = self._un
+        session = u.get("session")
+        if not session:
+            return
+
+        def done(_):
+            u["copiesDeleted"] = True
+            self.quarantine = cleaner.sessions()
+            self.reg_backups = extras.reg_backups()
+            self.changed.emit()
+            self._set_status(self.i18n.t("un.copies.deleted", u.get("name", "")))
+
+        self._run(lambda: cleaner.delete_session(str(P.QUARANTINE / session)) if P.IS_WINDOWS else 1, done, self.i18n.t("common.working"))
 
     def _after_uninstall(self, p):
         if not P.IS_WINDOWS or not U.still_installed(p):
@@ -2005,12 +2033,58 @@ class App(QObject):
 
     @Slot()
     def purge(self):
+        """Quarantine and every backup (registry, tasks, services) deleted for good."""
         def done(_):
             self.quarantine = [] if not P.IS_WINDOWS else cleaner.sessions()
+            self.reg_backups = [] if not P.IS_WINDOWS else extras.reg_backups()
             self.changed.emit()
-            self._set_status(self.i18n.t("common.done"))
+            self._set_status(self.i18n.t("q.purged"))
 
         self._run(lambda: cleaner.purge() if P.IS_WINDOWS else True, done)
+
+    @Slot(str)
+    def deleteSession(self, path):
+        """One quarantine session deleted for good, with the registry backups made in it."""
+        def done(_):
+            self.quarantine = [s for s in self.quarantine if s["path"] != path] if not P.IS_WINDOWS else cleaner.sessions()
+            self.reg_backups = extras.reg_backups()
+            self.changed.emit()
+            self._set_status(self.i18n.t("q.deleted"))
+
+        self._run(lambda: cleaner.delete_session(path) if P.IS_WINDOWS else 1, done, self.i18n.t("common.working"))
+
+    @Slot(str)
+    def deleteRegBackup(self, session):
+        def done(_):
+            self.reg_backups = [b for b in self.reg_backups if b["session"] != session] if not P.IS_WINDOWS else extras.reg_backups()
+            self.changed.emit()
+            self._set_status(self.i18n.t("q.deleted"))
+
+        self._run(lambda: cleaner.delete_backups(session) if P.IS_WINDOWS else 1, done)
+
+    @Property(bool, notify=langChanged)
+    def autoPurge(self):
+        return bool(self.settings.get("autoPurge", True))
+
+    @Slot(bool)
+    def setAutoPurge(self, on):
+        self.settings["autoPurge"] = on
+        P.save_settings(self.settings)
+        self.langChanged.emit()
+        if on:
+            self._auto_purge()
+
+    def _auto_purge(self):
+        """Copies older than 30 days go by themselves (Settings, Safety): by then it is clear that everything works."""
+        if not P.IS_WINDOWS or not self.settings.get("autoPurge", True):
+            return
+
+        def done(_):
+            self.quarantine = cleaner.sessions()
+            self.reg_backups = extras.reg_backups()
+            self.changed.emit()
+
+        self._bg(lambda: cleaner.purge(max_age_days=30), done)
 
     # ---------- settings / updates ----------
     @Slot(str)

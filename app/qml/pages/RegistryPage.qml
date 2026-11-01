@@ -18,9 +18,14 @@ Page {
         Txt { text: tr("reg.backups"); bold: true; font.pixelSize: 15 }
         Empty { msg: tr("reg.nobackups"); visible: app.regBackups.length === 0 }
         Repeater { model: app.regBackups
-            Row { width: parent.width; spacing: 12
-                Txt { text: tr1("reg.backup", modelData.date).replace("{1}", modelData.count); anchors.verticalCenter: parent.verticalCenter; width: parent.width - 130 }
-                AccentButton { text: tr("common.restore"); compact: true; primary: false; onClicked: app.regRestore(modelData.session) } } }
+            Row { id: rrow; width: parent.width; spacing: 10
+                property bool sure: false
+                Txt { text: tr1("reg.backup", modelData.date).replace("{1}", modelData.count); anchors.verticalCenter: parent.verticalCenter; width: parent.width - rbtns.width - 10 }
+                Row { id: rbtns; spacing: 8; anchors.verticalCenter: parent.verticalCenter
+                    AccentButton { text: tr("common.restore"); compact: true; primary: false; enabled: !app.busy; onClicked: app.regRestore(modelData.session) }
+                    AccentButton { text: rrow.sure ? tr("q.delete.confirm") : tr("q.delete"); compact: true; danger: true; primary: rrow.sure; enabled: !app.busy
+                        onClicked: { if (rrow.sure) app.deleteRegBackup(modelData.session); else { rrow.sure = true; rsure.restart() } }
+                        Timer { id: rsure; interval: 4000; onTriggered: rrow.sure = false } } } } }
     } }
     footer: [
         AccentButton { text: tr("reg.clean"); enabled: !app.busy && bigValue !== "…" && bigValue !== "0"; onClicked: { var ids = []; var r = app.registry; for (var i = 0; i < r.length; i++) if (picked[r[i].id] !== false) ids.push(r[i].id); app.regClean(ids) } },

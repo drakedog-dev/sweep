@@ -4,7 +4,7 @@ import "../components"
 
 Page {
     title: tr("nav.overview"); subtitle: tr("hdr.overview")
-    bigLabel: tr("common.canfree"); bigValue: app.size(app.junkTotal)
+    bigLabel: tr("common.canfree"); bigValue: app.junkScanned ? app.size(app.junkTotal) : "—"
 
     // Health + profile
     Row { width: parent.width; spacing: 14

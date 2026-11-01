@@ -321,8 +321,14 @@ ApplicationWindow {
                 text: tr2("un.done.text", String(parent.r["removed"] || 0), app.size(parent.r["freed"] || 0)) }
             Txt { visible: (parent.r["reboot"] || 0) > 0; width: parent.width; color: Theme.warn; text: tr1("un.done.reboot", String(parent.r["reboot"] || 0)) }
             Txt { visible: (parent.r["failed"] || []).length > 0; width: parent.width; color: Theme.bad; text: tr1("un.done.failed", String((parent.r["failed"] || []).length)) }
-            Txt { text: tr("un.done.safe"); muted: true; width: parent.width; font.pixelSize: 12 }
-            AccentButton { text: tr("un.close"); onClicked: app.closeUninstall() }
+            Txt { visible: unModal.u["copiesDeleted"] !== true; text: tr("un.done.safe"); muted: true; width: parent.width; font.pixelSize: 12 }
+            Row { visible: unModal.u["copiesDeleted"] === true; spacing: 8
+                Icon { name: "circle-check"; size: 16; color: Theme.good; anchors.verticalCenter: parent.verticalCenter }
+                Txt { text: tr1("un.copies.deleted", unModal.u["name"] || ""); color: Theme.good; anchors.verticalCenter: parent.verticalCenter } }
+            Row { spacing: 10
+                AccentButton { text: tr("un.close"); onClicked: app.closeUninstall() }
+                AccentButton { visible: !!unModal.u["session"] && unModal.u["copiesDeleted"] !== true && (parent.parent.r["removed"] || 0) > 0
+                    text: tr("un.copies.btn"); primary: false; danger: true; enabled: !app.busy; onClicked: app.deleteUninstallCopies() } }
         }
     }
 }

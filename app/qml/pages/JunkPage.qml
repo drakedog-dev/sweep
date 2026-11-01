@@ -3,17 +3,18 @@ import Sweep
 import "../components"
 
 Page {
-    title: tr("nav.junk"); subtitle: tr("hdr.junk"); hint: tr("junk.hint")
-    bigLabel: tr("common.canfree"); bigValue: app.size(app.junkTotal)
+    title: tr("nav.junk"); subtitle: tr("hdr.junk"); hint: app.junkScanned ? tr("junk.hint") : tr("junk.notscanned") + " " + tr("junk.hint")
+    bigLabel: tr("common.canfree"); bigValue: app.junkScanned ? app.size(app.junkTotal) : "—"
     Card { pad: 10
         Column { width: parent.width
             Repeater { model: app.junk
                 ToggleRow { icon: ({temp: "file-clock", bin: "trash-2", thumbs: "image", wu: "download", dumps: "bug", logs: "scroll-text", cache: "globe", history: "history", cookies: "cookie"})[modelData.id] || ""
-                    title: modelData.name; hint: modelData.hint; meta: app.size(modelData.size); checked: modelData.checked; onToggled: v => app.setChecked(modelData.id, v) } }
+                    title: modelData.name; hint: modelData.hint; meta: app.junkScanned ? app.size(modelData.size) : ""; checked: modelData.checked; onToggled: v => app.setChecked(modelData.id, v) } }
         }
     }
     footer: [
-        AccentButton { text: tr("common.clean"); enabled: !app.busy && app.junkTotal > 0; onClicked: app.clean() },
-        AccentButton { text: tr("common.rescan"); primary: false; enabled: !app.busy; onClicked: app.scan() }
+        AccentButton { visible: !app.junkScanned; text: tr("common.scan"); enabled: !app.busy; onClicked: app.scan() },
+        AccentButton { visible: app.junkScanned; text: tr("common.clean"); enabled: !app.busy && app.junkTotal > 0; onClicked: app.clean() },
+        AccentButton { visible: app.junkScanned; text: tr("common.rescan"); primary: false; enabled: !app.busy; onClicked: app.scan() }
     ]
 }

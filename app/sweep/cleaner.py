@@ -317,15 +317,69 @@ def restore(session_path: str) -> int:
     return n
 
 
+def _rmtree(path: Path) -> None:
+    """Delete a folder for good, including files that were read-only where they came from."""
+    import stat
+
+    def again(func, p, _exc):
+        try:
+            os.chmod(p, stat.S_IWRITE)
+            func(p)
+        except OSError as e:
+            P.log(f"delete {p}: {e}")
+
+    shutil.rmtree(path, onexc=again)
+
+
+def backup_files(session: str | None = None) -> list[Path]:
+    """Registry, scheduled task and service backups, all of them or those made in one session."""
+    if not P.REG_BACKUP.exists():
+        return []
+    files = list(P.REG_BACKUP.glob("*.reg")) + list(P.REG_BACKUP.glob("*_task_*.xml"))
+    return [f for f in files if session is None or f.name.startswith(session + "_")]
+
+
+def delete_session(session_path: str) -> int:
+    """Delete one quarantine session for good, together with the registry, task and service backups made in it.
+    Returns how many items went. Only folders inside Sweep's own quarantine are ever touched."""
+    d = Path(session_path)
+    n = 0
+    try:
+        inside = d.resolve().parent == P.QUARANTINE.resolve()
+    except OSError:
+        inside = False
+    if inside and d.is_dir():
+        _rmtree(d)
+        n += 1
+    return n + delete_backups(d.name)
+
+
+def delete_backups(session: str) -> int:
+    """The registry, task and service backups made in one session, deleted for good."""
+    n = 0
+    if re.fullmatch(r"\d{8}_\d{6}", session):
+        for f in backup_files(session):
+            try:
+                f.unlink()
+                n += 1
+            except OSError as e:
+                P.log(f"delete {f}: {e}")
+    return n
+
+
 def purge(max_age_days: int | None = None) -> None:
-    if not P.QUARANTINE.exists():
-        return
-    for d in P.QUARANTINE.iterdir():
-        if not d.is_dir():
-            continue
-        if max_age_days is not None and (time.time() - d.stat().st_ctime) < max_age_days * 86400:
-            continue
-        shutil.rmtree(d, ignore_errors=True)
+    """Delete quarantine and backups for good: everything, or only what is older than max_age_days."""
+    limit = None if max_age_days is None else time.time() - max_age_days * 86400
+    if P.QUARANTINE.exists():
+        for d in P.QUARANTINE.iterdir():
+            if d.is_dir() and (limit is None or d.stat().st_ctime < limit):
+                _rmtree(d)
+    for f in backup_files():
+        try:
+            if limit is None or f.stat().st_mtime < limit:
+                f.unlink()
+        except OSError as e:
+            P.log(f"delete {f}: {e}")
 
 
 def total_quarantined() -> int:

@@ -297,6 +297,28 @@ check(cleaner.restore(str(keep)) == 0 and (keep / "dir" / "a.txt").exists() and 
 shutil.rmtree(keep, ignore_errors=True)
 shutil.rmtree(taken, ignore_errors=True)
 
+# ---------------- a leftover key the installer locked, and deleting copies for good ----------------
+print("\n== locked leftovers and deleting copies")
+P.powershell(r"""$p='HKLM:\SOFTWARE\SweepLockedTest'; New-Item "$p\Sub" -Force | Out-Null; Set-ItemProperty "$p\Sub" -Name V -Value 'x'
+foreach($k in @("$p\Sub",$p)){ $acl=Get-Acl $k; $acl.SetAccessRuleProtection($true,$false); foreach($r in @($acl.Access)){ [void]$acl.RemoveAccessRuleAll($r) }
+  $acl.AddAccessRule((New-Object System.Security.AccessControl.RegistryAccessRule('NT AUTHORITY\SYSTEM','FullControl','ContainerInherit','None','Allow'))); Set-Acl $k $acl }""", 60)
+locked = subprocess.run(["reg.exe", "delete", r"HKLM\SOFTWARE\SweepLockedTest", "/f", "/reg:64"], capture_output=True)
+check(locked.returncode != 0, "test key is locked: reg.exe alone cannot delete it")
+lsession = cleaner.new_session()
+res = U.remove_leftovers([{"kind": "reg", "path": r"HKLM\SOFTWARE\SweepLockedTest", "size": 0}], lsession, "LockedTest")
+check(res["removed"] == 1 and not res["failed"], f"locked leftover key removed: {res}")
+check(P.powershell(r"Test-Path 'HKLM:\SOFTWARE\SweepLockedTest'", 30).strip() == "False", "locked key is gone")
+backups = list(P.REG_BACKUP.glob(f"{lsession}_uninstall_*.reg"))
+check(bool(backups) and "SweepLockedTest\\Sub" in backups[0].read_text("utf-16"), "the backup of the locked key is complete")
+check(cleaner.delete_session(str(P.QUARANTINE / lsession)) >= 1 and not list(P.REG_BACKUP.glob(f"{lsession}_*")), "copies of the session deleted for good")
+qs = cleaner.new_session()
+ro = P.QUARANTINE / qs / "uninstall_RO"
+ro.mkdir(parents=True, exist_ok=True)
+(ro / "readonly.dll").write_bytes(b"x")
+subprocess.run(["attrib", "+R", str(ro / "readonly.dll")], capture_output=True)
+cleaner.delete_session(str(P.QUARANTINE / qs))
+check(not (P.QUARANTINE / qs).exists(), "a quarantined read-only file is deleted for good too")
+
 # ---------------- program updates through winget: real catalogue, real download, real install ----------------
 print("\n== program updates (winget)")
 from sweep import updates as UPD  # noqa: E402
