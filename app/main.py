@@ -180,6 +180,7 @@ def run_ui_test(qt_app, root, bridge, warnings) -> int:
             warnings.append("ui-test: appsPage not found")
 
     steps = [lambda i=i: root.setProperty("current", i) for i in range(len(keys))] + [bridge.scanPrograms, bridge.scanBoot]
+    steps += [lambda: root.setProperty("current", 0), bridge.analyzeAll]          # the Overview's "Analyze" button, on real data
     steps += [lambda: root.setProperty("current", keys.index("apps")), lambda: apps_tab(2), lambda: apps_tab(3), lambda: bridge.searchCatalog("vlc"),
               lambda: bridge.pickPreset("basics"), lambda: bridge.showNotes((bridge.programUpdates.get("items") or [{}])[0].get("id", "")),
               bridge.closeNotes, lambda: bridge.clearInstallPicks(), lambda: apps_tab(1), lambda: apps_tab(2), lambda: apps_tab(0)]
@@ -197,6 +198,10 @@ def run_ui_test(qt_app, root, bridge, warnings) -> int:
         progs = bridge.programCount
         pu = bridge.programUpdates
         ins = bridge.installData
+        an = bridge.analysis
+        P.log(f"ui-test: analysis {an.get('state')}, " + ", ".join(f"{r['id']}={r['state']}:{r['text']}" for r in an.get("rows", [])))
+        if an.get("state") != "done":
+            warnings.append("ui-test: the analysis did not finish")
         P.log(f"ui-test: pages {len(keys)}, programs {progs}, boots {len(bridge.bootData.get('boots', []))}, "
               f"updates {pu.get('count')} (winget={pu.get('winget')}, checked={pu.get('checked')}, suspect {sum(1 for i in pu.get('items', []) if i.get('suspect'))}), "
               f"install picks {sum(len(c['items']) for c in ins.get('cats', []))} (installed {sum(1 for c in ins.get('cats', []) for i in c['items'] if i['installed'])}), "

@@ -9,6 +9,7 @@ Page {
     title: tr("nav.apps"); subtitle: tr("hdr.apps")
     hint: tab === 0 ? tr("un.hint") : tab === 2 ? tr("pu.hint") : tab === 3 ? tr("ins.hint") : tr("apps.hint")
     property int tab: 0                  // 0 installed programs, 2 updates, 3 install, 1 built-in apps
+    Connections { target: win; function onAppsTabRequestChanged() { if (win.appsTabRequest >= 0) { pg.tab = win.appsTabRequest; win.appsTabRequest = -1 } } }
     property var picked: ({})
     property string query: ""
     property var pu: app.programUpdates

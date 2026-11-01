@@ -4,7 +4,55 @@ import "../components"
 
 Page {
     title: tr("nav.overview"); subtitle: tr("hdr.overview")
-    bigLabel: tr("common.canfree"); bigValue: app.junkScanned ? app.size(app.junkTotal) : "—"
+    bigLabel: tr("common.canfree"); bigValue: app.analysis["state"] === "done" ? app.size(app.analysis["cleanable"]) : app.junkScanned ? app.size(app.junkTotal) : "—"
+
+    // Analyze everything: one button for what used to run by itself at start
+    Card { id: anCard
+        property var an: app.analysis
+        property var icons: ({ junk: "trash-2", drives: "hard-drive", registry: "database", startup: "power", privacy: "shield-check", updates: "circle-arrow-up" })
+        function open(id) { if (id === "junk") go("junk"); else if (id === "drives") go("disks"); else if (id === "registry") go("registry")
+                            else if (id === "startup") go("startup"); else if (id === "privacy") go("privacy"); else if (id === "updates") openAppsTab(2) }
+        Column { width: parent.width; spacing: 16
+            Row { width: parent.width; spacing: 18
+                Rectangle { width: 52; height: 52; radius: 15; anchors.verticalCenter: parent.verticalCenter
+                    gradient: Gradient { orientation: Gradient.Horizontal; GradientStop { position: 0; color: Theme.accent } GradientStop { position: 1; color: Theme.accent3 } }
+                    Icon { id: radarIcon; anchors.centerIn: parent; name: "radar"; size: 26; color: "white"
+                        RotationAnimation { target: radarIcon; property: "rotation"; from: 0; to: 360; duration: 2400; loops: Animation.Infinite
+                            running: anCard.an.state === "running"; onRunningChanged: if (!running) radarIcon.rotation = 0 } } }
+                Column { width: parent.width - 70 - (startBtn.visible ? startBtn.width + 18 : 0); spacing: 4; anchors.verticalCenter: parent.verticalCenter
+                    Txt { text: tr("an.title"); font.pixelSize: 17; bold: true; font.weight: Font.Bold }
+                    Txt { muted: true; width: parent.width; font.pixelSize: 12
+                          text: anCard.an.state === "done" && anCard.an.freed > 0 ? tr("an.cleaned").replace("{0}", app.size(anCard.an.freed)).replace("{1}", String(anCard.an.fixed)) + ". " + tr("an.after")
+                              : anCard.an.state === "done" ? tr("an.found.note") : tr("an.hint") } }
+                AccentButton { id: startBtn; visible: anCard.an.state !== "done"; text: tr("an.btn"); anchors.verticalCenter: parent.verticalCenter
+                    enabled: !app.busy && anCard.an.state !== "running"; onClicked: app.analyzeAll() }
+            }
+            Grid { id: anGrid; visible: anCard.an.state !== ""; width: parent.width; columns: 2; columnSpacing: 10; rowSpacing: 10
+                Repeater { model: anCard.an.rows || []
+                    Rectangle { width: (anGrid.width - 10) / 2; height: 54; radius: 12; color: rowHov.containsMouse && modelData.state === "done" ? Theme.softHover : Theme.cardAlt
+                        Behavior on color { ColorAnimation { duration: Theme.dur } }
+                        Rectangle { id: ic; width: 34; height: 34; radius: 10; color: Theme.soft; anchors.left: parent.left; anchors.leftMargin: 10; anchors.verticalCenter: parent.verticalCenter
+                            Icon { anchors.centerIn: parent; name: anCard.icons[modelData.id] || "circle-check"; size: 17; color: modelData.bad ? Theme.warn : Theme.accent2 } }
+                        Column { anchors.left: ic.right; anchors.leftMargin: 12; anchors.right: mark.left; anchors.rightMargin: 10; anchors.verticalCenter: parent.verticalCenter; spacing: 2
+                            Txt { text: tr("an.s." + modelData.id); bold: true; font.pixelSize: 13; width: parent.width; elide: Text.ElideRight; wrapMode: Text.NoWrap }
+                            Txt { width: parent.width; elide: Text.ElideRight; wrapMode: Text.NoWrap; font.pixelSize: 12
+                                text: modelData.state === "done" ? modelData.text : modelData.state === "working" ? tr("an.working") : tr("an.wait")
+                                color: modelData.state === "done" ? (modelData.bad ? Theme.warn : Theme.good) : Theme.muted } }
+                        Item { id: mark; width: 22; height: 22; anchors.right: parent.right; anchors.rightMargin: 12; anchors.verticalCenter: parent.verticalCenter
+                            Icon { anchors.centerIn: parent; name: "refresh-cw"; size: 16; color: Theme.accent2; visible: modelData.state === "working"
+                                RotationAnimation on rotation { from: 0; to: 360; duration: 1100; loops: Animation.Infinite; running: modelData.state === "working" } }
+                            Icon { anchors.centerIn: parent; name: "arrow-right"; size: 16; color: Theme.faint; visible: modelData.state === "done" } }
+                        MouseArea { id: rowHov; anchors.fill: parent; hoverEnabled: true; enabled: modelData.state === "done"; cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                            onClicked: anCard.open(modelData.id) }
+                    }
+                }
+            }
+            Row { visible: anCard.an.state === "done"; spacing: 10
+                AccentButton { visible: anCard.an.cleanable > 0 || anCard.an.registry > 0
+                    text: anCard.an.cleanable > 0 ? tr1("an.cleanbtn", app.size(anCard.an.cleanable)) : tr("an.cleanbtn.reg"); enabled: !app.busy; onClicked: app.cleanFound() }
+                AccentButton { text: tr("an.again"); primary: anCard.an.cleanable <= 0 && anCard.an.registry <= 0; enabled: !app.busy; onClicked: app.analyzeAll() } }
+        }
+    }
 
     // Health + profile
     Row { width: parent.width; spacing: 14
@@ -95,17 +143,4 @@ Page {
             onClicked: { go("disks"); if (!app.busy) app.scanDrives() } }
     }
 
-    // Quick clean
-    Card {
-        Row { width: parent.width; spacing: 18
-            Rectangle { width: 52; height: 52; radius: 15; anchors.verticalCenter: parent.verticalCenter
-                gradient: Gradient { orientation: Gradient.Horizontal; GradientStop { position: 0; color: Theme.accent } GradientStop { position: 1; color: Theme.accent3 } }
-                Icon { anchors.centerIn: parent; name: "sparkles"; size: 26; color: "white" } }
-            Column { width: parent.width - 70 - quickBtn.width - 18; spacing: 4; anchors.verticalCenter: parent.verticalCenter
-                Txt { text: tr("ov.quick"); font.pixelSize: 17; bold: true; font.weight: Font.Bold }
-                Txt { text: tr("ov.quick.hint"); muted: true; width: parent.width }
-            }
-            AccentButton { id: quickBtn; text: tr("ov.quick.btn"); anchors.verticalCenter: parent.verticalCenter; onClicked: app.quickClean(); enabled: !app.busy }
-        }
-    }
 }

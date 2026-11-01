@@ -94,6 +94,7 @@ class App(QObject):
     langChanged = Signal()
     updatesChanged = Signal()      # program updates list and progress (emitted from worker threads too)
     installChanged = Signal()      # programs to install, search results and install progress (worker threads too)
+    analysisChanged = Signal()     # "Analyze everything" on the Overview (worker threads too)
     toast = Signal(str)
 
     def __init__(self):
@@ -125,6 +126,9 @@ class App(QObject):
         self._startup_scanning = False
         self.reg_backups = extras.reg_backups()
         self._junk_scanned = False
+        self._an: dict = {"state": "", "steps": {}, "freed": 0.0, "fixed": 0}     # "Analyze everything"
+        self.updatesChanged.connect(self.analysisChanged)
+        self.langChanged.connect(self.analysisChanged)
         self.volumes = extras.volumes()
         self.selected_drive = extras.system_drive()
         self.drive_junk: dict = {}
@@ -550,7 +554,7 @@ class App(QObject):
                     if c["size"] <= 0:
                         continue
                     rows.append({"id": cid, "name": self._loc(name), "hint": self._loc(hint), "size": float(c["size"]), "count": c["count"],
-                                 "checked": self.drive_checked.get((v["letter"], cid), cid != "oldwin")})
+                                 "checked": self.drive_checked.get((v["letter"], cid), cid not in ("oldwin", "bin"))})
             out.append({"letter": v["letter"], "scanned": cats is not None, "rows": rows, "total": float(sum(r["size"] for r in rows if r["checked"]))})
         return out
 
@@ -682,6 +686,8 @@ class App(QObject):
             self.installPicked()
         elif kind == "startup":
             self.setStartupKey(name, on)
+        elif kind == "cleanFound":
+            self.analyzeAll()
 
     def _load_services(self):
         out = []
@@ -795,6 +801,147 @@ class App(QObject):
             self.changed.emit()
             self._set_status(self.i18n.t("junk.done", self.i18n.size(freed)))
             self.toast.emit(self.i18n.t("junk.done", self.i18n.size(freed)))
+
+        self._run(work, done, self.i18n.t("common.working"))
+
+    # ---------- "Analyze everything": one button for what used to run by itself at start ----------
+    ANALYSIS = ("junk", "drives", "registry", "startup", "privacy", "updates")
+
+    def _an_step(self, sid: str, state: str) -> None:
+        self._an["steps"][sid] = state
+        self.analysisChanged.emit()
+
+    @Property("QVariantMap", notify=analysisChanged)
+    def analysis(self):
+        t, sz = self.i18n.t, self.i18n.size
+        st = self._an["steps"]
+        pu = self._pu
+        regs = sum(c.found for c in extras.REG_CATEGORIES)
+        on = sum(1 for e in self.startup if e.get("enabled"))
+        tracking = sum(1 for v in self.privacy_state.values() if not v)
+        rows = []
+        for sid in self.ANALYSIS:
+            state = st.get(sid, "")
+            if sid == "updates":
+                state = "working" if pu.get("checking") else ("done" if pu.get("checked") and state else state)
+            text, bad = "", False
+            if state == "done":
+                if sid == "junk":
+                    text, bad = (t("an.junk", sz(self.junkTotal)), True) if self.junkTotal > 0 else (t("an.clean"), False)
+                elif sid == "drives":
+                    text, bad = (t("an.drives", sz(self.driveJunkTotal)), True) if self.driveJunkTotal > 0 else (t("an.clean"), False)
+                elif sid == "registry":
+                    text, bad = (t("an.registry", regs), True) if regs else (t("an.noerrors"), False)
+                elif sid == "startup":
+                    new = sum(1 for e in self.startup if tweaks.startup_key(e) in self._startup_new)
+                    text, bad = t("an.startup", on) + (t("an.startup.new", new) if new else ""), on > 7 or new > 0
+                elif sid == "privacy":
+                    text, bad = (t("an.privacy", tracking, len(self.privacy_state)), True) if tracking else (t("an.privacy.ok"), False)
+                elif sid == "updates":
+                    n = int(self.programUpdates.get("count", 0))       # the same number the Updates tab shows
+                    text, bad = ((t("an.updates", n), True) if n else (t("pu.none"), False)) if pu.get("winget", True) else (t("pu.nowinget.short"), False)
+            rows.append({"id": sid, "state": state, "text": text, "bad": bad})
+        cleanable = (self.junkTotal if st.get("junk") == "done" else 0) + (self.driveJunkTotal if st.get("drives") == "done" else 0)
+        return {"state": self._an["state"], "rows": rows, "cleanable": float(cleanable), "registry": regs if st.get("registry") == "done" else 0,
+                "freed": float(self._an.get("freed", 0)), "fixed": int(self._an.get("fixed", 0))}
+
+    @Slot()
+    def analyzeAll(self):
+        """Everything Sweep can measure, in one go and only on request: junk, junk on every drive, the registry,
+        startup, privacy and program updates. Nothing is changed."""
+        if self._busy:
+            self.toast.emit(self.i18n.t("common.busy"))
+            return
+        self._an = {"state": "running", "steps": {sid: "wait" for sid in self.ANALYSIS}, "freed": 0.0, "fixed": 0}
+        self.analysisChanged.emit()
+        if P.IS_WINDOWS and not UPD.winget_exe():
+            self._an["steps"]["updates"] = "done"
+            self._pu.update(checked=True, winget=False)
+        else:
+            self._an["steps"]["updates"] = "working"
+            self._scan_updates(quiet=True)          # network and slow: runs alongside, its row fills in when ready
+        letters = [v["letter"] for v in self.volumes]
+
+        def work():
+            self._an_step("junk", "working")
+            for c in self.categories:
+                cleaner.scan(c)
+            self._junk_scanned = True
+            self._an_step("junk", "done")
+            self._an_step("drives", "working")
+            self.drive_junk = {letter: extras.drive_junk(letter) for letter in letters}
+            self._an_step("drives", "done")
+            self._an_step("registry", "working")
+            for c in extras.REG_CATEGORIES:
+                extras.reg_scan(c)
+            self._an_step("registry", "done")
+            self._an_step("startup", "working")
+            entries = tweaks.startup_entries()
+            self._an_step("privacy", "working")
+            states = {p.id: tweaks.privacy_state(p) for p in tweaks.PRIVACY}
+            return entries, states
+
+        def done(res):
+            entries, states = res
+            self._take_startup(entries)
+            self.privacy_state = states
+            self._an["steps"]["startup"] = self._an["steps"]["privacy"] = "done"
+            self._an["state"] = "done"
+            self._compute_health()
+            self.changed.emit()
+            self.analysisChanged.emit()
+            a = self.analysis
+            self._set_status(self.i18n.t("an.status", self.i18n.size(a["cleanable"]), a["registry"]))
+
+        def failed(_e):
+            self._an["state"] = "done"
+            self.analysisChanged.emit()
+
+        self._run(work, done, self.i18n.t("an.running"), failed)
+
+    @Slot()
+    def cleanFound(self):
+        """Clean what the analysis found: ticked junk, ticked junk on the drives, and the registry problems.
+        Files go to quarantine, registry keys are backed up, a restore point is made first."""
+        if self._need_admin("cleanFound", "overview"):
+            return
+        session = cleaner.new_session()
+        cats = [c for c in self.categories if self.checked[c.id] and c.size > 0]
+        drives = [(d["letter"], r["id"]) for d in self.driveJunk for r in d["rows"] if r["checked"]]
+        regs = [c for c in extras.REG_CATEGORIES if c.found > 0]
+
+        def work():
+            if regs:
+                self._restore_point("clean")
+            freed = 0
+            for c in cats:
+                freed += cleaner.quarantine(c, session)
+                c.size = 0
+            for letter, cid in drives:
+                c = self.drive_junk[letter][cid]
+                if cid == "bin":
+                    extras.empty_drive_bin(letter)
+                    freed += c["size"]
+                elif P.IS_WINDOWS:
+                    freed += cleaner.quarantine_files(c["paths"], session, f"{letter}_{cid}")
+                else:
+                    freed += c["size"]
+                c["size"], c["count"], c["paths"] = 0, 0, []
+            fixed = sum(extras.reg_clean(c, session) for c in regs)
+            P.log(f"clean found {session}: freed {freed}, registry {fixed}")
+            return freed, fixed
+
+        def done(res):
+            freed, fixed = res
+            self._an.update(freed=float(freed), fixed=int(fixed))
+            self.quarantine = cleaner.sessions()
+            self.reg_backups = extras.reg_backups()
+            self._compute_health()
+            self.changed.emit()
+            self.analysisChanged.emit()
+            msg = self.i18n.t("an.cleaned", self.i18n.size(freed), fixed)
+            self._set_status(msg)
+            self.toast.emit(msg)
 
         self._run(work, done, self.i18n.t("common.working"))
 

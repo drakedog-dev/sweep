@@ -52,6 +52,8 @@ ApplicationWindow {
     readonly property var navKeys: ["overview", "junk", "privacy", "guard", "boot", "startup", "services", "registry", "boost", "disks", "apps", "system", "quarantine", "settings"]
     readonly property var navIcons: ["layout-dashboard", "trash-2", "shield-check", "radar", "timer", "power", "server", "database", "rocket", "hard-drive", "package", "cpu", "archive", "settings"]
     function go(key) { var i = navKeys.indexOf(key); if (i >= 0) current = i }
+    property int appsTabRequest: -1          // the Overview opens a tab of the Programs page through this
+    function openAppsTab(t) { appsTabRequest = t; go("apps") }
 
     // ---------- sidebar ----------
     Rectangle {

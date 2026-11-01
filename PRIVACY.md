@@ -14,7 +14,7 @@ Sweep makes exactly these connections, and no others:
 |---|---|---|---|
 | On start-up (can be turned off: **Settings → Updates → Do not check**) and when you press **Check for updates** | Sweep | `api.github.com` | A standard request for the latest Sweep release |
 | When you agree to install a new Sweep version | Sweep | `github.com` and GitHub's download servers | A download request for the installer |
-| When you open **Programs → Updates**, press **Check**, or turn on **Check once a day** | Windows Package Manager (winget), part of Windows | The Microsoft winget catalogue (`cdn.winget.microsoft.com`) | A request for the package catalogue |
+| When you open **Programs → Updates**, press **Check** or **Analyze** on the Overview, or turn on **Check once a day** | Windows Package Manager (winget), part of Windows | The Microsoft winget catalogue (`cdn.winget.microsoft.com`) | A request for the package catalogue |
 | When you search on **Programs → Install** or open that tab | winget | The Microsoft winget catalogue (`cdn.winget.microsoft.com`) | Your search words and a request for the package catalogue |
 | When you choose to update or install a program | winget | The program vendor's own download address (for example `7-zip.org`) | A download request for that installer |
 
@@ -48,7 +48,7 @@ Questions about privacy: [open an issue](https://github.com/drakedog-dev/sweep/i
 |---|---|---|---|
 | При запуске (отключается: **Настройки → Обновления → Не проверять**) и по кнопке **Проверить обновления** | Sweep | `api.github.com` | Обычный запрос последней версии Sweep |
 | Когда вы соглашаетесь установить новую версию | Sweep | `github.com` и серверы загрузки GitHub | Запрос на скачивание установщика |
-| Когда вы открываете **Программы → Обновления**, нажимаете **Проверить** или включаете **Проверять раз в день** | Менеджер пакетов Windows (winget) | Каталог Microsoft winget (`cdn.winget.microsoft.com`) | Запрос каталога пакетов |
+| Когда вы открываете **Программы → Обновления**, нажимаете **Проверить** или **Проанализировать** на «Обзоре», или включаете **Проверять раз в день** | Менеджер пакетов Windows (winget) | Каталог Microsoft winget (`cdn.winget.microsoft.com`) | Запрос каталога пакетов |
 | Когда вы ищете программу на вкладке **Программы → Установка** или открываете её | winget | Каталог Microsoft winget (`cdn.winget.microsoft.com`) | Слова поиска и запрос каталога пакетов |
 | Когда вы выбираете обновить или установить программу | winget | Адрес производителя (например `7-zip.org`) | Запрос на скачивание установщика |
 

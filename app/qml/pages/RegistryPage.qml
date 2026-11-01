@@ -20,7 +20,7 @@ Page {
         Repeater { model: app.regBackups
             Row { id: rrow; width: parent.width; spacing: 10
                 property bool sure: false
-                Txt { text: tr1("reg.backup", modelData.date).replace("{1}", modelData.count); anchors.verticalCenter: parent.verticalCenter; width: parent.width - rbtns.width - 10 }
+                Txt { text: tr2("reg.backup", modelData.date, String(modelData.count)); anchors.verticalCenter: parent.verticalCenter; width: parent.width - rbtns.width - 10 }
                 Row { id: rbtns; spacing: 8; anchors.verticalCenter: parent.verticalCenter
                     AccentButton { text: tr("common.restore"); compact: true; primary: false; enabled: !app.busy; onClicked: app.regRestore(modelData.session) }
                     AccentButton { text: rrow.sure ? tr("q.delete.confirm") : tr("q.delete"); compact: true; danger: true; primary: rrow.sure; enabled: !app.busy
