@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 IS_WINDOWS = sys.platform == "win32"
-APP_VERSION = "1.0.21"
+APP_VERSION = "1.0.22"
 UPDATE_REPO = "drakedog-dev/sweep"
 
 
