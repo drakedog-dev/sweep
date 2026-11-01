@@ -2,6 +2,17 @@
 
 All notable changes to Sweep. The newest version is at the top; the in-app update dialog and the GitHub release notes are built from this file.
 
+## 1.0.22
+- Overview: one "Analyze" button checks junk, junk on every drive, the registry, startup, privacy and program updates, with a result row for each that opens its page. Nothing runs until you press it
+- "Clean what was found" moves the ticked junk and drive junk to quarantine and fixes the registry problems with a backup and a restore point; startup, privacy and updates are only shown, never changed by it
+- Cleaning keeps the programs you chose to open videos, photos and documents. The thumbnail cache no longer takes the icon cache with it, so file icons do not turn blank or wrong until a restart
+- MuiCache loses only the names of programs that are gone, so "Open with" and Default apps keep their program names
+- Microsoft Store app aliases and plain commands such as rundll32.exe are no longer taken for missing files in App Paths and startup entries
+- Built-in Windows apps: an app that opens some file types now (Media Player for videos, say) is marked with those types, because removing it makes Windows forget that choice
+- Guard never removes an app you picked again to open files, and stops watching it
+- Disks: a drive's Recycle Bin is no longer ticked by default, like the Recycle Bin on the Junk page
+- Registry page: backup labels show the date instead of "{0}"
+
 ## 1.0.21
 - Startup is read again every time you open the page, come back to Sweep's window or press "Scan again": programs that add themselves while Sweep is open now show up, marked "new"
 - Startup shows everything Task Manager shows: Microsoft Store apps (new Teams, Spotify and others) and the all-users Startup folder join the Run keys and your own Startup folder

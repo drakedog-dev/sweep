@@ -21,7 +21,7 @@ Free and open source · no ads · no telemetry · every change can be undone
 
 [**Download**](../../releases/latest) · [Features](#features) · [Screenshots](#screenshots) · [Safety](#how-sweep-keeps-you-safe) · [FAQ](#faq) · [Build](#building-from-source) · [Русский](README.ru.md)
 
-<img src="docs/hero-en.png" alt="Sweep: Overview in the dark theme and the Install tab in the light theme" width="100%">
+<img src="docs/hero-en.png" alt="Sweep: Overview after Analyze in the dark theme and the Install tab in the light theme" width="100%">
 
 </div>
 
@@ -33,13 +33,14 @@ Most cleaners delete first and ask later. Sweep is built the other way round:
 - **It remembers your choices.** Big Windows updates quietly turn telemetry and ads back on. **Guard** notices and puts your settings back.
 - **Facts, not guesses.** Boot times come from Windows' own diagnostics log; outdated programs come from the Microsoft winget catalogue with SHA-256 checks.
 - **Nothing phones home.** No accounts, no analytics, no ads. The code is right here.
-- **Tested on real Windows.** Every change runs a self-test on a Windows machine that flips real privacy switches, cleans real browser history, uninstalls a test program, and updates and installs real ones.
+- **Your choices stay yours.** Nothing is scanned or changed until you press a button, and cleaning never touches the programs you picked to open your videos, photos and documents.
+- **Tested on real Windows.** Every change runs a self-test on a Windows machine that flips real privacy switches, cleans real browser history, checks that default apps survive a full clean, uninstalls a test program, and updates and installs real ones.
 
 ## Features
 
 <table>
 <tr>
-<td width="33%" valign="top"><b>Overview</b><br>Health score with concrete tips, PC profile with one-click recommendations, live CPU and memory graphs.</td>
+<td width="33%" valign="top"><b>Overview</b><br>One <b>Analyze</b> button checks junk, every drive, the registry, startup, privacy and program updates, then <b>Clean what was found</b>. Health score and live graphs.</td>
 <td width="33%" valign="top"><b>Junk</b><br>Temp files, caches, update leftovers, crash dumps, browser caches and history. Passwords and bookmarks are never touched.</td>
 <td width="33%" valign="top"><b>Privacy</b><br>17 switches that work like Windows Settings: telemetry, advertising ID, ads in Start, Copilot, Edge data and more.</td>
 </tr>
@@ -50,20 +51,20 @@ Most cleaners delete first and ask later. Sweep is built the other way round:
 </tr>
 <tr>
 <td valign="top"><b>Updates and installs</b><br>Updates outdated programs and installs new ones in one click from the vendors' official sites, each file verified by SHA-256.</td>
-<td valign="top"><b>Startup and services</b><br>What launches with Windows and which background services you can safely pause, all reversible.</td>
+<td valign="top"><b>Startup and services</b><br>Run keys, Startup folders and Store apps in one list that is always fresh, newcomers marked. Services you can safely pause.</td>
 <td valign="top"><b>Boost and disks</b><br>Free RAM, TRIM or defrag, visual-effects and power presets, junk on every drive, weekly silent auto-clean.</td>
 </tr>
 <tr>
-<td valign="top"><b>Registry</b><br>Safe categories only, every key backed up to a <code>.reg</code> file with a Restore button.</td>
+<td valign="top"><b>Registry</b><br>Safe categories only, file associations never touched, every key backed up to a <code>.reg</code> file with a Restore button.</td>
 <td valign="top"><b>System</b><br>CPU, GPU, board, BIOS, memory modules, disks and temperatures on one screen. Copy as text.</td>
-<td valign="top"><b>Made with care</b><br>English and Russian, dark and light themes, five accents. Drawn by the CPU, so games stay smooth.</td>
+<td valign="top"><b>Made with care</b><br>English and Russian, dark and light themes down to the window title bar, five accents. Drawn by the CPU, so games stay smooth.</td>
 </tr>
 </table>
 
 <details>
 <summary><b>Every page in detail</b></summary>
 
-**Overview.** A health index (0 to 100) with concrete tips, your PC profile with one-click recommendations, live CPU and memory graphs, disk and startup at a glance, and a quick clean button.
+**Overview.** Nothing is scanned when Sweep starts. Press **Analyze** and it checks everything in one go: junk, junk on every drive, the registry, startup, privacy and program updates, each with its own result row that opens the page behind it. **Clean what was found** moves the ticked junk to quarantine and fixes the registry with a backup; Recycle Bins are not emptied this way, and startup, privacy and updates are only shown, never changed by themselves. Below are a health index (0 to 100) with concrete tips, your PC profile with one-click recommendations, live CPU and memory graphs, and a quick clean button.
 
 **Junk.** Shows how much space each category takes and removes only what you tick: temp folders, Recycle Bin, thumbnail cache, Windows Update cache, crash dumps and error reports, old Windows logs, browser caches (Chrome, Edge, Yandex, Brave, Vivaldi, Opera, Firefox), browser history and, optionally, cookies. History cleaning removes visited sites, the downloads list and address bar suggestions; passwords, bookmarks, autofill and open tabs are never touched. In Firefox, where history and bookmarks share one database, only visits are removed and a copy of the database goes to quarantine first.
 
@@ -73,15 +74,17 @@ Most cleaners delete first and ask later. Sweep is built the other way round:
 
 **Boot X-ray.** Boot time split into "until the desktop" and "after sign-in", a chart of recent boots and the culprits in seconds, straight from the Diagnostics-Performance log. Remove a culprit from startup in one click, restart, and the next bar shows what you saved.
 
-**Programs.** Every installed program with its icon, size and date. Sweep runs the program's own uninstaller, then finds what it left behind (program folders, AppData, ProgramData, registry keys, shortcuts, Run entries, scheduled tasks, services) and shows the list before removing anything. Force mode handles programs whose uninstaller is broken; locked files are removed at the next restart.
+**Programs.** Every installed program with its icon, size and date. Sweep runs the program's own uninstaller, then finds what it left behind (program folders, AppData, ProgramData, registry keys, shortcuts, Run entries, scheduled tasks, services) and shows the list before removing anything. Force mode handles programs whose uninstaller is broken; locked files are removed at the next restart, and registry keys an installer locked against changes are unlocked first. When everything still works, **All works, delete the copies** removes the backups of that uninstall for good.
 
 **Updates.** Sweep asks winget, the package manager built into Windows, which installed programs have a newer version, with a progress bar while it looks. Each one shows where the installer comes from (7-zip.org, videolan.org, github.com/notepad-plus-plus and so on) and what is new in the version. Nothing is ticked by itself: tick what you want or press Update all, and Sweep updates them one by one, silently, with the download in megabytes and a percentage for every program; winget refuses to run any file whose SHA-256 differs from the catalogue. Afterwards Sweep reads the installed version again, so "updated" always means the new version is really there. Forks and look-alikes that winget mistakes for the original program (FlClash X for FlClash, say) are flagged and never updated by accident.
 
 **Install.** Popular free programs in one click, by category (browsers, messaging, video and music, documents, utilities, passwords, games, development, components), plus ready-made sets for a fresh Windows, gaming or work, and a search through the whole winget catalogue. Programs already on the PC are marked; the rest install one after another from the vendors' sites, with the same live progress and SHA-256 check.
 
-**Built-in apps.** Removes pre-installed Microsoft and partner apps (Xbox, Solitaire, News, Candy Crush and so on); any of them can be reinstalled from Microsoft Store.
+**Built-in apps.** Removes pre-installed Microsoft and partner apps (Xbox, Solitaire, News, Candy Crush and so on); any of them can be reinstalled from Microsoft Store. An app that opens some file types on your PC (Media Player for videos, say) is marked with those types, because removing it makes Windows forget that choice. Guard never removes an app you picked again to open files.
 
-**Registry.** Recent-file lists, MuiCache, App Paths and Run entries pointing to deleted programs. Every key is exported to a `.reg` file before it is touched.
+**Registry.** Recent-file lists, plus MuiCache, App Paths and Run entries of programs that are gone. Store app aliases and plain commands such as `rundll32.exe` are never mistaken for missing files, and file associations and default apps are never touched. Every key is exported to a `.reg` file before it is changed; old backups can be restored or deleted one by one.
+
+**Startup.** Everything that starts with Windows: Run keys of the user and of the whole system, both Startup folders and Microsoft Store apps, with the same on and off state Task Manager shows. The list is read again every time you open the page, and programs that added themselves since your last look are marked **new**. Entries locked by a policy are shown but cannot be switched.
 
 **Services.** Twelve services that slow down older PCs (SysMain, Windows Search indexing, Xbox services, Maps, Fax, Remote Registry and more). The original startup type is remembered.
 
@@ -89,9 +92,9 @@ Most cleaners delete first and ask later. Sweep is built the other way round:
 
 **Disks.** Every drive is scanned for junk that is safe to remove: its Recycle Bin, unfinished downloads, old logs and dumps, remains of previous Windows installations.
 
-**Quarantine.** Files are moved to `ProgramData\Sweep\Quarantine`, and **Restore** puts them back. Purge it yourself when you are sure.
+**Quarantine.** Files are moved to `ProgramData\Sweep\Quarantine`. **Restore** puts a session back, **Delete** removes it for good, and copies older than 30 days are deleted by themselves (you can turn that off in Settings).
 
-**Settings.** Language, theme, accent colour, animations, restore points, administrator rights, and how new versions of Sweep arrive (ask me, install automatically, or do not check).
+**Settings.** Language, theme, accent colour, animations, restore points, administrator rights, automatic removal of old copies, and how new versions of Sweep arrive (ask me, install automatically, or do not check).
 
 </details>
 
@@ -99,8 +102,8 @@ Most cleaners delete first and ask later. Sweep is built the other way round:
 
 | | |
 |:---:|:---:|
-| ![Overview](docs/screens/en-overview.png) | ![Program updates](docs/screens/en-updates.png) |
-| **Overview** | **Program updates with live progress** |
+| ![Overview after Analyze](docs/screens/en-overview.png) | ![Program updates](docs/screens/en-updates.png) |
+| **Overview: Analyze checks everything in one go** | **Program updates with live progress** |
 | ![Install in one click](docs/screens/en-install.png) | ![Thorough uninstaller](docs/screens/en-programs.png) |
 | **Install in one click** | **Thorough uninstaller** |
 | ![Junk](docs/screens/en-junk.png) | ![Boot X-ray](docs/screens/en-boot.png) |
@@ -132,14 +135,15 @@ Kaspersky puts unsigned programs into a restricted group and silently blocks the
 
 | Action | Safety net |
 |---|---|
-| Junk, leftovers, browser history | Moved to quarantine, restorable with one click |
+| Junk, leftovers, browser history | Moved to quarantine, restorable with one click; deleted after 30 days unless you turn that off |
 | Registry cleaning, uninstall leftovers | Every key exported to a `.reg` backup first |
 | Privacy switches, services, startup | The same switch turns it back; Guard keeps your choice |
 | Big changes (privacy, uninstall, updates) | Windows restore point first (at most once a day) |
 | Program updates and installs | Vendor's official installer only, SHA-256 checked by winget; forks and look-alikes are flagged, never updated by accident |
+| Default apps and file associations | Never touched by cleaning; built-in apps that open your files are marked before removal |
 | Files in use | Skipped, or removed at the next restart if you force it |
 
-Documents, photos, licences and passwords are never touched. Only the Recycle Bin is emptied for real, and that category is off by default.
+Documents, photos, licences, passwords and your default apps are never touched. Only the Recycle Bin is emptied for real, and that category is off by default.
 
 ## FAQ
 
@@ -153,6 +157,12 @@ No personal data, statistics or telemetry. It contacts GitHub to check for Sweep
 <summary><b>How do I undo something?</b></summary>
 
 Files: **Quarantine → Restore**. Registry: **Registry → backups → Restore**. Switches: flip them back. For anything bigger, Windows **System Restore** has a point Sweep created before the change.
+</details>
+
+<details>
+<summary><b>Will cleaning reset my default apps?</b></summary>
+
+No. Sweep never touches file associations, so videos, photos and documents keep opening in the program you chose. If Windows does ask again, the program that used to open those files was most likely removed: the **Built-in Windows apps** tab marks such apps (Media Player, for example) before you remove them.
 </details>
 
 <details>
@@ -207,7 +217,7 @@ legacy/              the original PowerShell version 0.x
 Every push runs three pipelines:
 
 - **Lint and tests** on Linux: ruff, parser unit tests, and the whole interface in demo mode with zero QML warnings allowed.
-- **Windows self-test** on a real Windows machine: privacy switches written and read back, browser history cleaned and restored, Guard, restore points, a test program uninstalled end to end, and a real program updated through winget.
+- **Windows self-test** on a real Windows machine: privacy switches written and read back, startup entries switched, browser history cleaned and restored, default apps checked unchanged after a full clean, Guard, restore points, a test program uninstalled end to end, and a real program updated through winget.
 - **Release build**: PyInstaller and Inno Setup, then the packaged `Sweep.exe` opens every page before the release is published.
 
 ## Building from source
