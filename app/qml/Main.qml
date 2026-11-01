@@ -44,7 +44,10 @@ ApplicationWindow {
         if (key === "registry") app.regScan()
         else app.scanPrograms()
     }
-    onCurrentChanged: { app.setMonitorActive(current === 0); firstVisit() }
+    onCurrentChanged: { app.setMonitorActive(current === 0); firstVisit(); freshStartup() }
+    // startup changes behind Sweep's back (new programs add themselves): read it again whenever it is looked at
+    function freshStartup() { var k = navKeys[current]; if (k === "startup" || k === "boot" || k === "overview") app.scanStartup(false) }
+    onActiveChanged: if (active) freshStartup()
     Connections { target: app; function onBusyChanged() { if (!app.busy) win.firstVisit() } }
     readonly property var navKeys: ["overview", "junk", "privacy", "guard", "boot", "startup", "services", "registry", "boost", "disks", "apps", "system", "quarantine", "settings"]
     readonly property var navIcons: ["layout-dashboard", "trash-2", "shield-check", "radar", "timer", "power", "server", "database", "rocket", "hard-drive", "package", "cpu", "archive", "settings"]

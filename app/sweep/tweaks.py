@@ -285,34 +285,64 @@ def set_service(name: str, enabled: bool) -> None:
 
 # ---------------- startup ----------------
 _DEMO_STARTUP = [
-    {"name": "Discord", "command": r"C:\Users\Alex\AppData\Local\Discord\Update.exe --processStart Discord.exe", "source": "User", "enabled": True},
-    {"name": "Steam", "command": r"C:\Program Files (x86)\Steam\steam.exe -silent", "source": "User", "enabled": True},
-    {"name": "OneDrive", "command": r"C:\Users\Alex\AppData\Local\Microsoft\OneDrive\OneDrive.exe /background", "source": "User", "enabled": False},
-    {"name": "Yandex Browser", "command": r"C:\Users\Alex\AppData\Local\Yandex\YandexBrowser\Application\browser.exe --no-startup-window", "source": "User", "enabled": True},
-    {"name": "Spotify", "command": r"C:\Users\Alex\AppData\Roaming\Spotify\Spotify.exe --autostart --minimized", "source": "User", "enabled": True},
-    {"name": "RtkAudUService", "command": r"C:\Windows\System32\RtkAudUService64.exe -background", "source": "System", "enabled": True},
-    {"name": "SecurityHealth", "command": r"%windir%\system32\SecurityHealthSystray.exe", "source": "System", "enabled": True},
+    {"kind": "run", "name": "Discord", "command": r"C:\Users\Alex\AppData\Local\Discord\Update.exe --processStart Discord.exe", "source": "User", "enabled": True},
+    {"kind": "run", "name": "Steam", "command": r"C:\Program Files (x86)\Steam\steam.exe -silent", "source": "User", "enabled": True},
+    {"kind": "run", "name": "OneDrive", "command": r"C:\Users\Alex\AppData\Local\Microsoft\OneDrive\OneDrive.exe /background", "source": "User", "enabled": False},
+    {"kind": "run", "name": "Yandex Browser", "command": r"C:\Users\Alex\AppData\Local\Yandex\YandexBrowser\Application\browser.exe --no-startup-window", "source": "User", "enabled": True},
+    {"kind": "store", "name": "TeamsTfwStartupTask", "display": "Microsoft Teams", "command": "MSTeams_8wekyb3d8bbwe", "source": "Store", "enabled": True, "locked": False},
+    {"kind": "store", "name": "SpotifyStartupTask", "display": "Spotify", "command": "SpotifyAB.SpotifyMusic_zpdnekdrzrea0", "source": "Store", "enabled": False, "locked": False},
+    {"kind": "folder", "name": "Telegram.lnk", "display": "Telegram", "command": r"C:\Users\Alex\AppData\Roaming\Telegram Desktop\Telegram.exe -autostart", "source": "Folder", "enabled": True},
+    {"kind": "run", "name": "RtkAudUService", "command": r"C:\Windows\System32\RtkAudUService64.exe -background", "source": "System", "enabled": True},
+    {"kind": "run", "name": "SecurityHealth", "command": r"%windir%\system32\SecurityHealthSystray.exe", "source": "System", "enabled": True},
 ]
+
+STORE_TASKS = r"HKCU:\Software\Classes\Local Settings\Software\Microsoft\Windows\CurrentVersion\AppModel\SystemAppData"
+ADMIN_SOURCES = ("System", "System32", "FolderAll")      # written to HKLM: need administrator rights
 
 
 def startup_entries() -> list[dict]:
+    """Everything Task Manager shows on its Startup apps page, read fresh every time:
+    Run keys (current user, all users, 32-bit), both Startup folders and Microsoft Store apps.
+    The on/off state is the same one Task Manager uses (StartupApproved, or the State of a Store startup task)."""
     if not P.IS_WINDOWS:
-        return _DEMO_STARTUP
+        return [dict(e) for e in _DEMO_STARTUP]
     script = r'''
 $out=@()
+function On($key,$name){ try{ $b=(Get-ItemProperty -LiteralPath $key -Name $name -ErrorAction Stop).$name
+    if($b -is [byte[]] -and $b.Length -gt 0){ return (($b[0] -band 1) -eq 0) } }catch{}; return $true }   # odd first byte = switched off
+$skip='PSPath','PSParentPath','PSChildName','PSDrive','PSProvider'
 $srcs=@(@{N='User';R='HKCU:\Software\Microsoft\Windows\CurrentVersion\Run';A='HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run'},
        @{N='System';R='HKLM:\Software\Microsoft\Windows\CurrentVersion\Run';A='HKLM:\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run'},
        @{N='System32';R='HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Run';A='HKLM:\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run32'})
-foreach($s in $srcs){ if(-not (Test-Path $s.R)){continue}
-  foreach($p in (Get-ItemProperty $s.R).PSObject.Properties){ if($p.Name -like 'PS*'){continue}
-    $en=$true; try{$b=(Get-ItemProperty -Path $s.A -Name $p.Name -ErrorAction Stop).($p.Name); if($b -and $b[0] -eq 3){$en=$false}}catch{}
-    $out+=@{name=$p.Name;command=[string]$p.Value;source=$s.N;approved=$s.A;enabled=$en} } }
-$sf=[Environment]::GetFolderPath('Startup'); $sa='HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\StartupFolder'
-if(Test-Path $sf){ foreach($f in (Get-ChildItem $sf -File | ? Name -ne 'desktop.ini')){ $en=$true; try{$b=(Get-ItemProperty -Path $sa -Name $f.Name -ErrorAction Stop).($f.Name); if($b -and $b[0] -eq 3){$en=$false}}catch{}
-  $out+=@{name=$f.Name;command=$f.FullName;source='Folder';approved=$sa;enabled=$en} } }
+foreach($s in $srcs){ if(-not (Test-Path -LiteralPath $s.R)){continue}
+  foreach($p in (Get-ItemProperty -LiteralPath $s.R).PSObject.Properties){ if($skip -contains $p.Name){continue}
+    $out+=@{kind='run';name=$p.Name;command=[string]$p.Value;source=$s.N;approved=$s.A;enabled=(On $s.A $p.Name)} } }
+$sh=$null; try{ $sh=New-Object -ComObject WScript.Shell }catch{}
+$dirs=@(@{N='Folder';P=[Environment]::GetFolderPath('Startup');A='HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\StartupFolder'},
+        @{N='FolderAll';P=[Environment]::GetFolderPath('CommonStartup');A='HKLM:\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\StartupFolder'})
+foreach($d in $dirs){ if(-not $d.P -or -not (Test-Path -LiteralPath $d.P)){continue}
+  foreach($f in (Get-ChildItem -LiteralPath $d.P -File -Force -ErrorAction SilentlyContinue | ? { $_.Name -ne 'desktop.ini' })){
+    $cmd=$f.FullName
+    if($sh -and $f.Extension -eq '.lnk'){ try{ $l=$sh.CreateShortcut($f.FullName); if($l.TargetPath){ $cmd=($l.TargetPath+' '+$l.Arguments).Trim() } }catch{} }
+    $out+=@{kind='folder';name=$f.Name;display=[IO.Path]::GetFileNameWithoutExtension($f.Name);command=$cmd;source=$d.N;approved=$d.A;enabled=(On $d.A $f.Name)} } }
+$root='HKCU:\Software\Classes\Local Settings\Software\Microsoft\Windows\CurrentVersion\AppModel\SystemAppData'
+if(Test-Path -LiteralPath $root){
+  $names=@{}; try{ foreach($a in Get-StartApps){ $pfn=($a.AppID -split '!')[0]; if($pfn -and -not $names.ContainsKey($pfn)){ $names[$pfn]=$a.Name } } }catch{}
+  foreach($pkg in Get-ChildItem -LiteralPath $root -ErrorAction SilentlyContinue){
+    foreach($t in Get-ChildItem -LiteralPath $pkg.PSPath -ErrorAction SilentlyContinue){
+      $st=(Get-ItemProperty -LiteralPath $t.PSPath -Name State -ErrorAction SilentlyContinue).State
+      if($null -eq $st){continue}
+      $pfn=$pkg.PSChildName; $disp=$names[$pfn]; if(-not $disp){ $disp=($pfn -split '_')[0] }
+      $out+=@{kind='store';name=$t.PSChildName;display=$disp;command=$pfn;source='Store';approved=($root+'\'+$pfn+'\'+$t.PSChildName);
+              enabled=($st -eq 2 -or $st -eq 4);locked=($st -eq 3 -or $st -eq 4)} } } }
 ,$out'''
-    data = P.ps_json(script, 60)
+    data = P.ps_json(script, 90)
     return data if isinstance(data, list) else []
+
+
+def startup_key(entry: dict) -> str:
+    """Stable identity of an entry, so a click never lands on the wrong row after the list was read again."""
+    return f"{entry.get('source', '')}|{entry.get('name', '')}"
 
 
 def _split_ps_path(ps_path: str) -> tuple[str, str]:
@@ -321,14 +351,28 @@ def _split_ps_path(ps_path: str) -> tuple[str, str]:
     return root.upper(), rest
 
 
+def _filetime_now() -> bytes:
+    import time
+    return int((time.time() + 11644473600) * 10_000_000).to_bytes(8, "little")
+
+
 def set_startup(entry: dict, enabled: bool) -> None:
-    """Same switch as Task Manager: StartupApproved value, first byte 02 = enabled, 03 = disabled.
-    Raises PermissionError when Windows refuses (system-wide entries need administrator rights)."""
+    """Same switch as Task Manager. Run keys and Startup folders: StartupApproved value, 02 = on,
+    03 + the time it was switched off = off. Store apps: State of the startup task, 2 = on, 1 = off by the user.
+    Raises PermissionError when Windows refuses (entries for all users need administrator rights)."""
     if not P.IS_WINDOWS:
         entry["enabled"] = enabled
         return
+    if entry.get("locked"):
+        raise PermissionError(5, "set by a policy")
     root, path = _split_ps_path(entry["approved"])
-    value = bytes([2 if enabled else 3]) + bytes(11)
+    if entry.get("kind") == "store":
+        reg_set(root, path, "State", 2 if enabled else 1)
+        if reg_get(root, path, "State") != (2 if enabled else 1):
+            raise PermissionError(5, f"{root}\\{path}\\State")
+        entry["enabled"] = enabled
+        return
+    value = (bytes([2]) + bytes(11)) if enabled else (bytes([3, 0, 0, 0]) + _filetime_now())
     reg_set(root, path, entry["name"], value)
     got = reg_get(root, path, entry["name"])
     if not got or got[0] != value[0]:

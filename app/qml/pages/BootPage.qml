@@ -116,7 +116,7 @@ Page {
                         width: 210; height: 34
                         AccentButton { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; compact: true; primary: false
                             visible: modelData.startupIndex >= 0 && modelData.startupOn; text: tr("boot.disable"); enabled: !app.busy
-                            onClicked: app.setStartup(modelData.startupIndex, false) }
+                            onClicked: app.setStartupKey(modelData.startupKey, false) }
                         Row { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; spacing: 6
                             visible: modelData.startupIndex >= 0 && !modelData.startupOn
                             Icon { name: "check"; size: 15; color: Theme.good; anchors.verticalCenter: parent.verticalCenter }

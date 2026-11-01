@@ -114,7 +114,7 @@ STRINGS: dict[str, dict[str, str]] = {
     "svc.off": {"ru": "ВЫКЛЮЧЕНО", "en": "TURNED OFF"},
     "svc.warn.strong": {"ru": "У вас мощный компьютер: выключать службы не обязательно, прироста почти не будет.", "en": "Your PC is powerful: disabling services is optional, the gain will be small."},
     # startup
-    "start.hint": {"ru": "Выключите переключатель, и программа перестанет запускаться вместе с Windows. Ничего не удаляется.", "en": "Turn the switch off and the program stops launching with Windows. Nothing is deleted."},
+    "start.hint": {"ru": "Всё, что Windows запускает при входе: записи реестра, папки автозагрузки и приложения Microsoft Store, как в Диспетчере задач. Выключите переключатель, и программа перестанет запускаться вместе с Windows. Ничего не удаляется. Список читается заново каждый раз, когда вы открываете страницу.", "en": "Everything Windows starts when you sign in: registry entries, Startup folders and Microsoft Store apps, the same list as Task Manager. Turn the switch off and the program stops launching with Windows. Nothing is deleted. The list is read again every time you open this page."},
     "start.empty": {"ru": "В автозагрузке ничего нет", "en": "Nothing in startup"},
     # boost
     "boost.ram": {"ru": "Освободить оперативную память", "en": "Free up RAM"},
@@ -385,6 +385,12 @@ STRINGS: dict[str, dict[str, str]] = {
     "start.src.system": {"ru": "Все пользователи", "en": "All users"},
     "start.src.system32": {"ru": "Все пользователи, 32 бита", "en": "All users, 32-bit"},
     "start.src.folder": {"ru": "Папка автозагрузки", "en": "Startup folder"},
+    "start.src.folderall": {"ru": "Папка автозагрузки всех пользователей", "en": "Startup folder, all users"},
+    "start.src.store": {"ru": "Приложение Microsoft Store", "en": "Microsoft Store app"},
+    "start.new": {"ru": "новое", "en": "new"},
+    "start.newfound": {"ru": "Новое в автозагрузке: {0}", "en": "New in startup: {0}"},
+    "start.locked": {"ru": "«{0}» включено политикой компьютера, изменить нельзя", "en": "{0} is set by a policy on this PC and cannot be changed"},
+    "start.scanned": {"ru": "В автозагрузке включено {0} из {1}", "en": "{0} of {1} startup items are on"},
     "accent.violet": {"ru": "Фиолетовый", "en": "Violet"}, "accent.cyan": {"ru": "Бирюзовый", "en": "Cyan"},
     "accent.green": {"ru": "Зелёный", "en": "Green"}, "accent.amber": {"ru": "Янтарный", "en": "Amber"}, "accent.rose": {"ru": "Розовый", "en": "Rose"},
     "ov.qa.privacy": {"ru": "Слежка Windows", "en": "Windows tracking"},

@@ -72,6 +72,46 @@ for hive, root in ((winreg.HKEY_CURRENT_USER, "User"), (winreg.HKEY_LOCAL_MACHIN
     with winreg.OpenKey(hive, RUN, 0, winreg.KEY_SET_VALUE | winreg.KEY_WOW64_64KEY) as k:
         winreg.DeleteValue(k, TEST_RUN)
 
+# what Task Manager shows beyond the Run keys, and states written by other tools
+APPROVED = r"Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run"
+with winreg.CreateKeyEx(winreg.HKEY_CURRENT_USER, RUN, 0, winreg.KEY_SET_VALUE) as k:
+    winreg.SetValueEx(k, "PSweepProbe", 0, winreg.REG_SZ, r"C:\Windows\notepad.exe")      # a name starting with "PS" is a program, not a PowerShell field
+for first, expect in ((0x07, False), (0x06, True), (0x01, False), (0x02, True)):
+    tweaks.reg_set("HKCU", APPROVED, "PSweepProbe", bytes([first]) + bytes(11))
+    e = next((x for x in tweaks.startup_entries() if x["name"] == "PSweepProbe"), None)
+    check(e is not None and e["enabled"] is expect, f"StartupApproved first byte {first:#04x} read as {'on' if expect else 'off'}")
+tweaks.reg_del("HKCU", APPROVED, "PSweepProbe")
+with winreg.OpenKey(winreg.HKEY_CURRENT_USER, RUN, 0, winreg.KEY_SET_VALUE) as k:
+    winreg.DeleteValue(k, "PSweepProbe")
+common = P.powershell("[Environment]::GetFolderPath('CommonStartup')", 30).strip()
+lnk = Path(common) / "SweepSelfTest.lnk"
+P.powershell(f"$s=(New-Object -ComObject WScript.Shell).CreateShortcut('{lnk}'); $s.TargetPath='C:\\Windows\\notepad.exe'; $s.Arguments='/startup'; $s.Save()", 30)
+e = next((x for x in tweaks.startup_entries() if x["name"] == "SweepSelfTest.lnk"), None)
+check(e is not None and e["source"] == "FolderAll" and e["command"].lower().endswith("notepad.exe /startup"),
+      f"shortcut in the all-users Startup folder listed with its target: {e and (e['source'], e['command'])}")
+if e:
+    tweaks.set_startup(e, False)
+    check(next(x for x in tweaks.startup_entries() if x["name"] == "SweepSelfTest.lnk")["enabled"] is False, "all-users Startup folder item switched off")
+    tweaks.set_startup(e, True)
+    check(next(x for x in tweaks.startup_entries() if x["name"] == "SweepSelfTest.lnk")["enabled"] is True, "all-users Startup folder item switched on again")
+    tweaks.reg_del("HKLM", r"Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\StartupFolder", "SweepSelfTest.lnk")
+lnk.unlink(missing_ok=True)
+# a Microsoft Store startup task, made the way Windows records one
+store_key = tweaks._split_ps_path(tweaks.STORE_TASKS)[1] + r"\SweepSelfTest_8wekyb3d8bbwe\SweepStartupTask"
+tweaks.reg_set("HKCU", store_key, "State", 2)
+e = next((x for x in tweaks.startup_entries() if x["source"] == "Store" and x["name"] == "SweepStartupTask"), None)
+check(e is not None and e["enabled"] is True and e["display"] == "SweepSelfTest", f"Store app startup task listed: {e}")
+if e:
+    tweaks.set_startup(e, False)
+    check(tweaks.reg_get("HKCU", store_key, "State") == 1, "Store startup task switched off the way Task Manager does (State 1)")
+    check(next(x for x in tweaks.startup_entries() if x["name"] == "SweepStartupTask")["enabled"] is False, "Store startup task reads as off")
+tweaks.reg_set("HKCU", store_key, "State", 4)
+e = next((x for x in tweaks.startup_entries() if x["name"] == "SweepStartupTask"), None)
+check(e is not None and e["locked"] is True and e["enabled"] is True, "Store startup task set by policy is shown as locked")
+P.powershell(f"Remove-Item -LiteralPath 'HKCU:\\{tweaks._split_ps_path(tweaks.STORE_TASKS)[1]}\\SweepSelfTest_8wekyb3d8bbwe' -Recurse -Force", 30)
+real_store = [x for x in tweaks.startup_entries() if x["source"] == "Store"]
+note(f"Store startup tasks on this machine: {[(x['display'], x['enabled']) for x in real_store][:10]}")
+
 # ---------- browser history ----------
 la, ra = Path(os.environ["LOCALAPPDATA"]), Path(os.environ["APPDATA"])
 chrome = la / "Google" / "Chrome" / "User Data" / "Default"

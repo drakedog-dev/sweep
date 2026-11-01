@@ -120,6 +120,9 @@ class App(QObject):
         self.boot_data: dict = {}
         self.services = []
         self.startup = []
+        self._startup_new: set[str] = set()     # entries that appeared in startup while Sweep was watching
+        self._startup_scan_at = 0.0
+        self._startup_scanning = False
         self.reg_backups = []
         self.volumes = extras.volumes()
         self.selected_drive = extras.system_drive()
@@ -478,9 +481,53 @@ class App(QObject):
 
     @Property("QVariantList", notify=changed)
     def startupList(self):
-        src = {"User": "start.src.user", "System": "start.src.system", "System32": "start.src.system32", "Folder": "start.src.folder"}
-        return [{"name": e["name"], "command": e.get("command", ""), "source": self.i18n.t(src[e.get("source", "")]) if e.get("source") in src else e.get("source", ""),
-                 "enabled": bool(e.get("enabled"))} for e in self.startup]
+        src = {"User": "start.src.user", "System": "start.src.system", "System32": "start.src.system32", "Folder": "start.src.folder",
+               "FolderAll": "start.src.folderall", "Store": "start.src.store"}
+        out = []
+        for e in self.startup:
+            key = tweaks.startup_key(e)
+            out.append({"key": key, "name": e.get("display") or e["name"], "command": e.get("command", ""),
+                        "source": self.i18n.t(src[e.get("source", "")]) if e.get("source") in src else e.get("source", ""),
+                        "enabled": bool(e.get("enabled")), "locked": bool(e.get("locked")), "isNew": key in self._startup_new})
+        return out
+
+    def _take_startup(self, entries: list) -> list[str]:
+        """Replace the startup list with a fresh read; returns the keys that were not there before.
+        The first read ever only remembers what is there, so nothing is marked new on a first start."""
+        keys = [tweaks.startup_key(e) for e in entries]
+        seen = self.settings.get("startupSeen")
+        fresh = [k for k in keys if seen is not None and k not in set(seen)]
+        self._startup_new.update(fresh)
+        self.settings["startupSeen"] = keys
+        P.save_settings(self.settings)
+        self.startup = entries
+        return fresh
+
+    @Slot(bool)
+    def scanStartup(self, manual=False):
+        """Read startup again: programs add themselves (or switch themselves back on) while Sweep is open,
+        so the page is read every time it is shown, when the window comes back to the front and on request."""
+        import time
+        if self._startup_scanning or self._busy or (not manual and time.monotonic() - self._startup_scan_at < 3):
+            return
+        self._startup_scanning = True
+
+        def done(entries):
+            self._startup_scanning = False
+            self._startup_scan_at = time.monotonic()
+            fresh = self._take_startup(entries)
+            self._compute_health()
+            self.changed.emit()
+            if fresh:
+                names = [e.get("display") or e["name"] for e in entries if tweaks.startup_key(e) in fresh]
+                self.toast.emit(self.i18n.t("start.newfound", ", ".join(names[:3]) + ("…" if len(names) > 3 else "")))
+            if manual:
+                self._set_status(self.i18n.t("start.scanned", sum(1 for e in entries if e.get("enabled")), len(entries)))
+
+        def failed(_e):
+            self._startup_scanning = False
+
+        self._bg(tweaks.startup_entries, done, failed)
 
     @Property("QVariantList", notify=changed)
     def volumeList(self):
@@ -585,7 +632,8 @@ class App(QObject):
             self.sysinfo = res["info"]
             self.profile = extras.pc_profile(self.sysinfo)
             self.services = res["services"]
-            self.startup = res["startup"]
+            self._take_startup(res["startup"])
+            self._startup_scan_at = __import__("time").monotonic()
             self.schedule = res["schedule"]
             self.boot_data = res.get("boot") or {}
             self.changed.emit()
@@ -630,9 +678,7 @@ class App(QObject):
             self.installChanged.emit()
             self.installPicked()
         elif kind == "startup":
-            idx = next((i for i, e in enumerate(self.startup) if e["name"] == name), -1)
-            if idx >= 0:
-                self.setStartup(idx, on)
+            self.setStartupKey(name, on)
 
     def _load_services(self):
         out = []
@@ -861,14 +907,14 @@ class App(QObject):
             return {}
         rows = []
         for c in d.get("culprits", []):
-            idx, on = -1, False
+            idx, on, key = -1, False, ""
             f = (c.get("file") or "").lower()
             if c["kind"] == "app" and f:
                 for i, e in enumerate(self.startup):
-                    if f in (e.get("command") or "").lower() or f.rsplit(".", 1)[0] == e.get("name", "").lower():
-                        idx, on = i, bool(e.get("enabled"))
+                    if f in (e.get("command") or "").lower() or f.rsplit(".", 1)[0] == (e.get("display") or e.get("name", "")).lower():
+                        idx, on, key = i, bool(e.get("enabled")), tweaks.startup_key(e)
                         break
-            rows.append(dict(c, kindText=self.i18n.t("boot.kind." + c["kind"]), startupIndex=idx, startupOn=on))
+            rows.append(dict(c, kindText=self.i18n.t("boot.kind." + c["kind"]), startupIndex=idx, startupOn=on, startupKey=key))
         d["culprits"] = rows
         d["verdict"] = bootx.verdict(d.get("last", 0))
         d["boots"] = [dict(b, label=self._when(b["t"], short=True)) for b in d.get("boots", [])]
@@ -1049,19 +1095,32 @@ class App(QObject):
 
     @Slot(int, bool)
     def setStartup(self, index, on):
-        if index < 0 or index >= len(self.startup):
+        if 0 <= index < len(self.startup):
+            self.setStartupKey(tweaks.startup_key(self.startup[index]), on)
+
+    @Slot(str, bool)
+    def setStartupKey(self, key, on):
+        """Switch one entry, found by its key (source and name), never by its position in a list that may have changed."""
+        e = next((x for x in self.startup if tweaks.startup_key(x) == key), None)
+        if e is None:
+            self.changed.emit()
             return
-        e = self.startup[index]
-        if e.get("source", "").startswith("System") and self._need_admin(f"startup:{e['name']}:{int(on)}", "startup"):
+        name = e.get("display") or e["name"]
+        if e.get("locked"):
+            self.toast.emit(self.i18n.t("start.locked", name))
+            self.changed.emit()
+            return
+        if e.get("source") in tweaks.ADMIN_SOURCES and self._need_admin(f"startup:{key}:{int(on)}", "startup"):
             self.changed.emit()
             return
         e["enabled"] = on
+        self._startup_new.discard(key)
         self.changed.emit()
 
         def done(_):
             self._compute_health()
             self.changed.emit()
-            self._set_status(self.i18n.t("start.on" if on else "start.off", e["name"]))
+            self._set_status(self.i18n.t("start.on" if on else "start.off", name))
 
         self._run(lambda: tweaks.set_startup(e, on), done, on_fail=lambda _: e.__setitem__("enabled", not on))
 
