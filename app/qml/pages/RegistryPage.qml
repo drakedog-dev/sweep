@@ -6,11 +6,12 @@ Page {
     id: pg
     title: tr("nav.registry"); subtitle: tr("hdr.registry"); hint: tr("reg.hint")
     property var picked: ({})
-    bigLabel: tr("reg.found"); bigValue: { var n = 0, any = false; var r = app.registry; for (var i = 0; i < r.length; i++) { if (r[i].found >= 0) { any = true; n += r[i].found } } return any ? String(n) : "…" }
+    function on(c) { return picked[c.id] !== undefined ? picked[c.id] : c.def }     // history lists are not ticked unless the user ticks them
+    bigLabel: tr("reg.found"); bigValue: { var n = 0, any = false; var r = app.registry; for (var i = 0; i < r.length; i++) { if (r[i].found >= 0) { any = true; if (on(r[i])) n += r[i].found } } return any ? String(n) : "…" }
     Card { pad: 10
         Column { width: parent.width
             Repeater { model: app.registry
-                ToggleRow { title: modelData.name; hint: modelData.hint; meta: modelData.found >= 0 ? String(modelData.found) : ""; checked: picked[modelData.id] !== false
+                ToggleRow { title: modelData.name; hint: modelData.hint; meta: modelData.found >= 0 ? String(modelData.found) : ""; checked: pg.on(modelData)
                     onToggled: v => { var p = picked; p[modelData.id] = v; picked = p } } }
         }
     }
@@ -28,7 +29,7 @@ Page {
                         Timer { id: rsure; interval: 4000; onTriggered: rrow.sure = false } } } } }
     } }
     footer: [
-        AccentButton { text: tr("reg.clean"); enabled: !app.busy && bigValue !== "…" && bigValue !== "0"; onClicked: { var ids = []; var r = app.registry; for (var i = 0; i < r.length; i++) if (picked[r[i].id] !== false) ids.push(r[i].id); app.regClean(ids) } },
+        AccentButton { text: tr("reg.clean"); enabled: !app.busy && bigValue !== "…" && bigValue !== "0"; onClicked: { var ids = []; var r = app.registry; for (var i = 0; i < r.length; i++) if (pg.on(r[i]) && r[i].found > 0) ids.push(r[i].id); app.regClean(ids) } },
         AccentButton { text: tr("common.scan"); primary: false; enabled: !app.busy; onClicked: app.regScan() }
     ]
 }

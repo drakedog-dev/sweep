@@ -66,7 +66,7 @@ Most cleaners delete first and ask later. Sweep is built the other way round:
 
 **Overview.** Nothing is scanned when Sweep starts. Press **Analyze** and it checks everything in one go: junk, junk on every drive, the registry, startup, privacy and program updates, each with its own result row that opens the page behind it. **Clean what was found** moves the ticked junk to quarantine and fixes the registry with a backup; Recycle Bins are not emptied this way, and startup, privacy and updates are only shown, never changed by themselves. Below are a health index (0 to 100) with concrete tips, your PC profile with one-click recommendations, live CPU and memory graphs, and a quick clean button.
 
-**Junk.** Shows how much space each category takes and removes only what you tick: temp folders, Recycle Bin, thumbnail cache, Windows Update cache, crash dumps and error reports, old Windows logs, browser caches (Chrome, Edge, Yandex, Brave, Vivaldi, Opera, Firefox), browser history and, optionally, cookies. History cleaning removes visited sites, the downloads list and address bar suggestions; passwords, bookmarks, autofill and open tabs are never touched. In Firefox, where history and bookmarks share one database, only visits are removed and a copy of the database goes to quarantine first.
+**Junk.** Shows how much space each category takes and removes only what you tick: temp folders (files older than a day, so a running installer keeps what it unpacked), Recycle Bin, thumbnail cache, Windows Update cache, crash dumps and error reports, old Windows logs, browser caches (Chrome, Edge, Yandex, Brave, Vivaldi, Opera, Firefox), browser history and, optionally, cookies. History cleaning removes visited sites, the downloads list and address bar suggestions; passwords, bookmarks, autofill and open tabs are never touched. In Firefox, where history and bookmarks share one database, only visits are removed and a copy of the database goes to quarantine first. Files Windows will replace at the next restart stay put, and the Windows Update cache is left alone while an update is installing or waits for a restart.
 
 **Privacy.** 17 switches that work like Windows Settings (on means the feature is active) in three groups: data collection (telemetry, advertising ID, activity history, error reporting), ads and suggestions (Start menu, lock screen, Explorer, search box, news and widgets), Microsoft assistants (Cortana, Copilot, Edge telemetry).
 
@@ -82,7 +82,7 @@ Most cleaners delete first and ask later. Sweep is built the other way round:
 
 **Built-in apps.** Removes pre-installed Microsoft and partner apps (Xbox, Solitaire, News, Candy Crush and so on); any of them can be reinstalled from Microsoft Store. An app that opens some file types on your PC (Media Player for videos, say) is marked with those types, because removing it makes Windows forget that choice. Guard never removes an app you picked again to open files.
 
-**Registry.** Recent-file lists, plus MuiCache, App Paths and Run entries of programs that are gone. Store app aliases and plain commands such as `rundll32.exe` are never mistaken for missing files, and file associations and default apps are never touched. Every key is exported to a `.reg` file before it is changed; old backups can be restored or deleted one by one.
+**Registry.** Recent-file lists (your history, so not ticked by default), plus MuiCache, App Paths and Run entries of programs that are gone. Store app aliases and plain commands such as `rundll32.exe` are never mistaken for missing files, and file associations and default apps are never touched. Every key is exported to a `.reg` file before it is changed; old backups can be restored or deleted one by one.
 
 **Startup.** Everything that starts with Windows: Run keys of the user and of the whole system, both Startup folders and Microsoft Store apps, with the same on and off state Task Manager shows. The list is read again every time you open the page, and programs that added themselves since your last look are marked **new**. Entries locked by a policy are shown but cannot be switched.
 
@@ -90,7 +90,7 @@ Most cleaners delete first and ask later. Sweep is built the other way round:
 
 **Boost.** Free RAM, optimise drives, visual-effects presets, power plan, Windows Update, and a weekly scheduled auto-clean.
 
-**Disks.** Every drive is scanned for junk that is safe to remove: its Recycle Bin, unfinished downloads, old logs and dumps, remains of previous Windows installations.
+**Disks.** Every drive is scanned for junk that is safe to remove: its Recycle Bin, unfinished downloads, old logs and dumps, remains of previous Windows installations. Temp and download files from today are kept, and program data (AppData, browser and app databases) is never searched, so a database journal is never mistaken for a log.
 
 **Quarantine.** Files are moved to `ProgramData\Sweep\Quarantine`. **Restore** puts a session back, **Delete** removes it for good, and copies older than 30 days are deleted by themselves (you can turn that off in Settings).
 

@@ -50,7 +50,8 @@ class Category:
 
 
 CATEGORIES: list[Category] = [
-    Category("temp", {"ru": "Временные файлы", "en": "Temporary files"}, {"ru": "Папки Temp пользователя и Windows", "en": "User and Windows Temp folders"}, True, [rf"{TEMP}\*", rf"{WINDIR}\Temp\*"]),
+    # Older than a day: a running installer or program may still need what it unpacked today
+    Category("temp", {"ru": "Временные файлы", "en": "Temporary files"}, {"ru": "Папки Temp пользователя и Windows, файлы старше суток", "en": "User and Windows Temp folders, files older than a day"}, True, [rf"{TEMP}\*", rf"{WINDIR}\Temp\*"], 1),
     Category("bin", {"ru": "Корзина", "en": "Recycle Bin"}, {"ru": "Очищается без карантина, вернуть будет нельзя", "en": "Emptied without quarantine, cannot be undone"}, False, []),
     Category("thumbs", {"ru": "Кэш эскизов Проводника", "en": "Explorer thumbnail cache"}, {"ru": "Картинки предпросмотра, Windows создаёт их заново", "en": "Preview images, Windows rebuilds them"}, True, [rf"{LA}\Microsoft\Windows\Explorer\thumbcache_*.db"]),
     Category("wu", {"ru": "Кэш обновлений Windows", "en": "Windows Update cache"}, {"ru": "Установщики уже установленных обновлений", "en": "Installers of updates already applied"}, True, [rf"{WINDIR}\SoftwareDistribution\Download\*"]),
@@ -74,8 +75,50 @@ def _safe_pattern(pat: str) -> bool:
     return bool(drive) and len([x for x in re.split(r"[\\/]", rest) if x]) >= 2
 
 
+def _pending_renames() -> set[str]:
+    """Files Windows will move or delete at the next restart (an update or installer finishing its work)."""
+    if not P.IS_WINDOWS:
+        return set()
+    import winreg
+    try:
+        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Control\Session Manager") as k:
+            vals = winreg.QueryValueEx(k, "PendingFileRenameOperations")[0] or []
+    except OSError:
+        return set()
+    out = set()
+    for v in vals:
+        v = v.strip().lstrip("!")
+        if v.startswith("\\??\\"):
+            v = v[4:]
+        if len(v) > 3:
+            out.add(os.path.normcase(v.rstrip("\\")))
+    return out
+
+
+def _wu_busy() -> str:
+    """Why the Windows Update cache must stay now, or "" when it can go."""
+    if not P.IS_WINDOWS:
+        return ""
+    import winreg
+    for path in (r"SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired",
+                 r"SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending"):
+        try:
+            winreg.CloseKey(winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, path, 0, winreg.KEY_READ | winreg.KEY_WOW64_64KEY))
+            return "an update waits for a restart"
+        except OSError:
+            pass
+    if _running(("tiworker.exe", "musnotificationux.exe", "wuauclt.exe")):
+        return "Windows is installing updates"
+    return ""
+
+
 def _items(cat: Category) -> list[Path]:
     out: list[Path] = []
+    if cat.id == "wu":
+        why = _wu_busy()
+        if why:
+            P.log(f"junk: Windows Update cache kept, {why}")
+            return out
     for pat in cat.paths:
         if P.IS_WINDOWS and not _safe_pattern(pat):
             P.log(f"junk: pattern skipped, its folder is unknown: {pat}")
@@ -84,8 +127,31 @@ def _items(cat: Category) -> list[Path]:
             out.append(Path(p))
     if cat.older_than_days:
         limit = time.time() - cat.older_than_days * 86400
-        out = [p for p in out if p.exists() and p.stat().st_mtime < limit]
+        out = [p for p in out if _older(p, limit)]
+    pending = _pending_renames()
+    if pending:
+        out = [p for p in out if not _in_use_at_restart(p, pending)]
     return out
+
+
+def _older(p: Path, limit: float) -> bool:
+    """Not touched since the limit; a folder counts as touched when anything directly inside it was."""
+    try:
+        if p.stat().st_mtime >= limit:
+            return False
+        if p.is_dir():
+            with os.scandir(p) as it:
+                for e in it:
+                    if e.stat(follow_symlinks=False).st_mtime >= limit:
+                        return False
+        return True
+    except OSError:
+        return False
+
+
+def _in_use_at_restart(p: Path, pending: set[str]) -> bool:
+    n = os.path.normcase(str(p))
+    return any(x == n or x.startswith(n + "\\") for x in pending)
 
 
 def _size(p: Path) -> int:

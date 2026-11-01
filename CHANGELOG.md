@@ -2,6 +2,15 @@
 
 All notable changes to Sweep. The newest version is at the top; the in-app update dialog and the GitHub release notes are built from this file.
 
+## 1.0.23
+- Program updates: the ticks next to "Catalogue" and "Sources" no longer stand crooked after the check moves on
+- Temp files are cleaned only when older than a day, so an installer or program that is running keeps what it unpacked today
+- Files Windows will replace at the next restart are never moved, and the Windows Update cache stays while an update is installing or waits for a restart
+- Junk on drives: temp files and unfinished downloads from today are kept, and program data (AppData, browser and app databases) is no longer searched, so a database journal is never taken for an old log
+- Recent-file lists are your history, not errors: they are not ticked on the Registry page and "Clean what was found" leaves them alone
+- Removing Xbox Game Bar also switches game capture off, so Windows no longer asks for an app to open "ms-gamingoverlay" links
+- Built-in Windows apps: an app set to open links (new Outlook for mail, say) is marked too; Teams, Xbox and Outlook say when to keep them
+
 ## 1.0.22
 - Overview: one "Analyze" button checks junk, junk on every drive, the registry, startup, privacy and program updates, with a result row for each that opens its page. Nothing runs until you press it
 - "Clean what was found" moves the ticked junk and drive junk to quarantine and fixes the registry problems with a backup and a restore point; startup, privacy and updates are only shown, never changed by it

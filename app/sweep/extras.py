@@ -19,13 +19,14 @@ class RegCategory:
     name: dict
     hint: dict
     keys: list[str]
-    mode: str  # clear / dead / deadvalues
+    mode: str  # clear / dead / deadvalues / muidead
     found: int = -1
+    problem: bool = True   # False: the user's own history, cleaned only when ticked on the Registry page
 
 
 REG_CATEGORIES = [
-    RegCategory("mru", {"ru": "Списки недавних документов и команд", "en": "Recent documents and commands"}, {"ru": "RecentDocs, RunMRU, история диалогов «Открыть» и «Сохранить»", "en": "RecentDocs, RunMRU, Open and Save dialog history"},
-                [r"HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\RecentDocs", r"HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\RunMRU", r"HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\ComDlg32\OpenSavePidlMRU", r"HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\ComDlg32\LastVisitedPidlMRU", r"HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\TypedPaths"], "clear"),
+    RegCategory("mru", {"ru": "Списки недавних документов и команд", "en": "Recent documents and commands"}, {"ru": "RecentDocs, RunMRU, история диалогов «Открыть» и «Сохранить». Это ваша история, а не ошибки, поэтому не отмечено", "en": "RecentDocs, RunMRU, Open and Save dialog history. This is your history, not errors, so it is not ticked"},
+                [r"HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\RecentDocs", r"HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\RunMRU", r"HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\ComDlg32\OpenSavePidlMRU", r"HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\ComDlg32\LastVisitedPidlMRU", r"HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\TypedPaths"], "clear", problem=False),
     # Only names of programs that are gone: clearing the whole cache makes "Open with" and Default apps lose their names until Windows reads them again
     RegCategory("muicache", {"ru": "Кэш названий программ (MuiCache)", "en": "Program name cache (MuiCache)"}, {"ru": "Названия удалённых программ. Записи установленных программ остаются", "en": "Names of removed programs. Entries of installed programs stay"}, [r"HKCU\Software\Classes\Local Settings\Software\Microsoft\Windows\Shell\MuiCache"], "muidead"),
     RegCategory("apppaths", {"ru": "Пути к удалённым программам (App Paths)", "en": "Paths to removed programs (App Paths)"}, {"ru": "Записи, у которых исполняемый файл уже не существует", "en": "Entries whose executable no longer exists"}, [r"HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths", r"HKCU\Software\Microsoft\Windows\CurrentVersion\App Paths"], "dead"),
@@ -161,7 +162,7 @@ def system_drive() -> str:
 
 DRIVE_JUNK = [
     ("bin", {"ru": "Корзина на этом диске", "en": "Recycle Bin on this drive"}, {"ru": "Удалённые файлы, которые ещё занимают место", "en": "Deleted files that still take up space"}),
-    ("tmp", {"ru": "Временные и недокачанные файлы", "en": "Temporary and unfinished downloads"}, {"ru": "*.tmp, *.temp, *.crdownload, *.part, ~$-файлы Office", "en": "*.tmp, *.temp, *.crdownload, *.part, Office ~$ files"}),
+    ("tmp", {"ru": "Временные и недокачанные файлы", "en": "Temporary and unfinished downloads"}, {"ru": "*.tmp, *.temp, *.crdownload, *.part, ~$-файлы Office старше суток", "en": "*.tmp, *.temp, *.crdownload, *.part, Office ~$ files older than a day"}),
     ("logs", {"ru": "Старые журналы и дампы", "en": "Old logs and dumps"}, {"ru": "*.log старше 30 дней, *.dmp, *.chk, папки found.000 после проверки диска", "en": "*.log older than 30 days, *.dmp, *.chk, found.000 folders left by disk check"}),
     ("thumbs", {"ru": "Служебные файлы эскизов", "en": "Thumbnail leftovers"}, {"ru": "Thumbs.db, ehthumbs.db, .DS_Store", "en": "Thumbs.db, ehthumbs.db, .DS_Store"}),
     ("oldwin", {"ru": "Старые установки Windows", "en": "Old Windows installations"}, {"ru": "Windows.old и $WINDOWS.~BT после обновления системы", "en": "Windows.old and $WINDOWS.~BT left after a system upgrade"}),
@@ -169,6 +170,7 @@ DRIVE_JUNK = [
 _TMP_EXT = {".tmp", ".temp", ".crdownload", ".part", ".partial", ".download", ".bak~"}
 _LOG_EXT = {".dmp", ".chk", ".mdmp", ".hdmp"}
 _THUMBS = {"thumbs.db", "ehthumbs.db", "ehthumbs_vista.db", ".ds_store"}
+_NEVER_DIRS = {"appdata", "leveldb", "indexeddb", "local storage", "session storage", "databases", ".git", "node_modules", "steamapps", "$sysreset", "recovery"}
 _DEMO_DRIVE_JUNK = {"C": {"bin": (612 * 2**20, 38), "tmp": (210 * 2**20, 52), "logs": (96 * 2**20, 14), "thumbs": (4 * 2**20, 120), "oldwin": (11.2 * 2**30, 1)},
                     "D": {"bin": (1.3 * 2**30, 9), "tmp": (2.8 * 2**30, 7), "logs": (0, 0), "thumbs": (9 * 2**20, 300), "oldwin": (0, 0)}}
 
@@ -206,10 +208,12 @@ def drive_junk(letter: str) -> dict:
             res["oldwin"]["size"] += total; res["oldwin"]["count"] += 1; res["oldwin"]["paths"].append(pth)
     skip_names = {"$recycle.bin", "system volume information", "windows", "windows.old", "$windows.~bt", "$windows.~ws", "program files", "program files (x86)", "programdata"}
     limit = time.time() - 30 * 86400
+    fresh = time.time() - 86400          # a .tmp or .part touched today may still be written or resumed
     for dp, dns, fs in os.walk(root):
         if dp == root:
             dns[:] = [d for d in dns if d.lower() not in skip_names]
-        dns[:] = [d for d in dns if not _is_link(os.path.join(dp, d))]
+        # Programs keep live data in AppData and in databases: a LevelDB or ESE ".log" there is a journal, not a log
+        dns[:] = [d for d in dns if d.lower() not in _NEVER_DIRS and not _is_link(os.path.join(dp, d))]
         low = os.path.basename(dp).lower()
         if low.startswith("found.") and low[6:].isdigit():
             total = 0
@@ -227,7 +231,11 @@ def drive_junk(letter: str) -> dict:
             if fl in _THUMBS:
                 cat = "thumbs"
             elif ext in _TMP_EXT or (fl.startswith("~$") and ext in (".docx", ".xlsx", ".pptx", ".doc", ".xls", ".ppt")):
-                cat = "tmp"
+                try:
+                    if os.path.getmtime(os.path.join(dp, f)) < fresh:
+                        cat = "tmp"
+                except OSError:
+                    pass
             elif ext in _LOG_EXT:
                 cat = "logs"
             elif ext == ".log":
@@ -253,8 +261,8 @@ def empty_drive_bin(letter: str) -> None:
 # ---------------- apps ----------------
 BLOAT = [
     ("Microsoft.XboxApp", "Xbox", {"ru": "Игровой клиент Xbox", "en": "Xbox game client"}),
-    ("Microsoft.GamingApp", "Xbox (new)", {"ru": "Магазин игр Xbox", "en": "Xbox game store"}),
-    ("Microsoft.XboxGamingOverlay", "Xbox Game Bar", {"ru": "Оверлей для записи игр", "en": "Game recording overlay"}),
+    ("Microsoft.GamingApp", "Xbox (new)", {"ru": "Магазин игр Xbox. Нужен для Game Pass на ПК", "en": "Xbox game store. Needed for PC Game Pass"}),
+    ("Microsoft.XboxGamingOverlay", "Xbox Game Bar", {"ru": "Оверлей для записи игр. Вместе с ним выключается запись игр, чтобы Windows не просила приложение для ms-gamingoverlay", "en": "Game recording overlay. Game capture is switched off with it, so Windows does not ask for an app for ms-gamingoverlay"}),
     ("Microsoft.ZuneMusic", "Media Player", {"ru": "Проигрыватель Microsoft", "en": "Microsoft media player"}),
     ("Microsoft.ZuneVideo", "Movies & TV", {"ru": "Видеопроигрыватель и магазин фильмов", "en": "Video player and movie store"}),
     ("Microsoft.BingNews", "News", {"ru": "Лента новостей Microsoft", "en": "Microsoft news feed"}),
@@ -274,10 +282,10 @@ BLOAT = [
     ("Clipchamp.Clipchamp", "Clipchamp", {"ru": "Видеоредактор с подпиской", "en": "Video editor with subscription"}),
     ("Microsoft.Todos", "Microsoft To Do", {"ru": "Список задач", "en": "To-do list"}),
     ("MicrosoftTeams", "Teams (personal)", {"ru": "Чат Teams для дома", "en": "Teams chat for home"}),
-    ("MSTeams", "Teams", {"ru": "Чат Teams", "en": "Teams chat"}),
+    ("MSTeams", "Teams", {"ru": "Чат Teams. Оставьте, если он нужен для работы или учёбы", "en": "Teams chat. Keep it if you need it for work or school"}),
     ("Microsoft.PowerAutomateDesktop", "Power Automate", {"ru": "Автоматизация для бизнеса", "en": "Business automation"}),
     ("Microsoft.Copilot", "Copilot", {"ru": "Приложение помощника Microsoft", "en": "Microsoft assistant app"}),
-    ("Microsoft.OutlookForWindows", "Outlook (new)", {"ru": "Почтовый клиент с рекламой", "en": "Mail client with ads"}),
+    ("Microsoft.OutlookForWindows", "Outlook (new)", {"ru": "Почтовый клиент с рекламой. Оставьте, если читаете в нём почту", "en": "Mail client with ads. Keep it if you read mail in it"}),
     ("Microsoft.MicrosoftJournal", "Journal", {"ru": "Рукописные заметки", "en": "Handwritten notes"}),
     ("Microsoft.Whiteboard", "Whiteboard", {"ru": "Доска для рисования", "en": "Drawing board"}),
     ("king.com.CandyCrushSaga", "Candy Crush Saga", {"ru": "Игра", "en": "Game"}),
@@ -304,13 +312,22 @@ foreach($k in (Get-ChildItem 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Ex
   if(-not $r.ContainsKey($n)){$r[$n]=@()}
   $r[$n]+=$k.PSChildName
 }
+foreach($k in (Get-ChildItem 'HKCU:\Software\Microsoft\Windows\Shell\Associations\UrlAssociations' -EA SilentlyContinue)){
+  $prog=(Get-ItemProperty -LiteralPath (Join-Path $k.PSPath 'UserChoice') -EA SilentlyContinue).ProgId
+  if(-not $prog){continue}
+  $a=(Get-ItemProperty -LiteralPath "Registry::HKEY_CLASSES_ROOT\$prog\Application" -EA SilentlyContinue).AppUserModelID
+  if(-not $a){continue}
+  $n=($a -split '_')[0]
+  if(-not $r.ContainsKey($n)){$r[$n]=@()}
+  $r[$n]+=($k.PSChildName + ':')
+}
 $r'''
 
 
 def default_apps() -> dict[str, list[str]]:
     """{package name: [".mp4", ...]} for Store apps the user picked to open some file types."""
     if not P.IS_WINDOWS:
-        return {"Microsoft.ZuneMusic": [".mp3", ".mp4", ".mkv", ".avi", ".wav", ".flac", ".mov"]}
+        return {"Microsoft.ZuneMusic": [".mp3", ".mp4", ".mkv", ".avi", ".wav", ".flac", ".mov"], "Microsoft.OutlookForWindows": ["mailto:"]}
     out = P.ps_json(_DEFAULTS_PS, 60)
     if not isinstance(out, dict):
         return {}
@@ -328,9 +345,22 @@ def installed_bloat() -> list[dict]:
     return [{"id": i, "name": n, "hint": h, "defaultFor": defaults.get(i, [])} for i, n, h in BLOAT if i in names]
 
 
+# Without Game Bar, Windows still calls it when a game starts or Win+G is pressed and asks for "a new app to open this
+# ms-gamingoverlay link". With game capture off nothing calls it; Settings > Gaming > Captures turns it back on.
+_NO_GAMEBAR = ((r"System\GameConfigStore", "GameDVR_Enabled"), (r"Software\Microsoft\Windows\CurrentVersion\GameDVR", "AppCaptureEnabled"))
+
+
 def remove_app(app_id: str) -> None:
     if not P.IS_WINDOWS:
         return
+    if app_id == "Microsoft.XboxGamingOverlay":
+        import winreg
+        for path, name in _NO_GAMEBAR:
+            try:
+                with winreg.CreateKeyEx(winreg.HKEY_CURRENT_USER, path, 0, winreg.KEY_SET_VALUE) as k:
+                    winreg.SetValueEx(k, name, 0, winreg.REG_DWORD, 0)
+            except OSError as e:
+                P.log(f"game bar: {path}\\{name}: {e}")
     P.powershell(f"Get-AppxPackage -Name '{app_id}' -AllUsers -EA SilentlyContinue | Remove-AppxPackage -AllUsers -EA SilentlyContinue; Get-AppxProvisionedPackage -Online -EA SilentlyContinue | ? DisplayName -eq '{app_id}' | Remove-AppxProvisionedPackage -Online -EA SilentlyContinue | Out-Null", 180)
 
 

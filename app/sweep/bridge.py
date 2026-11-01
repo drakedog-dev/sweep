@@ -474,7 +474,7 @@ class App(QObject):
 
     @Property("QVariantList", notify=changed)
     def registry(self):
-        return [{"id": c.id, "name": self._loc(c.name), "hint": self._loc(c.hint), "found": c.found} for c in extras.REG_CATEGORIES]
+        return [{"id": c.id, "name": self._loc(c.name), "hint": self._loc(c.hint), "found": c.found, "def": c.problem} for c in extras.REG_CATEGORIES]
 
     @Property("QVariantList", notify=changed)
     def regBackups(self):
@@ -819,7 +819,7 @@ class App(QObject):
         t, sz = self.i18n.t, self.i18n.size
         st = self._an["steps"]
         pu = self._pu
-        regs = sum(c.found for c in extras.REG_CATEGORIES)
+        regs = sum(max(c.found, 0) for c in extras.REG_CATEGORIES if c.problem)     # recent-file lists are history, not problems
         on = sum(1 for e in self.startup if e.get("enabled"))
         tracking = sum(1 for v in self.privacy_state.values() if not v)
         rows = []
@@ -911,7 +911,7 @@ class App(QObject):
         session = cleaner.new_session()
         cats = [c for c in self.categories if self.checked[c.id] and c.size > 0]
         drives = [(d["letter"], r["id"]) for d in self.driveJunk for r in d["rows"] if r["checked"]]
-        regs = [c for c in extras.REG_CATEGORIES if c.found > 0]
+        regs = [c for c in extras.REG_CATEGORIES if c.problem and c.found > 0]
 
         def work():
             if regs:
@@ -1200,7 +1200,7 @@ class App(QObject):
         def work():
             for c in extras.REG_CATEGORIES:
                 extras.reg_scan(c)
-            return sum(c.found for c in extras.REG_CATEGORIES)
+            return sum(c.found for c in extras.REG_CATEGORIES if c.problem)
 
         self._run(work, lambda n: (self.changed.emit(), self._set_status(self.i18n.t("reg.found").capitalize() + f": {n}")), self.i18n.t("common.working"))
 

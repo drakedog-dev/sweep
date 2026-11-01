@@ -223,6 +223,60 @@ print("     fx:", tweaks.visual_fx_mode(), "power:", tweaks.power_plan(), "sched
 progs = U.list_programs()
 check(len(progs) > 3, f"installed programs listed: {len(progs)}")
 
+# ---------- junk cleaning leaves alone what programs may still need ----------
+import time  # noqa: E402
+
+OLD = time.time() - 3 * 86400
+tmpd = Path(os.environ["TEMP"])
+fresh_t, old_t, pend_t = tmpd / "SweepFresh.tmp", tmpd / "SweepOld.tmp", tmpd / "SweepPending.tmp"
+for f in (fresh_t, old_t, pend_t):
+    f.write_text("sweep self-test")
+for f in (old_t, pend_t):
+    os.utime(f, (OLD, OLD))
+SM = r"SYSTEM\CurrentControlSet\Control\Session Manager"
+with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, SM, 0, winreg.KEY_READ | winreg.KEY_SET_VALUE) as k:
+    try:
+        pfro = winreg.QueryValueEx(k, "PendingFileRenameOperations")[0]
+    except OSError:
+        pfro = None
+    winreg.SetValueEx(k, "PendingFileRenameOperations", 0, winreg.REG_MULTI_SZ, list(pfro or []) + ["\\??\\" + str(pend_t), ""])
+temp_cat = next(c for c in cleaner.CATEGORIES if c.id == "temp")
+items = {str(x).lower() for x in cleaner._items(temp_cat)}
+check(str(old_t).lower() in items, "temp: a file older than a day is cleaned")
+check(str(fresh_t).lower() not in items, "temp: a file from today is kept (an installer may still need it)")
+check(str(pend_t).lower() not in items, "temp: a file Windows will replace at the next restart is kept")
+with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, SM, 0, winreg.KEY_SET_VALUE) as k:
+    if pfro is None:
+        winreg.DeleteValue(k, "PendingFileRenameOperations")
+    else:
+        winreg.SetValueEx(k, "PendingFileRenameOperations", 0, winreg.REG_MULTI_SZ, pfro)
+for f in (fresh_t, old_t, pend_t):
+    f.unlink(missing_ok=True)
+print("     Windows Update cache:", cleaner._wu_busy() or "can be cleaned")
+
+# junk on the drive: stale temp files and old logs yes; today's downloads and program databases no
+JT = Path("C:/SweepJunkTest")
+LD = Path(os.environ["LOCALAPPDATA"]) / "SweepJunkTest" / "Local Storage" / "leveldb"
+for d in (JT / "leveldb", LD):
+    d.mkdir(parents=True, exist_ok=True)
+files = {"old_tmp": JT / "old.tmp", "fresh_part": JT / "film.mkv.part", "old_log": JT / "old.log",
+         "db_log": JT / "leveldb" / "000003.log", "appdata_log": LD / "000004.log"}
+for name, f in files.items():
+    f.write_text("sweep self-test")
+    if name != "fresh_part":
+        os.utime(f, (time.time() - 60 * 86400,) * 2)
+dj2 = extras.drive_junk("C")
+found = {x.lower() for c in dj2.values() for x in c["paths"]}
+check(str(files["old_tmp"]).lower() in found and str(files["old_log"]).lower() in found, "drive junk: stale .tmp and an old .log found")
+check(str(files["fresh_part"]).lower() not in found, "drive junk: a download from today is kept")
+check(str(files["db_log"]).lower() not in found and str(files["appdata_log"]).lower() not in found, "drive junk: database journals (leveldb, AppData) are never taken for logs")
+shutil.rmtree(JT, ignore_errors=True)
+shutil.rmtree(LD.parents[1], ignore_errors=True)
+mru = next(c for c in extras.REG_CATEGORIES if c.id == "mru")
+check(not mru.problem and all(c.problem for c in extras.REG_CATEGORIES if c.id != "mru"), "recent-file lists are not counted as registry problems")
+da = extras.default_apps()
+check(isinstance(da, dict), f"default apps read: {da}")
+
 # ---------- cleaning keeps the programs chosen to open files ----------
 ASSOC_PS = r"""$r=@{}
 foreach($k in (Get-ChildItem 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts' -EA SilentlyContinue)){

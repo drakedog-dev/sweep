@@ -227,8 +227,9 @@ Page {
                         width: stR.implicitWidth + 22; height: 28; radius: 14
                         color: now_ ? Theme.soft : "transparent"; border.color: done_ ? Theme.good : now_ ? Theme.accent : Theme.border
                         Row { id: stR; anchors.centerIn: parent; spacing: 6
-                            Icon { name: done_ ? "check" : now_ ? "loader" : "clock"; size: 13; color: done_ ? Theme.good : now_ ? Theme.accent2 : Theme.faint; anchors.verticalCenter: parent.verticalCenter
-                                RotationAnimation on rotation { from: 0; to: 360; duration: 1400; loops: Animation.Infinite; running: now_ && pg.visible } }
+                            Icon { id: stI; name: done_ ? "check" : now_ ? "loader" : "clock"; size: 13; color: done_ ? Theme.good : now_ ? Theme.accent2 : Theme.faint; anchors.verticalCenter: parent.verticalCenter
+                                // the spinner stops at any angle; the tick that replaces it must stand upright
+                                RotationAnimation on rotation { from: 0; to: 360; duration: 1400; loops: Animation.Infinite; running: now_ && pg.visible; onRunningChanged: if (!running) stI.rotation = 0 } }
                             Txt { text: tr("pu.step." + modelData); font.pixelSize: 11; bold: now_; muted: !now_ && !done_; anchors.verticalCenter: parent.verticalCenter } } } }
             }
         }
