@@ -1,0 +1,34 @@
+build: success
+run: https://github.com/drakedog-dev/sweep/actions/runs/41305348766
+commit: d4fd609119b5b40c78f0d7edd22acbc520ce4c24
+
+--- build.txt (last 20 of 20 lines)
+version 1.0.22, tag existed before: False
+- Overview: one "Analyze" button checks junk, junk on every drive, the registry, startup, privacy and program updates, with a result row for each that opens its page. Nothing runs until you press it
+- "Clean what was found" moves the ticked junk and drive junk to quarantine and fixes the registry problems with a backup and a restore point; startup, privacy and updates are only shown, never changed by it
+- Cleaning keeps the programs you chose to open videos, photos and documents. The thumbnail cache no longer takes the icon cache with it, so file icons do not turn blank or wrong until a restart
+- MuiCache loses only the names of programs that are gone, so "Open with" and Default apps keep their program names
+- Microsoft Store app aliases and plain commands such as rundll32.exe are no longer taken for missing files in App Paths and startup entries
+- Built-in Windows apps: an app that opens some file types now (Media Player for videos, say) is marked with those types, because removing it makes Windows forget that choice
+- Guard never removes an app you picked again to open files, and stops watching it
+- Disks: a drive's Recycle Bin is no longer ticked by default, like the Recycle Bin on the Junk page
+- Registry page: backup labels show the date instead of "{0}"
+
+### Download
+
+| File | Size | SHA-256 |
+|---|---|---|
+| [Sweep-Setup-1.0.22.exe](https://github.com/drakedog-dev/sweep/releases/download/v1.0.22/Sweep-Setup-1.0.22.exe) | 34.8 MB | `4055139db0af809c0dc51814d7f4ef09be86ec4bd6b0574ed85a886126ace578` |
+
+Windows 10 and 11, 64-bit. Installer not signed yet. Check the file in PowerShell: `Get-FileHash .\Sweep-Setup-1.0.22.exe`
+
+Sweep offers this update by itself when it starts. Full list of commits: [v1.0.21...v1.0.22](https://github.com/drakedog-dev/sweep/compare/v1.0.21...v1.0.22)
+
+--- log.txt (last 7 of 7 lines)
+2026-11-01 12:13:26  auto clean 20261101_121320: freed 451577198
+2026-11-01 12:13:28  titlebar dark: dark=0x80070006, caption=0x80070006, border=0x80070006, text=0x80070006
+2026-11-01 12:13:31  context: Sweep 1.0.22, admin=True, 64bit, user=runnervmdaln5\runneradmin, os=Microsoft Windows Server 2025 Datacenter 26100, antivirus=none reported, exe=D:\a\sweep\sweep\app\dist\Sweep\Sweep.exe
+2026-11-01 12:13:58  updates: winget upgrade rc=0x0 via conpty, 27 updates, 9 s
+2026-11-01 12:17:03  install: search 'vlc' rc=0x0 via conpty: 10 found
+2026-11-01 12:17:10  ui-test: analysis done, junk=done:clean, drives=done:110 KB can be freed, registry=done:problems: 1, startup=done:3 programs start with Windows, privacy=done:tracking on: 15 of 17, updates=done:27 updates available
+2026-11-01 12:17:10  ui-test: pages 14, programs 59, boots 0, updates 27 (winget=True, checked=True, suspect 0), install picks 45 (installed 4), search 10, QML warnings 0
