@@ -1,0 +1,32 @@
+build: success
+run: https://github.com/drakedog-dev/sweep/actions/runs/41307090345
+commit: ef3bc9169c76999f3d137b030f8b3f38820bdd27
+
+--- build.txt (last 18 of 18 lines)
+version 1.0.23, tag existed before: False
+- Program updates: the ticks next to "Catalogue" and "Sources" no longer stand crooked after the check moves on
+- Temp files are cleaned only when older than a day, so an installer or program that is running keeps what it unpacked today
+- Files Windows will replace at the next restart are never moved, and the Windows Update cache stays while an update is installing or waits for a restart
+- Junk on drives: temp files and unfinished downloads from today are kept, and program data (AppData, browser and app databases) is no longer searched, so a database journal is never taken for an old log
+- Recent-file lists are your history, not errors: they are not ticked on the Registry page and "Clean what was found" leaves them alone
+- Removing Xbox Game Bar also switches game capture off, so Windows no longer asks for an app to open "ms-gamingoverlay" links
+- Built-in Windows apps: an app set to open links (new Outlook for mail, say) is marked too; Teams, Xbox and Outlook say when to keep them
+
+### Download
+
+| File | Size | SHA-256 |
+|---|---|---|
+| [Sweep-Setup-1.0.23.exe](https://github.com/drakedog-dev/sweep/releases/download/v1.0.23/Sweep-Setup-1.0.23.exe) | 34.8 MB | `d9efa814ea895931588e5c234a5b2bc2b63a7cedc77ee196e6b6aa9a61a6b1f1` |
+
+Windows 10 and 11, 64-bit. Installer not signed yet. Check the file in PowerShell: `Get-FileHash .\Sweep-Setup-1.0.23.exe`
+
+Sweep offers this update by itself when it starts. Full list of commits: [v1.0.22...v1.0.23](https://github.com/drakedog-dev/sweep/compare/v1.0.22...v1.0.23)
+
+--- log.txt (last 7 of 7 lines)
+2026-11-01 12:34:53  auto clean 20261101_123448: freed 406764742
+2026-11-01 12:34:55  titlebar dark: dark=0x80070006, caption=0x80070006, border=0x80070006, text=0x80070006
+2026-11-01 12:34:57  context: Sweep 1.0.23, admin=True, 64bit, user=runnervmdaln5\runneradmin, os=Microsoft Windows Server 2025 Datacenter 26100, antivirus=none reported, exe=D:\a\sweep\sweep\app\dist\Sweep\Sweep.exe
+2026-11-01 12:35:19  updates: winget upgrade rc=0x0 via conpty, 27 updates, 4 s
+2026-11-01 12:37:57  install: search 'vlc' rc=0x0 via conpty: 10 found
+2026-11-01 12:38:04  ui-test: analysis done, junk=done:clean, drives=done:90 KB can be freed, registry=done:no problems, startup=done:3 programs start with Windows, privacy=done:tracking on: 15 of 17, updates=done:27 updates available
+2026-11-01 12:38:04  ui-test: pages 14, programs 59, boots 0, updates 27 (winget=True, checked=True, suspect 0), install picks 45 (installed 4), search 10, QML warnings 0
