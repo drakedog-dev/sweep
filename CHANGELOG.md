@@ -2,6 +2,17 @@
 
 All notable changes to Sweep. The newest version is at the top; the in-app update dialog and the GitHub release notes are built from this file.
 
+## 1.0.21
+- Startup is read again every time you open the page, come back to Sweep's window or press "Scan again": programs that add themselves while Sweep is open now show up, marked "new"
+- Startup shows everything Task Manager shows: Microsoft Store apps (new Teams, Spotify and others) and the all-users Startup folder join the Run keys and your own Startup folder
+- Startup states are read like Task Manager reads them, so items switched off elsewhere no longer look switched on; entries whose name starts with "PS" are no longer dropped
+- Nothing is checked by itself at start: system facts are read quietly in the background and junk is measured only when you press Check
+- Quarantine and registry backups can be deleted one by one; "Delete everything" also removes registry, task and service backups
+- After an uninstall, "All works, delete the copies" removes the program's last traces; copies older than 30 days go by themselves (can be turned off in Settings)
+- Leftover registry keys that an installer locked against deletion are unlocked, backed up in full and removed; system keys are never touched
+- Read-only files in quarantine are deleted too
+- Started from a PowerShell 7 window, Sweep no longer loses PowerShell features such as scheduled tasks and permissions
+
 ## 1.0.20
 Bug fixes and polish, nothing new.
 - Russian Windows: startup entries, folders and program paths with Cyrillic names are read correctly, so their switches work (PowerShell answered in the console code page)
