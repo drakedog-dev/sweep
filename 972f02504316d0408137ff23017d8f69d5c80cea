@@ -1,0 +1,32 @@
+build: success
+run: https://github.com/drakedog-dev/sweep/actions/runs/42497223984
+commit: 972f02504316d0408137ff23017d8f69d5c80cea
+
+--- build.txt (last 17 of 17 lines)
+version 1.0.28, tag existed before: False
+- Smooth edges everywhere: the program icon is redrawn with antialiasing at every size Windows uses (title bar, taskbar, Start, Explorer), so it is no longer stair-stepped
+- Rounded shapes with a colour gradient (the Sweep logo, page headers, buttons, switches, progress bars) now have smooth corners; the CPU renderer used to draw their corners in visible steps
+- Icons inside the app are drawn without font hinting, so thin lines stay smooth instead of snapping into blocky pixels
+- Programs installed from Microsoft Store are kept apart from programs installed from websites. A Store app (Spotify, for one) is no longer "updated" with the vendor's website installer, which used to put a second, separate copy next to it: its row says it comes from Microsoft Store and opens the Store's updates page instead
+- Install tab: a program you already have from Microsoft Store is marked "From Store", in the categories and in search results, so the website version is not installed on top of it
+- When winget's package source is damaged ("Failed when opening source(s)", 0x8A15000F), Sweep repairs it by itself, gentlest step first: refreshes the source, registers its package again, resets the winget source alone, then repeats the check. Sources you added are not touched. If nothing helps, it says so and offers to update winget
+
+### Download
+
+| File | Size | SHA-256 |
+|---|---|---|
+| [Sweep-Setup-1.0.28.exe](https://github.com/drakedog-dev/sweep/releases/download/v1.0.28/Sweep-Setup-1.0.28.exe) | 35.0 MB | `4f47df21a964ce3a7b2a272fe9b65e4d66c55d127ce6135731fb77091e30224a` |
+
+Windows 10 and 11, 64-bit. Installer not signed yet. Check the file in PowerShell: `Get-FileHash .\Sweep-Setup-1.0.28.exe`
+
+Sweep offers this update by itself when it starts. Full list of commits: [v1.0.27...v1.0.28](https://github.com/drakedog-dev/sweep/compare/v1.0.27...v1.0.28)
+
+--- log.txt (last 8 of 8 lines)
+2026-11-08 15:56:40  auto clean 20261108_155632: freed 302250622
+2026-11-08 15:56:42  titlebar dark: dark=0x80070006, caption=0x80070006, border=0x80070006, text=0x80070006
+2026-11-08 15:56:47  context: Sweep 1.0.28, admin=True, 64bit, user=runnervmm7ud1\runneradmin, os=Microsoft Windows Server 2025 Datacenter 26100, antivirus=none reported, exe=D:\a\sweep\sweep\app\dist\Sweep\Sweep.exe
+2026-11-08 15:57:04  winget version 1.11.510
+2026-11-08 15:57:08  updates: winget upgrade rc=0x0 via conpty, 18 updates, 5 s
+2026-11-08 16:00:54  install: search 'vlc' rc=0x0 via conpty: 10 found
+2026-11-08 16:01:01  ui-test: analysis done, junk=done:clean, drives=done:90 KB can be freed, registry=done:no problems, startup=done:3 programs start with Windows, privacy=done:tracking on: 15 of 17, updates=done:18 updates available
+2026-11-08 16:01:01  ui-test: pages 14, programs 59, boots 0, updates 18 (winget=True, checked=True, suspect 0), install picks 45 (installed 4), search 10, QML warnings 0
