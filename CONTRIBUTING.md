@@ -50,6 +50,7 @@ Run these before opening a pull request:
 pip install ruff
 ruff check app tools                              # style and common mistakes
 python app/tests/test_updates.py                  # unit tests
+python app/tests/test_selfupdate.py               # Sweep's own update download
 python app/main.py --ui-test --no-elevate         # every page; fails on any QML warning
 ```
 

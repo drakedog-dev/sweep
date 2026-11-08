@@ -20,8 +20,10 @@ jobs:
         with: { python-version: '3.12' }
       - name: Install dependencies
         run: pip install -r app/requirements.txt
-      - name: Unit tests (winget output parser)
-        run: python app/tests/test_updates.py
+      - name: Unit tests (winget output parser, Sweep update download)
+        run: |
+          python app/tests/test_updates.py
+          python app/tests/test_selfupdate.py
       - name: Self test
         run: |
           [Console]::OutputEncoding = [Text.Encoding]::UTF8; $env:PYTHONIOENCODING = 'utf-8'

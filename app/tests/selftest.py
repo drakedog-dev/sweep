@@ -577,6 +577,26 @@ if exe:
             break
     shutil.rmtree(dest, ignore_errors=True)
 
+# ---------------- Sweep's own update: the real release, its checksum and a full download ----------------
+print("\n== Sweep update")
+import tempfile  # noqa: E402
+
+from sweep import selfupdate as SU  # noqa: E402
+
+try:
+    rel = SU.fetch_release(P.UPDATE_REPO)
+    check(bool(rel["tag"] and rel["url"]), f"latest release {rel['tag']}: {rel['url'].rsplit('/', 1)[-1]}")
+    check(len(rel["sha256"]) == 64, f"its SHA-256 is published: {rel['sha256'][:12]}…")
+    tmpd = tempfile.mkdtemp()
+    got = SU.download(rel["url"], os.path.join(tmpd, "Sweep-Setup.exe"), rel["sha256"], pause=1)
+    check(os.path.getsize(got) > 10_000_000, f"installer downloaded and matches its checksum ({os.path.getsize(got) // 1_000_000} MB)")
+    shutil.rmtree(tmpd, ignore_errors=True)
+except SU.UpdateError as e:
+    if e.kind == "limit":
+        note(f"GitHub rate limit on this runner, update check skipped: {e}")
+    else:
+        check(False, f"Sweep update: {e!r}")
+
 # ---------------- title bar in the theme's colours ----------------
 print("\n== title bar")
 from PySide6.QtWidgets import QApplication, QWidget  # noqa: E402

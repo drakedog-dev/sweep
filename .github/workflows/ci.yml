@@ -25,7 +25,9 @@ jobs:
       - name: Lint
         run: ruff check app tools
       - name: Unit tests
-        run: python app/tests/test_updates.py
+        run: |
+          python app/tests/test_updates.py
+          python app/tests/test_selfupdate.py
       - name: Interface test (demo mode)
         env: { QT_QPA_PLATFORM: offscreen }
         run: |

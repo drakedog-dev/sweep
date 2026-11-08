@@ -2,6 +2,12 @@
 
 All notable changes to Sweep. The newest version is at the top; the in-app update dialog and the GitHub release notes are built from this file.
 
+## 1.0.24
+- Sweep's own update no longer pops up or starts while programs are updating or installing, or while Sweep cleans: it waits until the task is done. "Update" pressed meanwhile installs Sweep right after it
+- The download of a new Sweep version survives a dropped connection: it continues where it stopped, up to five tries, instead of failing with "connection closed"
+- The downloaded installer is started only when its SHA-256 matches the one published with the release
+- Clear messages instead of raw errors when GitHub cannot be reached or limits update checks, with the download progress in percent
+
 ## 1.0.23
 - Program updates: the ticks next to "Catalogue" and "Sources" no longer stand crooked after the check moves on
 - Temp files are cleaned only when older than a day, so an installer or program that is running keeps what it unpacked today

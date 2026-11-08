@@ -16,6 +16,7 @@ from . import boot as bootx
 from . import catalog as CAT
 from . import cleaner, extras, guard, tweaks
 from . import platform as P
+from . import selfupdate as SU
 from . import uninstall as U
 from . import updates as UPD
 from .i18n import I18n
@@ -176,6 +177,12 @@ class App(QObject):
         if "updateMode" not in self.settings:
             self.settings["updateMode"] = "off" if self.settings.get("autoUpdate") is False else "ask"
         self._update_prompt: dict = {}
+        self._update_found: dict = {}     # a newer version waiting until Sweep is idle
+        self._update_later = False        # "Remind later" pressed: no prompt again in this session
+        self._install_after = False       # "Update" pressed while Sweep was working
+        self._upd_wait = QTimer(self)
+        self._upd_wait.setInterval(3000)
+        self._upd_wait.timeout.connect(self._update_when_idle)
         self._whats_new: dict = {}
         last = self.settings.get("lastVersion")
         updated = (last and self._newer(P.APP_VERSION, last)) or (last is None and had_settings)
@@ -208,6 +215,10 @@ class App(QObject):
     def _err_text(self, e) -> str:
         if P.is_access_denied(e):
             return self.i18n.t("admin.denied") if self._admin else self.i18n.t("admin.need")
+        if isinstance(e, SU.UpdateError) and e.kind == "limit":
+            return self.i18n.t("set.ratelimit")
+        if SU.is_network_error(e):
+            return self.i18n.t("common.neterr")
         return self.i18n.t("common.error", str(e))
 
     def _need_admin(self, action: str, page: str) -> bool:
@@ -381,9 +392,27 @@ class App(QObject):
         self._whats_new = {}
         self.changed.emit()
 
+    def _update_waits(self) -> bool:
+        """Sweep must not offer or start its own update while it works: updating or installing programs, cleaning,
+        or an action it was restarted with administrator rights for and has not begun yet."""
+        return bool(self._busy or self._pending or self._wg_running())
+
     def _offer_update(self, info: dict) -> None:
-        self._update_prompt = {"tag": info["tag"], "notes": info.get("notes", [])}
-        self.changed.emit()
+        self._update_found = info
+        self._update_when_idle()
+
+    def _update_when_idle(self) -> None:
+        if self._update_waits():
+            if not self._upd_wait.isActive():
+                self._upd_wait.start()
+            return
+        self._upd_wait.stop()
+        if self._install_after:
+            self.installUpdate()
+        elif self._update_found and not self._update_later:
+            info, self._update_found = self._update_found, {}
+            self._update_prompt = {"tag": info["tag"], "notes": info.get("notes", [])}
+            self.changed.emit()
 
     @Slot()
     def acceptUpdate(self):
@@ -395,6 +424,7 @@ class App(QObject):
     @Slot()
     def remindLater(self):
         self._update_prompt = {}
+        self._update_later = True
         self.changed.emit()
 
     @Slot()
@@ -403,6 +433,7 @@ class App(QObject):
             self.settings["skipVersion"] = self._update_prompt["tag"]
             P.save_settings(self.settings)
         self._update_prompt = {}
+        self._update_later = True
         self.changed.emit()
 
     @Slot()
@@ -424,8 +455,9 @@ class App(QObject):
             if not (info.get("newer") and info.get("url")) or info["tag"] == self.settings.get("skipVersion"):
                 return
             if mode == "auto":
+                self._install_after = True        # installs now, or as soon as the current task is over
                 self.toast.emit(self.i18n.t("set.autoinstalling", info["tag"]))
-                QTimer.singleShot(1500, self.installUpdate)
+                QTimer.singleShot(1500, self._update_when_idle)
             else:
                 self._offer_update(info)
 
@@ -2271,15 +2303,9 @@ class App(QObject):
         self.langChanged.emit()
 
     def _fetch_release(self) -> dict:
-        import json
-        import urllib.request
-        req = urllib.request.Request(f"https://api.github.com/repos/{P.UPDATE_REPO}/releases/latest", headers={"User-Agent": f"Sweep/{P.APP_VERSION}"})
-        with urllib.request.urlopen(req, timeout=20) as r:
-            rel = json.loads(r.read().decode("utf-8"))
-        tag = rel.get("tag_name", "").lstrip("v")
-        asset = next((a for a in rel.get("assets", []) if a["name"].startswith("Sweep-Setup") and a["name"].endswith(".exe")), None)
-        return {"tag": tag, "url": asset["browser_download_url"] if asset else "", "newer": self._newer(tag, P.APP_VERSION),
-                "notes": changelog_notes(rel.get("body") or "")}
+        rel = SU.fetch_release(P.UPDATE_REPO)
+        return {"tag": rel["tag"], "url": rel["url"], "sha256": rel["sha256"], "newer": self._newer(rel["tag"], P.APP_VERSION),
+                "notes": changelog_notes(rel["body"])}
 
     @Slot()
     def checkUpdates(self):
@@ -2290,6 +2316,7 @@ class App(QObject):
             self.changed.emit()
             self._set_status(self.i18n.t("set.available", info["tag"]) if info["newer"] else self.i18n.t("set.latest", P.APP_VERSION))
             if info["newer"] and info.get("url"):
+                self._update_later = False        # asked by hand: show the offer even after "Remind later"
                 self._offer_update(info)
 
         self._run(work, done, self.i18n.t("common.working"))
@@ -2308,12 +2335,28 @@ class App(QObject):
         info = self.update_info
         if not info or not info.get("url"):
             return
+        if self._update_waits():          # never close Sweep in the middle of a program update or a clean
+            if not self._install_after:
+                self.toast.emit(self.i18n.t("set.afterwork", info["tag"]))
+            self._install_after = True
+            self._update_when_idle()
+            return
+        self._install_after = False
+        tag = info["tag"]
 
         def work():
             import tempfile
-            import urllib.request
-            dst = os.path.join(tempfile.gettempdir(), f"Sweep-Setup-{info['tag']}.exe")
-            urllib.request.urlretrieve(info["url"], dst)
+            dst = os.path.join(tempfile.gettempdir(), f"Sweep-Setup-{tag}.exe")
+            last = [0.0]
+
+            def progress(got, total):
+                import time
+                if total and time.monotonic() - last[0] > 0.5:
+                    last[0] = time.monotonic()
+                    self._set_status(self.i18n.t("set.downloadingpct", tag, round(got * 100 / total)))
+            if not info.get("sha256"):
+                P.log("self update: no SHA-256 published for this release, the file is not checked")
+            SU.download(info["url"], dst, info.get("sha256", ""), progress=progress)
             if P.IS_WINDOWS:
                 import subprocess
                 subprocess.Popen([dst, "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/CLOSEAPPLICATIONS", "/RELAUNCH=1"])
@@ -2323,7 +2366,14 @@ class App(QObject):
             from PySide6.QtWidgets import QApplication
             QApplication.quit()
 
-        self._run(work, done, self.i18n.t("set.downloading", info["tag"]))
+        def failed(e):
+            P.log(f"self update: {e!r}")
+            kind = getattr(e, "kind", "")
+            msg = (self.i18n.t("set.hasherr", tag) if kind == "hash" else self.i18n.t("set.dlerr", tag) if kind == "download"
+                   else self._err_text(e))
+            QTimer.singleShot(0, lambda: (self._set_status(msg), self.toast.emit(msg)))
+
+        self._run(work, done, self.i18n.t("set.downloading", tag), failed)
 
     @Slot()
     def openLog(self):

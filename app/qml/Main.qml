@@ -209,7 +209,7 @@ ApplicationWindow {
     }
 
     // ---------- a new version is out: reminder with the changes, the user decides ----------
-    Modal { open: !app.needTerms && app.whatsNew["tag"] === undefined && app.updatePrompt["tag"] !== undefined; icon: "download"
+    Modal { open: !app.needTerms && !app.busy && app.whatsNew["tag"] === undefined && app.updatePrompt["tag"] !== undefined; icon: "download"
         title: tr1("upd.title", app.updatePrompt["tag"] || ""); subtitle: tr1("upd.current", app.version)
         Notes { notes: app.updatePrompt["notes"] || [] }
         Txt { text: tr("upd.consent"); muted: true; font.pixelSize: 12; width: parent.width }

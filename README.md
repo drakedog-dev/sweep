@@ -233,6 +233,7 @@ On Linux or macOS Sweep starts in **demo mode** with sample data; that is how th
 
 ```powershell
 python app/tests/test_updates.py                 # anywhere
+python app/tests/test_selfupdate.py              # anywhere
 python app/main.py --ui-test --no-elevate        # every page, fails on any QML warning
 python app/tests/selftest.py                     # Windows only, as administrator; changes and restores real settings
 ```
