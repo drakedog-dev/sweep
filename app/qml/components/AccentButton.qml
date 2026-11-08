@@ -22,9 +22,7 @@ Button {
     }
     background: Item {
         Rectangle { anchors.fill: parent; radius: Theme.radiusSm; visible: !primary; color: btn.hovered ? Theme.softHover : Theme.soft; Behavior on color { ColorAnimation { duration: Theme.dur } } }
-        Rectangle { anchors.fill: parent; radius: Theme.radiusSm; visible: primary
-            gradient: Gradient { orientation: Gradient.Horizontal
-                GradientStop { position: 0; color: danger ? "#DC2626" : Theme.accent }
-                GradientStop { position: 1; color: danger ? "#F87171" : Theme.accent2 } } }
+        GradRect { anchors.fill: parent; radius: Theme.radiusSm; visible: primary
+            c1: danger ? "#DC2626" : Theme.accent; c2: danger ? "#F87171" : Theme.accent2 }
     }
 }

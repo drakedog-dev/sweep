@@ -1,21 +1,15 @@
 import QtQuick
 import Sweep
 
-Rectangle {
+GradRect {
     id: hero
     property string title: ""
     property string subtitle: ""
     property string bigLabel: ""
     property string bigValue: ""
     height: 96; radius: 20
-    gradient: Gradient { orientation: Gradient.Horizontal
-        GradientStop { position: 0; color: Qt.darker(Theme.accent, 1.35) }
-        GradientStop { position: 0.55; color: Theme.accent }
-        GradientStop { position: 1; color: Theme.accent3 } }
-    Rectangle { // soft light sweep
-        anchors.fill: parent; radius: parent.radius; opacity: 0.18
-        gradient: Gradient { orientation: Gradient.Vertical; GradientStop { position: 0; color: "white" } GradientStop { position: 1; color: "transparent" } }
-    }
+    stops: [[0, Qt.darker(Theme.accent, 1.35)], [0.55, Theme.accent], [1, Theme.accent3]]
+    shine: 0.18                      // soft light from the top
     Column { anchors.left: parent.left; anchors.leftMargin: 26; anchors.verticalCenter: parent.verticalCenter; spacing: 2
         width: hero.width - 26 - (bigBox.visible ? bigBox.width + 22 + 18 : 26)
         Text { text: hero.title; color: "white"; font.family: Theme.font; font.pixelSize: 26; font.weight: Font.Bold; renderType: Text.NativeRendering

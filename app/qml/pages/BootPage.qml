@@ -16,8 +16,7 @@ Page {
     // ---------- nothing recorded yet ----------
     Card { visible: !bp.has
         Row { width: parent.width; spacing: 18
-            Rectangle { width: 56; height: 56; radius: 16
-                gradient: Gradient { orientation: Gradient.Horizontal; GradientStop { position: 0; color: Theme.accent } GradientStop { position: 1; color: Theme.accent3 } }
+            GradRect { width: 56; height: 56; radius: 16; c1: Theme.accent; c2: Theme.accent3
                 Icon { anchors.centerIn: parent; name: "timer"; size: 28; color: "white" } }
             Column { width: parent.width - 74; spacing: 6
                 Txt { text: tr("boot.empty.title"); font.pixelSize: 18; bold: true; font.weight: Font.Bold; width: parent.width }

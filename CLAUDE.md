@@ -18,7 +18,7 @@ Sweep is a free, open-source (MIT) Windows 10/11 cleaner and optimiser: Python 3
 | `app/sweep/i18n.py` | All UI strings, `ru` and `en` |
 | `app/qml/` | `Main.qml`, `pages/`, `components/`, `Sweep/Theme.qml` (colours, Lucide icon map) |
 | `app/tests/` | `test_updates.py` and `test_selfupdate.py` (run anywhere), `selftest.py` (Windows only, changes and restores real settings) |
-| `tools/` | `make_icon_font.py` (Lucide subset), `ci_report.py` (CI reports as git notes) |
+| `tools/` | `make_icon_font.py` (Lucide subset), `make_app_icon.py` (draws `app/sweep.ico` and `docs/logo.png` smoothly at every size), `ci_report.py` (CI reports as git notes) |
 
 ## Run and check
 
@@ -38,6 +38,7 @@ ruff check app tools
 - Never touch Windows activation or licensing.
 - New strings go to `i18n.py` in both languages; new icons go to the `icons` map in `Theme.qml`, then run `tools/make_icon_font.py`.
 - Every Windows call needs demo data for non-Windows systems.
+- Rounded shapes with a gradient use `GradRect` (a Canvas), never a `Rectangle` with `gradient:`: the software renderer draws those corners stair-stepped.
 
 ## Releases
 

@@ -27,8 +27,7 @@ Item {
         Behavior on scale { NumberAnimation { duration: Theme.durSlow; easing.type: Easing.OutCubic } }
         Rectangle { z: -1; anchors.fill: parent; anchors.topMargin: 12; radius: parent.radius; color: "#000000"; opacity: 0.35 }
         Row { id: head; anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top; anchors.margins: 28; spacing: 16
-            Rectangle { width: 52; height: 52; radius: 15; visible: m.icon !== ""
-                gradient: Gradient { orientation: Gradient.Horizontal; GradientStop { position: 0; color: Theme.accent } GradientStop { position: 1; color: Theme.accent3 } }
+            GradRect { width: 52; height: 52; radius: 15; visible: m.icon !== ""; c1: Theme.accent; c2: Theme.accent3
                 Icon { anchors.centerIn: parent; name: m.icon; size: 26; color: "white" } }
             Column { width: head.width - 70; spacing: 3; anchors.verticalCenter: parent.verticalCenter
                 Txt { text: m.title; font.pixelSize: 20; bold: true; font.weight: Font.Bold; width: parent.width }

@@ -14,8 +14,7 @@ Page {
                             else if (id === "startup") go("startup"); else if (id === "privacy") go("privacy"); else if (id === "updates") openAppsTab(2) }
         Column { width: parent.width; spacing: 16
             Row { width: parent.width; spacing: 18
-                Rectangle { width: 52; height: 52; radius: 15; anchors.verticalCenter: parent.verticalCenter
-                    gradient: Gradient { orientation: Gradient.Horizontal; GradientStop { position: 0; color: Theme.accent } GradientStop { position: 1; color: Theme.accent3 } }
+                GradRect { width: 52; height: 52; radius: 15; anchors.verticalCenter: parent.verticalCenter; c1: Theme.accent; c2: Theme.accent3
                     Icon { id: radarIcon; anchors.centerIn: parent; name: "radar"; size: 26; color: "white"
                         RotationAnimation { target: radarIcon; property: "rotation"; from: 0; to: 360; duration: 2400; loops: Animation.Infinite
                             running: anCard.an.state === "running"; onRunningChanged: if (!running) radarIcon.rotation = 0 } } }
@@ -122,8 +121,7 @@ Page {
         pad: 16
         color: hov.containsMouse ? Theme.cardAlt : Theme.card
         Row { width: parent.width; spacing: 14; y: Math.max(0, (parent.height - height) / 2)
-            Rectangle { width: 42; height: 42; radius: 12; anchors.verticalCenter: parent.verticalCenter
-                gradient: Gradient { orientation: Gradient.Horizontal; GradientStop { position: 0; color: Theme.accent } GradientStop { position: 1; color: Theme.accent3 } }
+            GradRect { width: 42; height: 42; radius: 12; anchors.verticalCenter: parent.verticalCenter; c1: Theme.accent; c2: Theme.accent3
                 Icon { anchors.centerIn: parent; name: ac.icon; size: 20; color: "white" } }
             Column { width: parent.width - 56; spacing: 2; anchors.verticalCenter: parent.verticalCenter
                 Txt { text: ac.title; bold: true; font.pixelSize: 14; width: parent.width; elide: Text.ElideRight; maximumLineCount: 2; lineHeight: 0.95 }

@@ -89,11 +89,9 @@ Page {
     component Bar: Rectangle {
         property real value: -1                  // 0..1, or -1 while the size is unknown
         height: 6; radius: height / 2; color: Theme.track; clip: true
-        Rectangle { visible: parent.value >= 0; height: parent.height; radius: parent.radius; width: parent.width * Math.max(0, Math.min(1, parent.value))
-            Behavior on width { NumberAnimation { duration: 320; easing.type: Easing.OutCubic } }
-            gradient: Gradient { orientation: Gradient.Horizontal; GradientStop { position: 0; color: Theme.accent } GradientStop { position: 1; color: Theme.accent2 } } }
-        Rectangle { id: stripe; visible: parent.value < 0; height: parent.height; radius: parent.radius; width: parent.width * 0.28
-            gradient: Gradient { orientation: Gradient.Horizontal; GradientStop { position: 0; color: Theme.accent } GradientStop { position: 1; color: Theme.accent2 } }
+        GradRect { visible: parent.value >= 0; height: parent.height; radius: parent.radius; width: parent.width * Math.max(0, Math.min(1, parent.value))
+            Behavior on width { NumberAnimation { duration: 320; easing.type: Easing.OutCubic } } }
+        GradRect { id: stripe; visible: parent.value < 0; height: parent.height; radius: parent.radius; width: parent.width * 0.28
             SequentialAnimation on x { running: stripe.visible; loops: Animation.Infinite
                 NumberAnimation { from: -stripe.width; to: stripe.parent ? stripe.parent.width : 300; duration: 1300; easing.type: Easing.InOutQuad } } }
     }
@@ -130,8 +128,8 @@ Page {
         property string label: ""; property string src: ""
         width: 40; height: 40; radius: 11; color: Theme.soft
         property real hue: { var h = 7; for (var i = 0; i < label.length; i++) h = (h * 31 + label.charCodeAt(i)) % 997; return (h % 360) / 360 }
-        Rectangle { anchors.fill: parent; radius: parent.radius; visible: !mi.visible
-            gradient: Gradient { GradientStop { position: 0; color: Qt.hsla(hue, 0.62, Theme.dark ? 0.52 : 0.58, 1) } GradientStop { position: 1; color: Qt.hsla((hue + 0.07) % 1, 0.7, Theme.dark ? 0.36 : 0.44, 1) } }
+        GradRect { anchors.fill: parent; radius: parent.radius; visible: !mi.visible; vertical: true
+            c1: Qt.hsla(hue, 0.62, Theme.dark ? 0.52 : 0.58, 1); c2: Qt.hsla((hue + 0.07) % 1, 0.7, Theme.dark ? 0.36 : 0.44, 1)
             Text { anchors.centerIn: parent; color: "white"; font.family: Theme.font; font.pixelSize: 17; font.weight: Font.Bold; renderType: Text.NativeRendering
                 text: { var s = label.replace(/[^A-Za-zЀ-ӿ0-9]/g, ""); return s.length ? s.charAt(0).toUpperCase() : "?" } } }
         Image { id: mi; anchors.centerIn: parent; width: 28; height: 28; source: parent.src; smooth: true

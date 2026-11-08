@@ -76,8 +76,7 @@ Page {
     } }
     Card { Column { width: parent.width; spacing: 10
         Row { spacing: 12
-            Rectangle { width: 44; height: 44; radius: 13
-                gradient: Gradient { orientation: Gradient.Horizontal; GradientStop { position: 0; color: Theme.accent } GradientStop { position: 1; color: Theme.accent2 } }
+            GradRect { width: 44; height: 44; radius: 13; c1: Theme.accent; c2: Theme.accent2
                 Text { anchors.centerIn: parent; text: "S"; color: "white"; font.pixelSize: 22; font.weight: Font.Bold; font.family: Theme.font } }
             Column { anchors.verticalCenter: parent.verticalCenter
                 Txt { text: tr("about.title") + "  ·  Sweep " + app.version; font.pixelSize: 15; bold: true }

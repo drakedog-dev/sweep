@@ -69,8 +69,7 @@ ApplicationWindow {
         Behavior on color { ColorAnimation { duration: Theme.dur } }
 
         Row { id: logo; anchors.left: parent.left; anchors.top: parent.top; anchors.margins: 24; anchors.topMargin: 26; spacing: 12
-            Rectangle { width: 40; height: 40; radius: 12
-                gradient: Gradient { orientation: Gradient.Horizontal; GradientStop { position: 0; color: Theme.accent } GradientStop { position: 1; color: Theme.accent2 } }
+            GradRect { width: 40; height: 40; radius: 12; c1: Theme.accent; c2: Theme.accent2
                 Text { anchors.centerIn: parent; text: "S"; color: "white"; font.pixelSize: 20; font.weight: Font.Bold; font.family: Theme.font }
             }
             Column { anchors.verticalCenter: parent.verticalCenter; spacing: 0

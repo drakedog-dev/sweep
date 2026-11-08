@@ -225,7 +225,7 @@ app/
   Sweep.iss          Inno Setup installer
 .github/workflows/   release build, Windows self-test, lint and tests
 docs/                screenshots and images for this page
-tools/               helper scripts (icon font subset)
+tools/               helper scripts (icon font subset, program icon)
 legacy/              the original PowerShell version 0.x
 ```
 

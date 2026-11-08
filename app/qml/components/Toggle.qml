@@ -7,12 +7,10 @@ Item {
     signal toggled(bool value)
     width: 46; height: 26
     Rectangle { anchors.fill: parent; radius: 13; color: Theme.track; Behavior on color { ColorAnimation { duration: Theme.dur } } }
-    Rectangle {
+    GradRect {
         anchors.fill: parent; radius: 13
         opacity: tg.checked ? 1 : 0
         Behavior on opacity { NumberAnimation { duration: Theme.dur } }
-        gradient: Gradient { orientation: Gradient.Horizontal
-            GradientStop { position: 0; color: Theme.accent } GradientStop { position: 1; color: Theme.accent2 } }
     }
     Rectangle {
         width: 20; height: 20; radius: 10; y: 3

@@ -2,6 +2,10 @@
 
 All notable changes to Sweep. The newest version is at the top; the in-app update dialog and the GitHub release notes are built from this file.
 
+## 1.0.28
+- Smooth edges everywhere: the program icon is redrawn with antialiasing at every size Windows uses (title bar, taskbar, Start, Explorer), so it is no longer stair-stepped
+- Rounded shapes with a colour gradient (the Sweep logo, page headers, buttons, switches, progress bars) now have smooth corners; the CPU renderer used to draw their corners in visible steps
+
 ## 1.0.27
 - Antivirus hints name the folder Sweep is really installed in (it can be changed during setup) and the exact Kaspersky options: Do not monitor application activity, Do not inherit restrictions of the parent process, Do not monitor child application activity, Do not scan encrypted traffic
 - Privacy: the Error reporting switch says that with it off, a crashing program may show a bare "Unknown Hard Error" box
