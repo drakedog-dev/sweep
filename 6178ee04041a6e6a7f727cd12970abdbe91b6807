@@ -1,0 +1,26 @@
+build: success
+run: https://github.com/drakedog-dev/sweep/actions/runs/42484791139
+commit: 6178ee04041a6e6a7f727cd12970abdbe91b6807
+
+--- build.txt (last 12 of 12 lines)
+version 1.0.25, tag existed before: False
+- Checking for a new Sweep version works on networks that cut the connection to api.github.com or share one address among many users (GitHub allows 60 API checks an hour per address): Sweep then reads the latest release from github.com itself and takes the installer's SHA-256 from SHA256SUMS.txt
+
+### Download
+
+| File | Size | SHA-256 |
+|---|---|---|
+| [Sweep-Setup-1.0.25.exe](https://github.com/drakedog-dev/sweep/releases/download/v1.0.25/Sweep-Setup-1.0.25.exe) | 34.9 MB | `ac420eca648ae77d9321154a798ea9657aabf666219031a4b53413661c0dce48` |
+
+Windows 10 and 11, 64-bit. Installer not signed yet. Check the file in PowerShell: `Get-FileHash .\Sweep-Setup-1.0.25.exe`
+
+Sweep offers this update by itself when it starts. Full list of commits: [v1.0.24...v1.0.25](https://github.com/drakedog-dev/sweep/compare/v1.0.24...v1.0.25)
+
+--- log.txt (last 7 of 7 lines)
+2026-11-08 13:24:59  auto clean 20261108_132454: freed 302250718
+2026-11-08 13:25:00  titlebar dark: dark=0x80070006, caption=0x80070006, border=0x80070006, text=0x80070006
+2026-11-08 13:25:02  context: Sweep 1.0.25, admin=True, 64bit, user=runnervmm7ud1\runneradmin, os=Microsoft Windows Server 2025 Datacenter 26100, antivirus=none reported, exe=D:\a\sweep\sweep\app\dist\Sweep\Sweep.exe
+2026-11-08 13:25:24  updates: winget upgrade rc=0x0 via conpty, 18 updates, 3 s
+2026-11-08 13:27:37  install: search 'vlc' rc=0x0 via conpty: 10 found
+2026-11-08 13:27:43  ui-test: analysis done, junk=done:clean, drives=done:90 KB can be freed, registry=done:no problems, startup=done:3 programs start with Windows, privacy=done:tracking on: 15 of 17, updates=done:18 updates available
+2026-11-08 13:27:43  ui-test: pages 14, programs 59, boots 0, updates 18 (winget=True, checked=True, suspect 0), install picks 45 (installed 4), search 10, QML warnings 0
