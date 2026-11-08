@@ -483,6 +483,8 @@ check(bool(exe), f"winget found: {exe}")
 if exe:
     res = UPD.scan()
     items = res["items"]
+    if UPD._fix["at"]:
+        check(UPD._fix["ok"], "the broken winget source was repaired (see 'winget:' lines in the log)")
     note("winget updates: " + ", ".join(f"{i['id']} {i['version']}>{i['available']} @{i['host'] or '?'}" for i in items[:12]))
     check(res["winget"] and len(items) > 0, f"outdated programs found on this machine: {len(items)}")
     check(all(i["id"] and "." in i["id"] and i["available"] and i["title"] for i in items), "every row has an id, a title and a new version")

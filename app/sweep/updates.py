@@ -13,6 +13,7 @@ import re
 import shutil
 import subprocess
 import tempfile
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlparse
@@ -53,6 +54,9 @@ REASONS = {
     0x8A150110: "deps",       # INSTALL_DEPENDENCIES
     0x8A150111: "inuse",      # INSTALL_PACKAGE_IN_USE_BY_APPLICATION
     0x8A150056: "noadmin",    # INSTALLER_PROHIBITS_ELEVATION: tried as the signed-in user too, and that did not work
+    0x8A15000A: "source",     # INDEX_INTEGRITY_COMPROMISED
+    0x8A15000B: "source",     # SOURCES_INVALID
+    0x8A15000F: "source",     # SOURCE_DATA_MISSING: "Failed when opening source(s)", repair was tried and did not help
 }
 PROHIBITS_ELEVATION = 0x8A150056
 SUCCESS_REASONS = ("reboot", "uptodate")
@@ -144,6 +148,13 @@ def _args(args: list[str], version: tuple[int, ...] | None = None) -> list[str]:
 
 
 def _run(args: list[str], timeout: int) -> tuple[int, bytes]:
+    rc, raw = _run_once(args, timeout)
+    if source_broken(rc) and repair_source():
+        rc, raw = _run_once(args, timeout)
+    return rc, raw
+
+
+def _run_once(args: list[str], timeout: int) -> tuple[int, bytes]:
     exe = winget_exe()
     if not exe:
         return -1, b""
@@ -158,6 +169,60 @@ def _run(args: list[str], timeout: int) -> tuple[int, bytes]:
     except Exception as e:  # noqa: BLE001
         P.log(f"winget {args[:3]}: {e}")
         return -1, b""
+
+
+# The winget source cannot be opened: its data package is missing or damaged ("Failed when opening source(s); try the
+# 'source reset' command", 0x8A15000F Data required by the source is missing). Common after an interrupted update or
+# on a PC where App Installer was never updated; every check, search and install fails until it is repaired.
+SOURCE_BROKEN = {0x8A15000A, 0x8A15000B, 0x8A15000F}
+_REGISTER_SOURCE_PS = r'''
+$p = Get-AppxPackage -AllUsers -Name Microsoft.Winget.Source -ErrorAction SilentlyContinue | Sort-Object { [version]$_.Version } | Select-Object -Last 1
+$m = if ($p) { Join-Path $p.InstallLocation 'AppxManifest.xml' } else {
+  Get-ChildItem "$env:ProgramFiles\WindowsApps\Microsoft.Winget.Source_*_neutral__8wekyb3d8bbwe\AppxManifest.xml" -ErrorAction SilentlyContinue |
+    Select-Object -Last 1 -ExpandProperty FullName }
+if (-not $m -or -not (Test-Path $m)) { 'no package on this PC'; return }
+try { Add-AppxPackage -DisableDevelopmentMode -Register $m -ErrorAction Stop; "registered $m" } catch { "failed: $($_.Exception.Message)" }
+'''
+_fix_lock = threading.Lock()
+_fix = {"at": 0.0, "ok": False}
+
+
+def source_broken(rc: int) -> bool:
+    return (rc & 0xFFFFFFFF) in SOURCE_BROKEN
+
+
+def _source_works() -> bool:
+    rc, _ = _run_once(["search", "--id", "7zip.7zip", "--exact", "--source", SOURCE] + COMMON, 180)
+    return rc != -1 and not source_broken(rc)
+
+
+def repair_source() -> bool:
+    """Repair the winget source, gentlest step first, and say whether it works now: refresh its data; register again
+    the source package Windows already has (the usual cure for "Data required by the source is missing"); reset the
+    winget source alone. Sources the user added are never touched. Tried at most once in 10 minutes."""
+    if not P.IS_WINDOWS:
+        return False
+    with _fix_lock:
+        if _fix["at"] and time.monotonic() - _fix["at"] < 600:
+            return _fix["ok"]
+        P.log("winget: the source cannot be opened, repairing it")
+        ok = False
+        steps = [("source update", lambda: _run_once(["source", "update", "--name", SOURCE], 300)[0]),
+                 ("register the source package", lambda: P.powershell(_REGISTER_SOURCE_PS, 180).strip()),
+                 ("source reset", lambda: _run_once(["source", "reset", "--name", SOURCE, "--force"], 300)[0])]
+        for what, step in steps:
+            try:
+                res = step()
+            except Exception as e:  # noqa: BLE001
+                res = e
+            if isinstance(res, int):
+                res = f"rc=0x{res & 0xFFFFFFFF:x}"
+            ok = _source_works()
+            P.log(f"winget: {what}: {res}; the source {'works' if ok else 'still fails'}")
+            if ok:
+                break
+        _fix.update(at=time.monotonic(), ok=ok)
+        return ok
 
 
 def lines(raw: bytes | str) -> list[str]:
@@ -294,6 +359,13 @@ def vt_screen(text: str, cols: int = CAP_COLS, rows: int = CAP_ROWS) -> list[str
 def _capture(args: list[str], timeout: int, on_text=None) -> tuple[int, list[str], str]:
     """Run winget and return its screen as lines. Inside a wide pseudo console nothing is shortened with "…";
     a plain pipe (older Windows) is the fallback."""
+    rc, screen, how = _capture_once(args, timeout, on_text)
+    if source_broken(rc) and repair_source():
+        rc, screen, how = _capture_once(args, timeout, on_text)
+    return rc, screen, how
+
+
+def _capture_once(args: list[str], timeout: int, on_text=None) -> tuple[int, list[str], str]:
     exe = winget_exe()
     if not exe:
         return -1, [], "none"
@@ -309,7 +381,7 @@ def _capture(args: list[str], timeout: int, on_text=None) -> tuple[int, list[str
     rc = conpty.run(subprocess.list2cmdline([exe] + args), take, timeout, cols=CAP_COLS, rows=CAP_ROWS)
     if rc is not None:
         return rc, vt_screen("".join(out)), "conpty"
-    rc, raw = _run(args, timeout)
+    rc, raw = _run_once(args, timeout)
     return rc, lines(raw), "pipe"
 
 
@@ -767,7 +839,7 @@ def scan(details: bool = True, progress=None, programs: list[dict] | None = None
         if why:
             P.log(f"updates: the list failed: {why}  {' | '.join(x.strip() for x in ls if x.strip())[-600:]}")
             return {"winget": True, "items": [], "listSecs": 0, "error": f"{rc & 0xFFFFFFFF:#x}" if rc not in (-1, -2) else str(rc),
-                    "errorText": why, "old": bool(winget_version()) and winget_version() < OLD_WINGET}
+                    "errorText": why, "old": bool(winget_version()) and winget_version() < OLD_WINGET, "source": source_broken(rc)}
     list_secs = time.time() - t0
     for r in rows:
         r.update(title=r["name"].rstrip("\u2026. "), installer="", homepage="", host="", sha256=False, urls=[], notes="", notesUrl="",
@@ -984,7 +1056,13 @@ class Progress:
 def _stream(args: list[str], timeout: int, prog: Progress) -> tuple[int, bytes, str]:
     """Run winget and read its output as it comes. Inside a pseudo console winget draws its progress live;
     through a plain pipe it holds the bar back until the end, so the pipe is only the fallback."""
-    import threading
+    rc, raw, how = _stream_once(args, timeout, prog)
+    if source_broken(rc) and repair_source():
+        rc, raw, how = _stream_once(args, timeout, prog)
+    return rc, raw, how
+
+
+def _stream_once(args: list[str], timeout: int, prog: Progress) -> tuple[int, bytes, str]:
     exe = winget_exe()
     if not exe:
         return -1, b"", "none"

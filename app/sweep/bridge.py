@@ -1941,7 +1941,8 @@ class App(QObject):
                 it.update(major=major, state="", reason="", code="", now="", picked=bool(keep) and not it.get("suspect") and not it.get("storeOnly"))
             self._pu_items = res["items"]
             self._pu.update(checking=False, checked=True, winget=res["winget"], when=datetime.now().strftime("%H:%M"), stage="",
-                            error=res.get("error", ""), errorText=res.get("errorText", ""), old=bool(res.get("old")))
+                            error=res.get("error", ""), errorText=res.get("errorText", ""), old=bool(res.get("old")),
+                            source=bool(res.get("source")))
             if res.get("error", "").startswith("0x") and UPD.reason_for(int(res["error"], 16)) == "net":
                 self._note_net_block()
             conf = self._pu_conf()

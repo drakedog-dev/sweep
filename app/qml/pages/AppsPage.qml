@@ -259,10 +259,11 @@ Page {
                         Txt { text: tr("pu.failed"); width: parent.width }
                         Txt { text: (pu.errorText || "") + (pu.error ? " (" + pu.error + ")" : ""); color: Theme.muted; font.pixelSize: 12; width: parent.width }
                         Txt { visible: pu.old === true; text: tr("pu.oldwinget"); color: Theme.muted; font.pixelSize: 12; width: parent.width }
+                        Txt { visible: pu.source === true; text: tr("pu.source"); color: Theme.muted; font.pixelSize: 12; width: parent.width }
                         Txt { visible: app.netHint !== ""; text: app.netHint; font.pixelSize: 12; width: parent.width } } }
                 Row { spacing: 8
                     AccentButton { text: tr("pu.again"); compact: true; onClicked: app.scanUpdates() }
-                    AccentButton { visible: pu.old === true; primary: false; text: tr("pu.getwinget.update"); compact: true; onClicked: app.openUrl("ms-windows-store://pdp/?productid=9NBLGGH4NNS1") } } }
+                    AccentButton { visible: pu.old === true || pu.source === true; primary: false; text: tr("pu.getwinget.update"); compact: true; onClicked: app.openUrl("ms-windows-store://pdp/?productid=9NBLGGH4NNS1") } } }
             Empty { msg: tr("pu.never"); visible: !pu.checked }
             // nothing is ticked by itself: tick programs one by one, or take all of them with one click
             Rectangle { id: selBar; visible: (pu.safe || 0) > 0; width: parent.width; height: 50; radius: 12; color: Theme.cardAlt

@@ -534,6 +534,8 @@ STRINGS: dict[str, dict[str, str]] = {
     "pu.r.cancel": {"ru": "Установка отменена", "en": "Installation cancelled"},
     "pu.r.policy": {"ru": "Запрещено политикой компьютера", "en": "Blocked by a policy on this PC"},
     "pu.r.timeout": {"ru": "Установщик не ответил за 30 минут", "en": "The installer did not finish within 30 minutes"},
+    "pu.r.source": {"ru": "Не открывается источник программ winget, и починить его не вышло. Обновите App Installer из Microsoft Store", "en": "The winget package source will not open, and repairing it did not help. Update App Installer from Microsoft Store"},
+    "pu.source": {"ru": "Источник программ winget повреждён. Sweep попробовал его починить (обновить, заново зарегистрировать, сбросить), но это не помогло. Обновите App Installer из Microsoft Store и перезагрузите компьютер", "en": "The winget package source is damaged. Sweep tried to repair it (update, register again, reset), but that did not help. Update App Installer from Microsoft Store and restart the PC"},
     "pu.r.code": {"ru": "Ошибка установщика", "en": "Installer error"},
     "pu.updateAll": {"ru": "Обновить все: {0}", "en": "Update all: {0}"},
     "pu.scan.title": {"ru": "Ищу обновления", "en": "Looking for updates"},

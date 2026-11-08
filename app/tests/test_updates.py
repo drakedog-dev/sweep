@@ -269,6 +269,43 @@ def test_download_errors():
     assert U._verdict(0x801901F8 - (1 << 32)) == (0x801901F8, "server", False)
 
 
+def test_broken_source_is_repaired_once():
+    saved = (U.P.IS_WINDOWS, U._run_once, U._capture_once, U.P.powershell, dict(U._fix))
+    calls: list[str] = []
+    broken = 0x8A15000F - (1 << 32)
+    state = {"fixed": False}
+
+    def run_once(args, timeout):
+        calls.append(" ".join(args[:2]))
+        if args[:2] == ["source", "reset"]:
+            state["fixed"] = True
+        if args[0] == "search":
+            return (0 if state["fixed"] else broken), b""
+        return 0, b""
+
+    def capture_once(args, timeout, on_text=None):
+        calls.append("capture")
+        return (0 if state["fixed"] else broken), ["ok"], "conpty"
+    try:
+        U.P.IS_WINDOWS, U._run_once, U._capture_once = True, run_once, capture_once
+        U.P.powershell = lambda script, timeout=120: (calls.append("register"), "no package on this PC")[1]
+        U._fix.update(at=0.0, ok=False)
+        assert U.source_broken(broken) and U.source_broken(0x8A15000F) and not U.source_broken(0x8A150012)
+        rc, screen, _ = U._capture(["upgrade", "--source", "winget"], 60)
+        assert rc == 0 and screen == ["ok"]
+        # gentlest first, each step checked, and the command run again once
+        assert calls == ["capture", "source update", "search --id", "register", "search --id", "source reset", "search --id", "capture"], calls
+        calls.clear()
+        state["fixed"] = False
+        rc, _, _ = U._capture(["upgrade"], 60)               # broken again within 10 minutes: no second repair
+        assert rc == broken and calls == ["capture", "capture"], calls
+        assert U.reason_for(0x8A15000F) == "source"
+    finally:
+        U.P.IS_WINDOWS, U._run_once, U._capture_once, U.P.powershell = saved[:4]
+        U._fix.clear()
+        U._fix.update(saved[4])
+
+
 if __name__ == "__main__":
     failed = 0
     for name, fn in list(globals().items()):

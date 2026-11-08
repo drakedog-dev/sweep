@@ -8,6 +8,7 @@ All notable changes to Sweep. The newest version is at the top; the in-app updat
 - Icons inside the app are drawn without font hinting, so thin lines stay smooth instead of snapping into blocky pixels
 - Programs installed from Microsoft Store are kept apart from programs installed from websites. A Store app (Spotify, for one) is no longer "updated" with the vendor's website installer, which used to put a second, separate copy next to it: its row says it comes from Microsoft Store and opens the Store's updates page instead
 - Install tab: a program you already have from Microsoft Store is marked "From Store", in the categories and in search results, so the website version is not installed on top of it
+- When winget's package source is damaged ("Failed when opening source(s)", 0x8A15000F), Sweep repairs it by itself, gentlest step first: refreshes the source, registers its package again, resets the winget source alone, then repeats the check. Sources you added are not touched. If nothing helps, it says so and offers to update winget
 
 ## 1.0.27
 - Antivirus hints name the folder Sweep is really installed in (it can be changed during setup) and the exact Kaspersky options: Do not monitor application activity, Do not inherit restrictions of the parent process, Do not monitor child application activity, Do not scan encrypted traffic
