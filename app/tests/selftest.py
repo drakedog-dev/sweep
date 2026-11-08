@@ -486,6 +486,12 @@ if exe:
     note("winget updates: " + ", ".join(f"{i['id']} {i['version']}>{i['available']} @{i['host'] or '?'}" for i in items[:12]))
     check(res["winget"] and len(items) > 0, f"outdated programs found on this machine: {len(items)}")
     check(all(i["id"] and "." in i["id"] and i["available"] and i["title"] for i in items), "every row has an id, a title and a new version")
+    wv = UPD.winget_version()
+    check(len(wv) >= 2, f"winget version read: {'.'.join(map(str, wv))}")
+    check(UPD._args(UPD.COMMON) == UPD.COMMON or wv < (1, 4), "every flag kept for a current winget")
+    rc_bad, scr_bad, _ = UPD._capture(["upgrade", "--source", "sweep-no-such-source"] + UPD.COMMON, 120)
+    why_bad = UPD.list_failed(rc_bad, scr_bad, UPD.parse_upgrades(scr_bad))
+    check(bool(why_bad), f"a winget list that fails is reported as a failure, not as 'up to date' ({rc_bad & 0xFFFFFFFF:#x}: {why_bad})")
     known = [i for i in items if i["host"] and i["sha256"]]
     check(len(known) >= max(1, len(items) * 0.8), f"vendor address and SHA-256 known for most packages ({len(known)}/{len(items)})")
     pick = next((i for k in ("GitHub.cli", "7zip.7zip", "JRSoftware.InnoSetup", "Microsoft.PowerShell") for i in items if i["id"] == k), None)

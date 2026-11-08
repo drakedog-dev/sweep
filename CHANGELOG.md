@@ -2,6 +2,10 @@
 
 All notable changes to Sweep. The newest version is at the top; the in-app update dialog and the GitHub release notes are built from this file.
 
+## 1.0.26
+- Program updates: when winget cannot check (an old winget on Windows 10, a source that cannot be opened), Sweep says so and offers to check again, instead of reporting that every program is up to date
+- Older winget versions work: flags they do not know are left out, and Sweep suggests updating App Installer from Microsoft Store
+
 ## 1.0.25
 - Checking for a new Sweep version works on networks that cut the connection to api.github.com or share one address among many users (GitHub allows 60 API checks an hour per address): Sweep then reads the latest release from github.com itself and takes the installer's SHA-256 from SHA256SUMS.txt
 

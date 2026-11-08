@@ -874,7 +874,8 @@ class App(QObject):
                     text, bad = (t("an.privacy", tracking, len(self.privacy_state)), True) if tracking else (t("an.privacy.ok"), False)
                 elif sid == "updates":
                     n = int(self.programUpdates.get("count", 0))       # the same number the Updates tab shows
-                    text, bad = ((t("an.updates", n), True) if n else (t("pu.none"), False)) if pu.get("winget", True) else (t("pu.nowinget.short"), False)
+                    text, bad = ((t("an.updates", n), True) if n else (t("pu.failed.short"), True) if pu.get("error") else (t("pu.none"), False)) \
+                        if pu.get("winget", True) else (t("pu.nowinget.short"), False)
             rows.append({"id": sid, "state": state, "text": text, "bad": bad})
         cleanable = (self.junkTotal if st.get("junk") == "done" else 0) + (self.driveJunkTotal if st.get("drives") == "done" else 0)
         return {"state": self._an["state"], "rows": rows, "cleanable": float(cleanable), "registry": regs if st.get("registry") == "done" else 0,
@@ -1765,7 +1766,8 @@ class App(QObject):
                 keep = old[it["id"]]["picked"] if it["id"] in old else False      # nothing is ticked by itself
                 it.update(major=major, state="", reason="", code="", now="", picked=bool(keep) and not it.get("suspect"))
             self._pu_items = res["items"]
-            self._pu.update(checking=False, checked=True, winget=res["winget"], when=datetime.now().strftime("%H:%M"), stage="")
+            self._pu.update(checking=False, checked=True, winget=res["winget"], when=datetime.now().strftime("%H:%M"), stage="",
+                            error=res.get("error", ""), errorText=res.get("errorText", ""), old=bool(res.get("old")))
             conf = self._pu_conf()
             conf["lastCheck"] = datetime.now().isoformat(timespec="seconds")
             if res.get("listSecs"):
@@ -1776,7 +1778,8 @@ class App(QObject):
             self.changed.emit()
             n = len(self._pu_safe())
             if not quiet:
-                self._set_status(self.i18n.t("pu.found", n) if n else self.i18n.t("pu.none") if res["winget"] else self.i18n.t("pu.nowinget.short"))
+                self._set_status(self.i18n.t("pu.found", n) if n else self.i18n.t("pu.failed.short") if res.get("error")
+                                 else self.i18n.t("pu.none") if res["winget"] else self.i18n.t("pu.nowinget.short"))
             if self._pu_pending:
                 want, self._pu_pending = set(self._pu_pending), []
                 for it in self._pu_items:

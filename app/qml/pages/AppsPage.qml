@@ -246,9 +246,20 @@ Page {
     }
     Card { visible: pg.tab === 2 && pu.winget !== false && !pu.checking; pad: 12
         Column { width: parent.width; spacing: 6
-            Row { spacing: 12; visible: pu.checked && (pu.items || []).length === 0; leftPadding: 10; topPadding: 8; bottomPadding: 8
+            Row { spacing: 12; visible: pu.checked && !pu.error && (pu.items || []).length === 0; leftPadding: 10; topPadding: 8; bottomPadding: 8
                 Icon { name: "circle-check"; size: 20; color: Theme.good; anchors.verticalCenter: parent.verticalCenter }
                 Txt { text: tr("pu.none"); anchors.verticalCenter: parent.verticalCenter } }
+            // winget answered with an error: that is not "everything is up to date"
+            Column { id: puErr; visible: pu.checked === true && !!pu.error; width: parent.width; spacing: 10; leftPadding: 10; topPadding: 8; bottomPadding: 8
+                Row { spacing: 12; width: puErr.width - 20
+                    Icon { name: "circle-alert"; size: 20; color: Theme.warn; anchors.top: parent.top; anchors.topMargin: 1 }
+                    Column { width: parent.width - 32; spacing: 4
+                        Txt { text: tr("pu.failed"); width: parent.width }
+                        Txt { text: (pu.errorText || "") + (pu.error ? " (" + pu.error + ")" : ""); color: Theme.muted; font.pixelSize: 12; width: parent.width }
+                        Txt { visible: pu.old === true; text: tr("pu.oldwinget"); color: Theme.muted; font.pixelSize: 12; width: parent.width } } }
+                Row { spacing: 8
+                    AccentButton { text: tr("pu.again"); compact: true; onClicked: app.scanUpdates() }
+                    AccentButton { visible: pu.old === true; primary: false; text: tr("pu.getwinget.update"); compact: true; onClicked: app.openUrl("ms-windows-store://pdp/?productid=9NBLGGH4NNS1") } } }
             Empty { msg: tr("pu.never"); visible: !pu.checked }
             // nothing is ticked by itself: tick programs one by one, or take all of them with one click
             Rectangle { id: selBar; visible: (pu.safe || 0) > 0; width: parent.width; height: 50; radius: 12; color: Theme.cardAlt

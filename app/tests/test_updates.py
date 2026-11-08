@@ -216,6 +216,27 @@ def test_exit_codes():
     assert U.REASONS[0x8A150101] == "inuse"
 
 
+def test_failed_list_is_not_up_to_date():
+    help_text = ["Argument name was not recognized for the current command: '--disable-interactivity'", "",
+                 "Upgrades the selected package.", "usage: winget upgrade [[-q] <query>] [<options>]"]
+    assert "not recognized" in U.list_failed(0x8A150002 - (1 << 32), help_text, [])
+    assert U.list_failed(0, ["No installed package found matching input criteria."], []) == ""
+    assert U.list_failed(U.NOT_FOUND - (1 << 32), ["No installed package found matching input criteria."], []) == ""
+    src = ["Failed when opening source(s); try the 'source reset' command if the problem persists.", "  -\\|/  "]
+    assert U.list_failed(0x8A15000F - (1 << 32), src, []).startswith("Failed when opening source")
+    table = ["Name   Id   Version   Available   Source", "-" * 40, "garbage"]
+    assert U.list_failed(0, table, []) == "unreadable table"
+    assert U.list_failed(0, table, [{"id": "a.b"}]) == ""
+    assert U.list_failed(-2, [], []) == "timeout"
+
+
+def test_flags_for_old_winget():
+    args = ["upgrade", "--source", "winget", "--accept-source-agreements", "--disable-interactivity"]
+    assert U._args(args, (1, 2, 10271)) == args[:-1]
+    assert U._args(args, (1, 9, 25200)) == args
+    assert U._args(args, ()) == args                    # version unknown: keep the flags
+
+
 def test_download_errors():
     assert U.reason_for(0x801901F8) == "server"          # HTTP 504 from the vendor's server
     assert U.reason_for(0x80190194) == "gone"            # HTTP 404: the file is not there

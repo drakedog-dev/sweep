@@ -110,6 +110,35 @@ def available() -> bool:
     return bool(winget_exe()) if P.IS_WINDOWS else True
 
 
+# Flags newer than the winget an old Windows 10 may still have (App Installer never updated): an unknown flag makes
+# winget print its help and stop, which used to look like "no updates".
+NEW_FLAGS = {"--disable-interactivity": (1, 4)}
+OLD_WINGET = (1, 6)               # below this, Sweep suggests updating App Installer from Microsoft Store
+_wg_ver: tuple[int, ...] | None = None
+
+
+def winget_version() -> tuple[int, ...]:
+    """(1, 9, 25200) from `winget --version`; () when unknown."""
+    global _wg_ver
+    if _wg_ver is None:
+        _wg_ver = ()
+        exe = winget_exe() if P.IS_WINDOWS else ""
+        if exe:
+            try:
+                r = subprocess.run([exe, "--version"], stdin=subprocess.DEVNULL, capture_output=True, timeout=30, creationflags=0x08000000)
+                m = re.search(r"(\d+)\.(\d+)(?:\.(\d+))?", r.stdout.decode("utf-8", "replace"))
+                _wg_ver = tuple(int(x) for x in m.groups() if x) if m else ()
+            except Exception as e:  # noqa: BLE001
+                P.log(f"winget --version: {e}")
+            P.log(f"winget version {'.'.join(map(str, _wg_ver)) or 'unknown'}")
+    return _wg_ver
+
+
+def _args(args: list[str], version: tuple[int, ...] | None = None) -> list[str]:
+    v = winget_version() if version is None else version
+    return [a for a in args if not (v and a in NEW_FLAGS and v < NEW_FLAGS[a])]
+
+
 def _run(args: list[str], timeout: int) -> tuple[int, bytes]:
     exe = winget_exe()
     if not exe:
@@ -117,7 +146,7 @@ def _run(args: list[str], timeout: int) -> tuple[int, bytes]:
     si = subprocess.STARTUPINFO()
     si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
     try:
-        r = subprocess.run([exe] + args, stdin=subprocess.DEVNULL, capture_output=True, timeout=timeout, startupinfo=si, creationflags=0x08000000)
+        r = subprocess.run([exe] + _args(args), stdin=subprocess.DEVNULL, capture_output=True, timeout=timeout, startupinfo=si, creationflags=0x08000000)
         return r.returncode, r.stdout + (b"\n" + r.stderr if r.stderr else b"")
     except subprocess.TimeoutExpired:
         P.log(f"winget {args[:3]}: timed out after {timeout} s")
@@ -272,6 +301,7 @@ def _capture(args: list[str], timeout: int, on_text=None) -> tuple[int, list[str
         if on_text:
             on_text(t)
 
+    args = _args(args)
     rc = conpty.run(subprocess.list2cmdline([exe] + args), take, timeout, cols=CAP_COLS, rows=CAP_ROWS)
     if rc is not None:
         return rc, vt_screen("".join(out)), "conpty"
@@ -690,6 +720,11 @@ def scan(details: bool = True, progress=None, programs: list[dict] | None = None
         rc, ls, how = _capture(["upgrade", "--source", SOURCE] + COMMON, 300)
         rows = _repair_ids(parse_upgrades(ls))
         P.log(f"updates: winget upgrade rc={rc & 0xFFFFFFFF:#x} via {how}, {len(rows)} updates, {time.time() - t0:.0f} s")
+        why = list_failed(rc, ls, rows)
+        if why:
+            P.log(f"updates: the list failed: {why}  {' | '.join(x.strip() for x in ls if x.strip())[-600:]}")
+            return {"winget": True, "items": [], "listSecs": 0, "error": f"{rc & 0xFFFFFFFF:#x}" if rc not in (-1, -2) else str(rc),
+                    "errorText": why, "old": bool(winget_version()) and winget_version() < OLD_WINGET}
     list_secs = time.time() - t0
     for r in rows:
         r.update(title=r["name"].rstrip("\u2026. "), installer="", homepage="", host="", sha256=False, urls=[], notes="", notesUrl="",
@@ -716,6 +751,26 @@ def scan(details: bool = True, progress=None, programs: list[dict] | None = None
     except Exception as e:  # noqa: BLE001
         P.log(f"updates: store apps or running programs not read: {e}")
     return {"winget": True, "items": rows, "listSecs": round(list_secs, 1)}
+
+
+_SPINNER = re.compile(r"^[\s\-\\|/█▒▓░■□.%0-9KMGBkmgb/]*$")
+
+
+def list_failed(rc: int, screen: list[str], rows: list[dict]) -> str:
+    """Why `winget upgrade` gave no usable list, or "" when an empty list really means "nothing to update".
+    Nothing to update is exit code 0 or NO_APPLICATIONS_FOUND / UPDATE_NOT_APPLICABLE with no table; anything else
+    (help text after an unknown flag, a source that could not be opened, a table the parser could not read) is a failure."""
+    if rows:
+        return ""
+    code = rc & 0xFFFFFFFF
+    if rc == -2:
+        return "timeout"
+    table = any(_SEP.match(x) for x in screen)
+    if code in (0, NOT_FOUND, NOT_APPLICABLE) and not table:
+        return ""
+    said = [x.strip() for x in screen if x.strip() and not _SPINNER.match(x.strip())]
+    msg = next((x for x in said if re.search(r"error|failed|not recognized|ошибк|не удалось|не распознан|0x8a15", x, re.I)), said[-1] if said else "")
+    return (msg[:200] or "no answer") if not table else "unreadable table"
 
 
 def _programs() -> list[dict]:
@@ -896,6 +951,7 @@ def _stream(args: list[str], timeout: int, prog: Progress) -> tuple[int, bytes, 
         prog.feed_text(text)
 
     from . import conpty
+    args = _args(args)
     rc = conpty.run(subprocess.list2cmdline([exe] + args), take, timeout)
     if rc is not None:
         prog.feed_text("\n")
