@@ -1,26 +1,40 @@
-; Installer for Sweep 1.0 (Python + Qt build). Compiled by GitHub Actions.
-#define AppName "Sweep"
+; Installer for Sweep (Python + Qt build). Compiled by GitHub Actions.
+; /DBeta=1 builds Sweep Beta: another program next to Sweep (own AppId, folder, shortcuts, scheduled tasks).
+#ifdef Beta
+  #define AppName "Sweep Beta"
+  #define SetupName "Sweep-Beta-Setup"
+#else
+  #define AppName "Sweep"
+  #define SetupName "Sweep-Setup"
+#endif
 #ifndef AppVersion
   #define AppVersion "1.0.0"
 #endif
+#ifndef NumVersion
+  #define NumVersion AppVersion
+#endif
 
 [Setup]
+#ifdef Beta
+AppId={{3B9F6D2E-8A41-4E7C-B5D0-2C6E9F1A7B83}
+#else
 AppId={{7E2C1C3A-5B61-4C7B-9D1E-0A7A1F2B3C4D}
+#endif
 AppName={#AppName}
 AppVersion={#AppVersion}
 AppPublisher=Sweep
 AppPublisherURL=https://github.com/drakedog-dev/sweep
 AppCopyright=Copyright (c) 2026 Alex (Drakedog). MIT License.
-VersionInfoVersion={#AppVersion}
+VersionInfoVersion={#NumVersion}
 VersionInfoProductName={#AppName}
-VersionInfoProductVersion={#AppVersion}
+VersionInfoProductVersion={#NumVersion}
 VersionInfoCompany=Sweep
-VersionInfoDescription=Sweep Setup
+VersionInfoDescription={#AppName} Setup
 DefaultDirName={autopf}\{#AppName}
 DefaultGroupName={#AppName}
 UninstallDisplayIcon={app}\Sweep.exe
 OutputDir=Output
-OutputBaseFilename=Sweep-Setup-{#AppVersion}
+OutputBaseFilename={#SetupName}-{#AppVersion}
 SetupIconFile=sweep.ico
 Compression=lzma2/ultra64
 SolidCompression=yes
@@ -53,8 +67,8 @@ Filename: "{app}\Sweep.exe"; Flags: nowait shellexec; Check: ShouldRelaunch
 
 [UninstallRun]
 ; scheduled tasks Sweep created (Guard and the weekly clean) leave together with Sweep
-Filename: "{sys}\schtasks.exe"; Parameters: "/Delete /TN ""Sweep Guard"" /F"; Flags: runhidden; RunOnceId: "DelGuardTask"
-Filename: "{sys}\schtasks.exe"; Parameters: "/Delete /TN ""Sweep Auto Clean"" /F"; Flags: runhidden; RunOnceId: "DelAutoTask"
+Filename: "{sys}\schtasks.exe"; Parameters: "/Delete /TN ""{#AppName} Guard"" /F"; Flags: runhidden; RunOnceId: "DelGuardTask"
+Filename: "{sys}\schtasks.exe"; Parameters: "/Delete /TN ""{#AppName} Auto Clean"" /F"; Flags: runhidden; RunOnceId: "DelAutoTask"
 
 [Code]
 function ShouldRelaunch: Boolean;

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import http.server
+import json
 import os
 import sys
 import tempfile
@@ -135,7 +136,7 @@ class GitHub(http.server.BaseHTTPRequestHandler):
 
     def do_GET(self):  # noqa: N802
         p = self.path
-        if p.startswith("/api/"):
+        if p.startswith(("/api/", "/apiall/")):
             if GitHub.api == "reset":
                 self.close_connection = True      # the network drops it: no answer at all
                 return
@@ -157,6 +158,18 @@ class GitHub(http.server.BaseHTTPRequestHandler):
             return self._send(html)
         if p == "/web/r/x/releases/download/v1.2.3/SHA256SUMS.txt" and GitHub.sums:
             return self._send(f"{SHA}  Sweep-Setup-1.2.3.exe\n".encode())
+        if p.startswith("/apiall/r/x"):            # every release, pre-releases included (Sweep Beta)
+            rels = [{"tag_name": t, "draft": d, "prerelease": "-beta" in t, "body": "",
+                     "assets": [{"name": f"{'Sweep-Beta-Setup' if '-beta' in t else 'Sweep-Setup'}-{t[1:]}.exe",
+                                 "browser_download_url": f"https://x/{t}.exe", "digest": "sha256:" + SHA}]}
+                    for t, d in (("v1.2.3", False), ("v2.0.0-beta.10", True), ("v2.0.0-beta.2", False), ("v2.0.0-beta.1", False))]
+            return self._send(json.dumps(rels).encode())
+        if p == "/web/r/x/releases.atom":
+            feed = "".join(f'<entry><link rel="alternate" type="text/html" href="https://github.com/r/x/releases/tag/{t}"/></entry>'
+                           for t in ("v1.2.3", "v2.0.0-beta.2", "v2.0.0-beta.1"))
+            return self._send(f"<feed>{feed}</feed>".encode())
+        if p == "/web/r/x/releases/download/v2.0.0-beta.2/SHA256SUMS.txt":
+            return self._send(f"{SHA}  Sweep-Beta-Setup-2.0.0-beta.2.exe\n".encode())
         self.send_error(404)
 
     def _send(self, body: bytes):
@@ -172,7 +185,24 @@ def _github(api, web="ok", sums=True):
     threading.Thread(target=srv.serve_forever, daemon=True).start()
     base = f"http://127.0.0.1:{srv.server_address[1]}"
     SU.API, SU.WEB = base + "/api/{repo}", base + "/web/{repo}/releases/latest"
+    SU.API_ALL, SU.FEED = base + "/apiall/{repo}", base + "/web/{repo}/releases.atom"
+    SU.CHANNEL, SU.SETUP = "stable", "Sweep-Setup"
     return srv, base
+
+
+def test_beta_looks_among_prereleases():
+    srv, base = _github("ok")
+    try:
+        SU.CHANNEL, SU.SETUP = "beta", "Sweep-Beta-Setup"
+        rel = SU.fetch_release("r/x", attempts=1)       # the newest beta that is not a draft; never the stable one
+        assert rel["tag"] == "2.0.0-beta.2" and rel["url"] == "https://x/v2.0.0-beta.2.exe" and rel["sha256"] == SHA, rel
+        GitHub.api = "reset"                             # api.github.com cut: the releases feed on github.com
+        rel = SU.fetch_release("r/x", attempts=1)
+        assert rel["tag"] == "2.0.0-beta.2" and rel["sha256"] == SHA, rel
+        assert rel["url"] == base + "/web/r/x/releases/download/v2.0.0-beta.2/Sweep-Beta-Setup-2.0.0-beta.2.exe", rel["url"]
+    finally:
+        SU.CHANNEL, SU.SETUP = "stable", "Sweep-Setup"
+        srv.shutdown()
 
 
 def test_release_from_github_page_when_api_is_cut():

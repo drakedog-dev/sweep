@@ -430,7 +430,7 @@ def set_power_plan(plan: str) -> None:
 
 
 # ---------------- schedule ----------------
-TASK = "Sweep Auto Clean"
+TASK = P.APP_NAME + " Auto Clean"
 
 
 def schedule_state() -> dict:

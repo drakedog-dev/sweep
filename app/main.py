@@ -73,7 +73,7 @@ def notify(title: str, text: str) -> None:
     app = QApplication(sys.argv[:1])
     app.setQuitOnLastWindowClosed(False)
     tray = QSystemTrayIcon(QIcon(str(HERE / "sweep.ico")))
-    tray.setToolTip("Sweep")
+    tray.setToolTip(P.APP_NAME)
 
     def open_sweep(*_):
         cmd = [sys.executable] if getattr(sys, "frozen", False) else [sys.executable, str(Path(__file__).resolve())]
@@ -113,8 +113,8 @@ def main() -> int:
     from sweep.bridge import App
 
     qt_app = QApplication(sys.argv)
-    qt_app.setApplicationName("Sweep")
-    qt_app.setOrganizationName("Sweep")
+    qt_app.setApplicationName(P.APP_NAME)
+    qt_app.setOrganizationName(P.APP_NAME)
     icon = HERE / "sweep.ico"
     if icon.exists():
         qt_app.setWindowIcon(QIcon(str(icon)))

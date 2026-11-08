@@ -21,6 +21,11 @@ from . import platform as P
 
 API = "https://api.github.com/repos/{repo}/releases/latest"
 WEB = "https://github.com/{repo}/releases/latest"
+# Sweep Beta looks among pre-releases (/releases/latest never lists them, so Sweep 1.x never sees a beta)
+API_ALL = "https://api.github.com/repos/{repo}/releases?per_page=30"
+FEED = "https://github.com/{repo}/releases.atom"
+CHANNEL = P.CHANNEL
+SETUP = "Sweep-Beta-Setup" if CHANNEL == "beta" else "Sweep-Setup"
 
 
 class UpdateError(Exception):
@@ -91,13 +96,41 @@ def _with_retries(fn, attempts: int, what: str):
     raise UpdateError("network", last)
 
 
-def _from_api(repo: str, attempts: int) -> dict:
-    _, raw = _with_retries(lambda: _get(API.format(repo=repo)), attempts, "release check")
-    rel = json.loads(raw.decode("utf-8"))
+def _info(rel: dict) -> dict:
     body = rel.get("body") or ""
-    asset = next((a for a in rel.get("assets", []) if a["name"].startswith("Sweep-Setup") and a["name"].endswith(".exe")), None)
+    asset = next((a for a in rel.get("assets", []) if a["name"].startswith(SETUP + "-") and a["name"].endswith(".exe")), None)
     return {"tag": rel.get("tag_name", "").lstrip("v"), "url": asset["browser_download_url"] if asset else "",
             "sha256": _sha_for(asset, body) if asset else "", "body": body}
+
+
+def _from_api(repo: str, attempts: int) -> dict:
+    _, raw = _with_retries(lambda: _get(API.format(repo=repo)), attempts, "release check")
+    return _info(json.loads(raw.decode("utf-8")))
+
+
+def _beta_from_api(repo: str, attempts: int) -> dict:
+    _, raw = _with_retries(lambda: _get(API_ALL.format(repo=repo)), attempts, "release check")
+    rels = [r for r in json.loads(raw.decode("utf-8")) if "-beta" in r.get("tag_name", "") and not r.get("draft")]
+    if not rels:
+        return {"tag": "", "url": "", "sha256": "", "body": ""}
+    return _info(max(rels, key=lambda r: P.version_key(r["tag_name"])))
+
+
+def _beta_from_web(repo: str, attempts: int) -> dict:
+    """The newest beta from the releases feed on github.com, for networks that cut api.github.com."""
+    _, feed = _with_retries(lambda: _get(FEED.format(repo=repo)), attempts, "release feed")
+    tags = {t.lstrip("v") for t in re.findall(r"/releases/tag/(v?\d[\w.\-]*?)[\"<]", feed.decode("utf-8", "replace")) if "-beta" in t}
+    if not tags:
+        return {"tag": "", "url": "", "sha256": "", "body": ""}
+    tag = max(tags, key=P.version_key)
+    name = f"{SETUP}-{tag}.exe"
+    base = FEED.format(repo=repo).rsplit("/releases.atom", 1)[0] + f"/releases/download/v{tag}/"
+    sha = ""
+    try:
+        sha = _sha_near(name, _get(base + "SHA256SUMS.txt")[1].decode("utf-8", "replace"))
+    except Exception as e:  # noqa: BLE001
+        P.log(f"self update: SHA256SUMS.txt: {e!r}")
+    return {"tag": tag, "url": base + name, "sha256": sha, "body": ""}
 
 
 def _from_web(repo: str, attempts: int) -> dict:
@@ -108,7 +141,7 @@ def _from_web(repo: str, attempts: int) -> dict:
     if not m:
         raise UpdateError("network", ValueError(f"unexpected release address {final}"))
     tag = m.group(1)
-    name = f"Sweep-Setup-{tag}.exe"
+    name = f"{SETUP}-{tag}.exe"
     base = WEB.format(repo=repo).rsplit("/latest", 1)[0] + f"/download/v{tag}/"
     sha = ""
     try:
@@ -123,12 +156,13 @@ def _from_web(repo: str, attempts: int) -> dict:
 def fetch_release(repo: str, attempts: int = 3) -> dict:
     """{"tag", "url", "sha256", "body"} of the latest release. A dropped connection is tried again; when the GitHub API
     cannot be reached or limits requests, the release page on github.com answers instead (without release notes)."""
+    beta = CHANNEL == "beta"
     try:
-        return _from_api(repo, attempts)
+        return (_beta_from_api if beta else _from_api)(repo, attempts)
     except UpdateError as api_err:
         P.log(f"self update: GitHub API {api_err!r}, asking github.com")
         try:
-            return _from_web(repo, attempts)
+            return (_beta_from_web if beta else _from_web)(repo, attempts)
         except UpdateError as web_err:
             raise (web_err if web_err.kind == "network" and api_err.kind == "network" else api_err) from web_err
 

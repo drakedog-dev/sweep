@@ -9,8 +9,23 @@ import sys
 from pathlib import Path
 
 IS_WINDOWS = sys.platform == "win32"
-APP_VERSION = "1.0.28"
+APP_VERSION = "2.0.0-beta.1"
 UPDATE_REPO = "drakedog-dev/sweep"
+# A version with "-beta" is Sweep Beta: a separate program next to Sweep (own folder, data, scheduled tasks, installer),
+# published as a GitHub pre-release, so Sweep 1.x never offers it and the two never touch each other's settings.
+CHANNEL = "beta" if "-beta" in APP_VERSION else "stable"
+APP_NAME = "Sweep Beta" if CHANNEL == "beta" else "Sweep"
+
+
+def version_key(v: str) -> tuple:
+    """Order of versions: 1.0.28 < 2.0.0-beta.1 < 2.0.0-beta.2 < 2.0.0."""
+    import re
+    m = re.match(r"v?(\d+(?:\.\d+)*)(?:-beta\.?(\d+))?", (v or "").strip())
+    if not m:
+        return ()
+    nums = tuple(int(x) for x in m.group(1).split("."))
+    nums = nums + (0,) * (3 - len(nums))
+    return nums + ((0, int(m.group(2) or 0)) if m.group(2) is not None or "-beta" in v else (1, 0))
 
 
 def data_root() -> Path:
@@ -18,7 +33,7 @@ def data_root() -> Path:
         base = Path(os.environ.get("ProgramData", r"C:\ProgramData"))
     else:
         base = Path.home() / ".local" / "share"
-    p = base / "Sweep"
+    p = base / APP_NAME
     p.mkdir(parents=True, exist_ok=True)
     return p
 
@@ -166,7 +181,7 @@ def exe_path() -> str:
     """Where Sweep.exe really is: the folder can be changed when installing (C:\\Программы\\Sweep, say)."""
     if getattr(sys, "frozen", False):
         return sys.executable
-    return r"C:\Program Files\Sweep\Sweep.exe"
+    return rf"C:\Program Files\{APP_NAME}\Sweep.exe"
 
 
 def third_party_av() -> str:
@@ -191,6 +206,6 @@ def log_context() -> None:
         info = {}
     global ANTIVIRUS
     ANTIVIRUS = str(info.get("av") or "")
-    log(f"context: Sweep {APP_VERSION}, admin={is_admin()}, {_pf.architecture()[0]}, user={info.get('user', '?')}, "
+    log(f"context: {APP_NAME} {APP_VERSION}, admin={is_admin()}, {_pf.architecture()[0]}, user={info.get('user', '?')}, "
         f"os={info.get('os', '?')}, antivirus={info.get('av') or 'none reported'}, exe={sys.executable}")
 

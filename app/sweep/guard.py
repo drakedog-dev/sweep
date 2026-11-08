@@ -8,7 +8,7 @@ from datetime import datetime
 from . import extras, tweaks
 from . import platform as P
 
-TASK = "Sweep Guard"
+TASK = P.APP_NAME + " Guard"
 DEFAULTS = {"enabled": False, "auto": False, "privacy": None, "apps": [], "lastRun": "", "lastBuild": "", "events": [], "pending": {}}
 
 

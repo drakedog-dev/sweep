@@ -9,7 +9,7 @@ ApplicationWindow {
     width: 1160; height: 760
     minimumWidth: 980; minimumHeight: 680
     visible: true
-    title: "Sweep"
+    title: app.appName
     // the close button: ask, go to the tray, or quit (Settings); a real quit (update, admin restart, tray Quit) passes
     onClosing: close => {
         if (app.quitting) return
@@ -73,7 +73,10 @@ ApplicationWindow {
                 Text { anchors.centerIn: parent; text: "S"; color: "white"; font.pixelSize: 20; font.weight: Font.Bold; font.family: Theme.font }
             }
             Column { anchors.verticalCenter: parent.verticalCenter; spacing: 0
-                Txt { text: "Sweep"; font.pixelSize: 20; bold: true; font.weight: Font.Bold }
+                Row { spacing: 7
+                    Txt { text: "Sweep"; font.pixelSize: 20; bold: true; font.weight: Font.Bold }
+                    Rectangle { visible: app.beta; anchors.verticalCenter: parent.verticalCenter; width: betaT.implicitWidth + 12; height: 18; radius: 9; color: Theme.accent
+                        Txt { id: betaT; anchors.centerIn: parent; text: "BETA"; color: "white"; bold: true; font.pixelSize: 10 } } }
                 Txt { text: tr("set.version") + " " + app.version; muted: true; font.pixelSize: 11 }
             }
         }

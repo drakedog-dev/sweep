@@ -3,7 +3,7 @@ name: Self test
 # Runs Sweep's real code on a real Windows machine: privacy, startup, history, Guard, uninstaller, winget updates.
 on:
   push:
-    branches: [main]
+    branches: [main, beta]
     paths: ['app/sweep/**', 'app/tests/**', '.github/workflows/selftest.yml']
   workflow_dispatch:
 
@@ -14,6 +14,8 @@ jobs:
   test:
     runs-on: windows-latest
     defaults: { run: { shell: pwsh } }
+    env:
+      SWEEP_NAME: ${{ github.ref_name == 'beta' && 'Sweep Beta' || 'Sweep' }}     # data folder of the build being tested
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -34,11 +36,11 @@ jobs:
       - name: UI test (every page, real data)
         run: |
           $p = Start-Process -FilePath python -ArgumentList 'app/main.py','--ui-test','--no-elevate' -Wait -PassThru -NoNewWindow
-          Get-Content "$env:ProgramData\Sweep\log.txt" | Select-String 'ui-test|titlebar' | Select-Object -Last 25 | Tee-Object -FilePath "$env:RUNNER_TEMP\ui.txt"
+          Get-Content "$env:ProgramData\$env:SWEEP_NAME\log.txt" | Select-String 'ui-test|titlebar' | Select-Object -Last 25 | Tee-Object -FilePath "$env:RUNNER_TEMP\ui.txt"
           if ($p.ExitCode -ne 0) { throw "UI test failed with exit code $($p.ExitCode)" }
       - name: Log
         if: always()
-        run: if (Test-Path "$env:ProgramData\Sweep\log.txt") { Get-Content "$env:ProgramData\Sweep\log.txt" -Tail 40 }
+        run: if (Test-Path "$env:ProgramData\$env:SWEEP_NAME\log.txt") { Get-Content "$env:ProgramData\$env:SWEEP_NAME\log.txt" -Tail 40 }
       - name: Report
         if: always()
-        run: python tools/ci_report.py selftest ${{ job.status }} "$env:RUNNER_TEMP\selftest.txt" "$env:RUNNER_TEMP\ui.txt" "$env:ProgramData\Sweep\log.txt"
+        run: python tools/ci_report.py selftest ${{ job.status }} "$env:RUNNER_TEMP\selftest.txt" "$env:RUNNER_TEMP\ui.txt" "$env:ProgramData\$env:SWEEP_NAME\log.txt"

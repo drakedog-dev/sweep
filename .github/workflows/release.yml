@@ -5,7 +5,7 @@ name: Build Sweep
 
 on:
   push:
-    branches: [main]
+    branches: [main, beta]
     paths: ['app/**', '.github/workflows/release.yml']
   workflow_dispatch:
 
@@ -31,13 +31,23 @@ jobs:
       - name: Read version
         id: ver
         run: |
-          $m = [regex]::Match((Get-Content app/sweep/platform.py -Raw), 'APP_VERSION = "([\d\.]+)"')
+          $m = [regex]::Match((Get-Content app/sweep/platform.py -Raw), 'APP_VERSION = "(\d+(?:\.\d+)+(?:-beta\.\d+)?)"')
           if (-not $m.Success) { throw 'APP_VERSION not found' }
           $ver = $m.Groups[1].Value
           $exists = ((git ls-remote --tags origin "refs/tags/v$ver") | Measure-Object).Count -gt 0
+          # Sweep Beta (2.0.0-beta.1): its own installer and program name, published as a pre-release
+          $beta = $ver -match '-beta'
+          if ($beta -and '${{ github.ref_name }}' -ne 'beta') { throw 'a beta version is built from the beta branch only' }
+          if (-not $beta -and '${{ github.ref_name }}' -eq 'beta') { throw 'the beta branch builds beta versions only' }
+          $num = ($ver -replace '-beta\.', '.')         # 2.0.0-beta.1 -> 2.0.0.1 for the file version fields
+          if (-not $beta) { $num = "$ver.0" }
           "version=$ver" >> $env:GITHUB_OUTPUT
           "exists=$exists" >> $env:GITHUB_OUTPUT
-          Write-Host "Version $ver, tag exists: $exists"
+          "beta=$($beta.ToString().ToLower())" >> $env:GITHUB_OUTPUT
+          "num=$num" >> $env:GITHUB_OUTPUT
+          "name=$(if ($beta) { 'Sweep Beta' } else { 'Sweep' })" >> $env:GITHUB_OUTPUT
+          "setup=$(if ($beta) { 'Sweep-Beta-Setup' } else { 'Sweep-Setup' })" >> $env:GITHUB_OUTPUT
+          Write-Host "Version $ver (beta: $beta), tag exists: $exists"
 
       - uses: actions/setup-python@v7
         if: steps.ver.outputs.exists == 'False'
@@ -75,13 +85,13 @@ jobs:
           Write-Host 'Manifest: requireAdministrator'
           $vi = (Get-Item dist/Sweep/Sweep.exe).VersionInfo
           Write-Host "Version info: $($vi.ProductName) $($vi.ProductVersion)"
-          if ($vi.ProductName -ne 'Sweep') { throw 'Sweep.exe has no product name' }
+          if ($vi.ProductName -ne '${{ steps.ver.outputs.name }}') { throw 'Sweep.exe has no product name' }
           Start-Process -FilePath dist/Sweep/Sweep.exe -ArgumentList '--auto','--no-elevate' -Wait -NoNewWindow
           # open every page of the built app, load the real program list, fail on any QML warning
           $ui = Start-Process -FilePath dist/Sweep/Sweep.exe -ArgumentList '--ui-test','--no-elevate' -Wait -PassThru
-          if (Test-Path "$env:ProgramData\Sweep\log.txt") { Get-Content "$env:ProgramData\Sweep\log.txt" | Select-String 'ui-test|titlebar' | Select-Object -Last 25 }
+          if (Test-Path "$env:ProgramData\${{ steps.ver.outputs.name }}\log.txt") { Get-Content "$env:ProgramData\${{ steps.ver.outputs.name }}\log.txt" | Select-String 'ui-test|titlebar' | Select-Object -Last 25 }
           if ($ui.ExitCode -ne 0) { throw "UI test failed with exit code $($ui.ExitCode)" }
-          if (Test-Path "$env:ProgramData\Sweep\log.txt") { Get-Content "$env:ProgramData\Sweep\log.txt" | Select-Object -Last 3 }
+          if (Test-Path "$env:ProgramData\${{ steps.ver.outputs.name }}\log.txt") { Get-Content "$env:ProgramData\${{ steps.ver.outputs.name }}\log.txt" | Select-Object -Last 3 }
 
       # ---- code signing of Sweep.exe (SignPath Foundation), skipped until SignPath is set up ----
       - name: Upload Sweep.exe for signing
@@ -115,14 +125,16 @@ jobs:
       - name: Build installer
         if: steps.ver.outputs.exists == 'False'
         working-directory: app
-        run: '& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "/DAppVersion=${{ steps.ver.outputs.version }}" Sweep.iss'
+        run: |
+          $extra = if ('${{ steps.ver.outputs.beta }}' -eq 'true') { '/DBeta=1' } else { '/DStable=1' }
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "/DAppVersion=${{ steps.ver.outputs.version }}" "/DNumVersion=${{ steps.ver.outputs.num }}" $extra Sweep.iss
 
       # ---- code signing of the installer ----
       - name: Prepare installer for signing
         if: steps.ver.outputs.exists == 'False' && env.SIGNPATH_ENABLED == 'true'
         run: |
           New-Item -ItemType Directory app/sign-setup -Force | Out-Null
-          Copy-Item "app/Output/Sweep-Setup-${{ steps.ver.outputs.version }}.exe" app/sign-setup/Sweep-Setup.exe
+          Copy-Item "app/Output/${{ steps.ver.outputs.setup }}-${{ steps.ver.outputs.version }}.exe" app/sign-setup/Sweep-Setup.exe
 
       - name: Upload installer for signing
         id: up_setup
@@ -147,8 +159,8 @@ jobs:
       - name: Use signed installer
         if: steps.ver.outputs.exists == 'False' && env.SIGNPATH_ENABLED == 'true'
         run: |
-          Copy-Item app/signed-setup/Sweep-Setup.exe "app/Output/Sweep-Setup-${{ steps.ver.outputs.version }}.exe" -Force
-          $sig = Get-AuthenticodeSignature "app/Output/Sweep-Setup-${{ steps.ver.outputs.version }}.exe"
+          Copy-Item app/signed-setup/Sweep-Setup.exe "app/Output/${{ steps.ver.outputs.setup }}-${{ steps.ver.outputs.version }}.exe" -Force
+          $sig = Get-AuthenticodeSignature "app/Output/${{ steps.ver.outputs.setup }}-${{ steps.ver.outputs.version }}.exe"
           Write-Host "Installer signature: $($sig.Status)"
           if ($sig.Status -ne 'Valid') { throw 'Installer is not validly signed' }
 
@@ -156,7 +168,9 @@ jobs:
         id: prev
         if: steps.ver.outputs.exists == 'False'
         run: |
-          $prev = git tag --list 'v*' --sort=-v:refname | Select-Object -First 1
+          # the previous release of the same kind: betas compare with betas, Sweep with Sweep
+          $all = git tag --list 'v*' --sort=-v:refname | Where-Object { $_ -ne 'v${{ steps.ver.outputs.version }}' }
+          $prev = if ('${{ steps.ver.outputs.beta }}' -eq 'true') { $all | Select-Object -First 1 } else { $all | Where-Object { $_ -notmatch '-' } | Select-Object -First 1 }
           "tag=$prev" >> $env:GITHUB_OUTPUT
 
       - name: Create tag
@@ -175,15 +189,19 @@ jobs:
           $text = Get-Content CHANGELOG.md -Raw
           $m = [regex]::Match($text, "(?ms)^## v?$([regex]::Escape($v))[ \t]*\r?\n(.*?)(?=^## |\z)")
           $body = if ($m.Success) { $m.Groups[1].Value.Trim() } else { "Sweep $v" }
-          $setup = "app/Output/Sweep-Setup-$v.exe"
+          $sn = '${{ steps.ver.outputs.setup }}'
+          $setup = "app/Output/$sn-$v.exe"
           $hash = (Get-FileHash $setup -Algorithm SHA256).Hash.ToLower()
           $size = '{0:N1} MB' -f ((Get-Item $setup).Length / 1MB)
           $signed = if ((Get-AuthenticodeSignature $setup).Status -eq 'Valid') { 'signed by SignPath Foundation' } else { 'not signed yet' }
-          "$hash  Sweep-Setup-$v.exe" | Set-Content -Path app/Output/SHA256SUMS.txt -Encoding ascii
+          "$hash  $sn-$v.exe" | Set-Content -Path app/Output/SHA256SUMS.txt -Encoding ascii
           $prev = '${{ steps.prev.outputs.tag }}'
-          $body += "`n`n### Download`n`n| File | Size | SHA-256 |`n|---|---|---|`n| [Sweep-Setup-$v.exe](https://github.com/${{ github.repository }}/releases/download/v$v/Sweep-Setup-$v.exe) | $size | ``$hash`` |"
-          $body += "`n`nWindows 10 and 11, 64-bit. Installer $signed. Check the file in PowerShell: ``Get-FileHash .\Sweep-Setup-$v.exe``"
-          $body += "`n`nSweep offers this update by itself when it starts."
+          $body += "`n`n### Download`n`n| File | Size | SHA-256 |`n|---|---|---|`n| [$sn-$v.exe](https://github.com/${{ github.repository }}/releases/download/v$v/$sn-$v.exe) | $size | ``$hash`` |"
+          $body += "`n`nWindows 10 and 11, 64-bit. Installer $signed. Check the file in PowerShell: ``Get-FileHash .\$sn-$v.exe``"
+          if ('${{ steps.ver.outputs.beta }}' -eq 'true') {
+            $body = "**Beta for testers.** Sweep Beta installs as a separate program next to Sweep (its own folder, settings and quarantine) and does not change your Sweep. Sweep never offers betas; Sweep Beta offers newer betas by itself.`n`n" + $body
+          }
+          $body += "`n`n${{ steps.ver.outputs.name }} offers this update by itself when it starts."
           if ($prev) { $body += " Full list of commits: [$prev...v$v](https://github.com/${{ github.repository }}/compare/$prev...v$v)" }
           Set-Content -Path release-notes.md -Value $body -Encoding utf8
           Get-Content release-notes.md
@@ -193,9 +211,11 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           tag_name: v${{ steps.ver.outputs.version }}
-          name: Sweep ${{ steps.ver.outputs.version }}
+          name: ${{ steps.ver.outputs.name }} ${{ steps.ver.outputs.version }}
+          prerelease: ${{ steps.ver.outputs.beta == 'true' }}
+          make_latest: ${{ steps.ver.outputs.beta != 'true' }}
           files: |
-            app/Output/Sweep-Setup-*.exe
+            app/Output/${{ steps.ver.outputs.setup }}-*.exe
             app/Output/SHA256SUMS.txt
           body_path: release-notes.md
 
@@ -204,4 +224,4 @@ jobs:
         run: |
           "version ${{ steps.ver.outputs.version }}, tag existed before: ${{ steps.ver.outputs.exists }}" | Out-File "$env:RUNNER_TEMP\build.txt"
           if (Test-Path release-notes.md) { Get-Content release-notes.md | Out-File -Append "$env:RUNNER_TEMP\build.txt" }
-          python tools/ci_report.py build ${{ job.status }} "$env:RUNNER_TEMP\build.txt" "$env:ProgramData\Sweep\log.txt"
+          python tools/ci_report.py build ${{ job.status }} "$env:RUNNER_TEMP\build.txt" "$env:ProgramData\${{ steps.ver.outputs.name }}\log.txt"

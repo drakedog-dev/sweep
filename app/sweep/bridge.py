@@ -362,6 +362,14 @@ class App(QObject):
     def version(self):
         return P.APP_VERSION
 
+    @Property(str, constant=True)
+    def appName(self):
+        return P.APP_NAME
+
+    @Property(bool, constant=True)
+    def beta(self):
+        return P.CHANNEL == "beta"
+
     @Property(str, notify=langChanged)
     def theme(self):
         return self.settings.get("theme", "dark")
@@ -551,7 +559,7 @@ class App(QObject):
     def _tray_texts(self) -> None:
         if self._tray is None:
             return
-        self._tray.setToolTip("Sweep " + P.APP_VERSION)
+        self._tray.setToolTip(P.APP_NAME + " " + P.APP_VERSION)
         acts = [a for a in self._tray_menu.actions() if not a.isSeparator()]
         acts[0].setText(self.i18n.t("tray.open"))
         acts[1].setText(self.i18n.t("tray.quit"))
@@ -562,7 +570,7 @@ class App(QObject):
     def _tray_note(self, text: str) -> None:
         if self._tray is not None and self._hidden():
             from PySide6.QtWidgets import QSystemTrayIcon
-            self._tray.showMessage("Sweep", text, QSystemTrayIcon.MessageIcon.Information, 6000)
+            self._tray.showMessage(P.APP_NAME, text, QSystemTrayIcon.MessageIcon.Information, 6000)
 
     @Slot()
     def toTray(self):
@@ -2547,10 +2555,8 @@ class App(QObject):
 
     @staticmethod
     def _newer(a: str, b: str) -> bool:
-        def v(s):
-            return tuple(int(x) for x in "".join(ch if ch.isdigit() or ch == "." else "" for ch in s).split(".") if x)
         try:
-            return v(a) > v(b)
+            return P.version_key(a) > P.version_key(b)
         except Exception:
             return False
 
