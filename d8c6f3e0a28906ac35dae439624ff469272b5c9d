@@ -1,0 +1,33 @@
+build: success
+run: https://github.com/drakedog-dev/sweep/actions/runs/42487498059
+commit: d8c6f3e0a28906ac35dae439624ff469272b5c9d
+
+--- build.txt (last 18 of 18 lines)
+version 1.0.26, tag existed before: False
+- The window opens where you left it, as big as it was and maximised if it was
+- Closing the window can send Sweep to the tray instead: Sweep asks once (with "Remember my choice"), and Settings has Ask, Minimise to tray and Quit. From the tray it still checks for updates once a day and says when there are some
+- Program icons are drawn from larger pictures at the screen's real pixel size, so they stay sharp at 125-200 % scaling instead of looking blocky
+- Programs whose installer refuses administrator rights (Spotify, for one) are now updated and installed: Sweep runs winget for them as the signed-in user
+- When the connection to GitHub is cut and a third-party antivirus is installed, Sweep explains how to add itself to the antivirus's trusted programs (Kaspersky keeps unsigned programs, and the winget they start, offline)
+- Program updates: when winget cannot check (an old winget on Windows 10, a source that cannot be opened), Sweep says so and offers to check again, instead of reporting that every program is up to date
+- Older winget versions work: flags they do not know are left out, and Sweep suggests updating App Installer from Microsoft Store
+
+### Download
+
+| File | Size | SHA-256 |
+|---|---|---|
+| [Sweep-Setup-1.0.26.exe](https://github.com/drakedog-dev/sweep/releases/download/v1.0.26/Sweep-Setup-1.0.26.exe) | 34.9 MB | `20fe94eeeceb4177de69e3870d8380d8c06a9e98fb6a2418db283af9629466c2` |
+
+Windows 10 and 11, 64-bit. Installer not signed yet. Check the file in PowerShell: `Get-FileHash .\Sweep-Setup-1.0.26.exe`
+
+Sweep offers this update by itself when it starts. Full list of commits: [v1.0.25...v1.0.26](https://github.com/drakedog-dev/sweep/compare/v1.0.25...v1.0.26)
+
+--- log.txt (last 8 of 8 lines)
+2026-11-08 13:59:49  auto clean 20261108_135944: freed 302250670
+2026-11-08 13:59:50  titlebar dark: dark=0x80070006, caption=0x80070006, border=0x80070006, text=0x80070006
+2026-11-08 13:59:53  context: Sweep 1.0.26, admin=True, 64bit, user=runnervmm7ud1\runneradmin, os=Microsoft Windows Server 2025 Datacenter 26100, antivirus=none reported, exe=D:\a\sweep\sweep\app\dist\Sweep\Sweep.exe
+2026-11-08 14:00:12  winget version 1.11.510
+2026-11-08 14:00:16  updates: winget upgrade rc=0x0 via conpty, 18 updates, 4 s
+2026-11-08 14:02:38  install: search 'vlc' rc=0x0 via conpty: 10 found
+2026-11-08 14:02:45  ui-test: analysis done, junk=done:clean, drives=done:90 KB can be freed, registry=done:no problems, startup=done:3 programs start with Windows, privacy=done:tracking on: 15 of 17, updates=done:18 updates available
+2026-11-08 14:02:45  ui-test: pages 14, programs 59, boots 0, updates 18 (winget=True, checked=True, suspect 0), install picks 45 (installed 4), search 10, QML warnings 0
