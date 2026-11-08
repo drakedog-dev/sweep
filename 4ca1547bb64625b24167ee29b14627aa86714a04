@@ -1,0 +1,28 @@
+build: success
+run: https://github.com/drakedog-dev/sweep/actions/runs/42489047609
+commit: 4ca1547bb64625b24167ee29b14627aa86714a04
+
+--- build.txt (last 13 of 13 lines)
+version 1.0.27, tag existed before: False
+- Antivirus hints name the folder Sweep is really installed in (it can be changed during setup) and the exact Kaspersky options: Do not monitor application activity, Do not inherit restrictions of the parent process, Do not monitor child application activity, Do not scan encrypted traffic
+- Privacy: the Error reporting switch says that with it off, a crashing program may show a bare "Unknown Hard Error" box
+
+### Download
+
+| File | Size | SHA-256 |
+|---|---|---|
+| [Sweep-Setup-1.0.27.exe](https://github.com/drakedog-dev/sweep/releases/download/v1.0.27/Sweep-Setup-1.0.27.exe) | 34.9 MB | `d2769745b70ea60e198e838bc79f1ea0c85f704e07f09aadf13952fa01603229` |
+
+Windows 10 and 11, 64-bit. Installer not signed yet. Check the file in PowerShell: `Get-FileHash .\Sweep-Setup-1.0.27.exe`
+
+Sweep offers this update by itself when it starts. Full list of commits: [v1.0.26...v1.0.27](https://github.com/drakedog-dev/sweep/compare/v1.0.26...v1.0.27)
+
+--- log.txt (last 8 of 8 lines)
+2026-11-08 14:18:22  auto clean 20261108_141815: freed 302250622
+2026-11-08 14:18:23  titlebar dark: dark=0x80070006, caption=0x80070006, border=0x80070006, text=0x80070006
+2026-11-08 14:18:27  context: Sweep 1.0.27, admin=True, 64bit, user=runnervmm7ud1\runneradmin, os=Microsoft Windows Server 2025 Datacenter 26100, antivirus=none reported, exe=D:\a\sweep\sweep\app\dist\Sweep\Sweep.exe
+2026-11-08 14:18:45  winget version 1.11.510
+2026-11-08 14:18:48  updates: winget upgrade rc=0x0 via conpty, 18 updates, 4 s
+2026-11-08 14:21:16  install: search 'vlc' rc=0x0 via conpty: 10 found
+2026-11-08 14:21:22  ui-test: analysis done, junk=done:clean, drives=done:90 KB can be freed, registry=done:no problems, startup=done:3 programs start with Windows, privacy=done:tracking on: 15 of 17, updates=done:18 updates available
+2026-11-08 14:21:22  ui-test: pages 14, programs 59, boots 0, updates 18 (winget=True, checked=True, suspect 0), install picks 45 (installed 4), search 10, QML warnings 0
