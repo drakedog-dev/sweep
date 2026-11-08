@@ -7,6 +7,7 @@ All notable changes to Sweep. The newest version is at the top; the in-app updat
 - The download of a new Sweep version survives a dropped connection: it continues where it stopped, up to five tries, instead of failing with "connection closed"
 - The downloaded installer is started only when its SHA-256 matches the one published with the release
 - Clear messages instead of raw errors when GitHub cannot be reached or limits update checks, with the download progress in percent
+- Program updates and installs: a dropped connection or a busy vendor server (for example HTTP 504 from GitHub, where 7-Zip and many others are hosted) gets one more try a few seconds later, and is then reported as a connection or server problem instead of "Installer error"
 
 ## 1.0.23
 - Program updates: the ticks next to "Catalogue" and "Sources" no longer stand crooked after the check moves on

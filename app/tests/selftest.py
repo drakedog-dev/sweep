@@ -459,6 +459,25 @@ check(not (P.QUARANTINE / qs).exists(), "a quarantined read-only file is deleted
 print("\n== program updates (winget)")
 from sweep import updates as UPD  # noqa: E402
 
+
+def wg_retry(fn):
+    """The way Sweep runs a winget download: a dropped connection or a busy server gets one more try."""
+    r = fn()
+    if r["reason"] in UPD.RETRY_REASONS:
+        note(f"winget {r['reason']} {r['code']:#x}, trying once more like Sweep does")
+        time.sleep(15)
+        r = fn()
+    return r
+
+
+def vendor_down(pid, r) -> bool:
+    """The vendor's server failing (HTTP 5xx, dropped connections) is not a fault of Sweep: say so and skip."""
+    if r["reason"] in ("net", "server"):
+        note(f"{pid}: the vendor's server failed twice ({r['reason']} {r['code']:#x}), the checks that need it are skipped")
+        return True
+    return False
+
+
 exe = UPD.winget_exe()
 check(bool(exe), f"winget found: {exe}")
 if exe:
@@ -473,8 +492,11 @@ if exe:
     if pick:
         before = UPD.installed_version(pick["id"])
         events: list[tuple] = []
-        r = UPD.upgrade(pick["id"], progress=lambda ph, got, total: events.append((ph, got, total)))
+        r = wg_retry(lambda: UPD.upgrade(pick["id"], progress=lambda ph, got, total: events.append((ph, got, total))))
         after = UPD.installed_version(pick["id"])
+    if pick and vendor_down(pick["id"], r):
+        pick = None
+    if pick:
         downloads = [e for e in events if e[0] == "download" and e[1] > 0]
         note(f"winget progress via {r.get('via')}: {len(events)} events, {len(downloads)} with bytes, phases {sorted({e[0] for e in events})}, "
              f"last {events[-1] if events else None}")
@@ -522,8 +544,11 @@ if exe:
     if over:
         before = UPD.installed_version(over["id"])
         ev: list[tuple] = []
-        r = UPD.install(over["id"], progress=lambda ph, got, total: ev.append(ph))
+        r = wg_retry(lambda: UPD.install(over["id"], progress=lambda ph, got, total: ev.append(ph)))
         after = UPD.installed_version(over["id"])
+    if over and vendor_down(over["id"], r):
+        over = None
+    if over:
         note(f"install over {over['id']}: {before} -> {after}, {r}, phases {sorted(set(ev))}")
         check(r["ok"] and after and after != before, f"installing over the old version updates it ({over['id']} {before} -> {after})")
         again = UPD.upgrade(over["id"], before=after)
@@ -592,8 +617,8 @@ try:
     check(os.path.getsize(got) > 10_000_000, f"installer downloaded and matches its checksum ({os.path.getsize(got) // 1_000_000} MB)")
     shutil.rmtree(tmpd, ignore_errors=True)
 except SU.UpdateError as e:
-    if e.kind == "limit":
-        note(f"GitHub rate limit on this runner, update check skipped: {e}")
+    if e.kind == "limit" or (e.cause is not None and SU.is_network_error(e.cause)):
+        note(f"GitHub not answering properly right now, the download check is skipped: {e!r}")
     else:
         check(False, f"Sweep update: {e!r}")
 

@@ -216,6 +216,17 @@ def test_exit_codes():
     assert U.REASONS[0x8A150101] == "inuse"
 
 
+def test_download_errors():
+    assert U.reason_for(0x801901F8) == "server"          # HTTP 504 from the vendor's server
+    assert U.reason_for(0x80190194) == "gone"            # HTTP 404: the file is not there
+    assert U.reason_for(0x80072EFE) == "net"             # the connection was closed
+    assert U.reason_for(0x80072EE2) == "net"             # timed out
+    assert U.reason_for(0x8A150008) == "download"
+    assert U.reason_for(0x80070005) == "code"
+    assert {"net", "server", "download"} == set(U.RETRY_REASONS)
+    assert U._verdict(0x801901F8 - (1 << 32)) == (0x801901F8, "server", False)
+
+
 if __name__ == "__main__":
     failed = 0
     for name, fn in list(globals().items()):

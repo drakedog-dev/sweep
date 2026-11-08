@@ -1912,8 +1912,15 @@ class App(QObject):
                 it.update(state="working", phase="prepare", got=0.0, total=0.0, speed=0.0, startedAt=time.time() * 1000.0, installFrom=0.0)
                 self._pu.update(current=it.get("title") or it["name"], done=n, frac=0.0)
                 self.updatesChanged.emit()
-                r = UPD.upgrade(it["id"], progress=lambda ph, got, total, it=it: self._q_progress(self._pu, self.updatesChanged, it, ph, got, total),
-                                before=it.get("version", ""), over=still_there(it), target=it.get("available", ""))
+                for attempt in range(2):     # a dropped connection or a busy vendor server usually works a few seconds later
+                    r = UPD.upgrade(it["id"], progress=lambda ph, got, total, it=it: self._q_progress(self._pu, self.updatesChanged, it, ph, got, total),
+                                    before=it.get("version", ""), over=still_there(it), target=it.get("available", ""))
+                    if attempt or r["reason"] not in UPD.RETRY_REASONS or self._pu_cancel:
+                        break
+                    P.log(f"updates: {it['id']} {r['reason']} {r['code']:#x}, trying once more")
+                    it.update(phase="prepare", got=0.0, total=0.0, speed=0.0)
+                    self.updatesChanged.emit()
+                    time.sleep(8)
                 reason = r["reason"]
                 if reason in ("nochange", "inuse") and UPD.is_running(it):
                     reason = "running"           # the program was open, so its installer could not replace it
@@ -2119,7 +2126,14 @@ class App(QObject):
                 it.update(state="working", phase="prepare", got=0.0, total=0.0, speed=0.0, startedAt=time.time() * 1000.0, installFrom=0.0)
                 self._ins.update(current=it.get("name") or it["id"], done=n, frac=0.0)
                 self.installChanged.emit()
-                r = UPD.install(it["id"], progress=lambda ph, got, total, it=it: self._q_progress(self._ins, self.installChanged, it, ph, got, total))
+                for attempt in range(2):     # same as for updates: one more try after a dropped connection
+                    r = UPD.install(it["id"], progress=lambda ph, got, total, it=it: self._q_progress(self._ins, self.installChanged, it, ph, got, total))
+                    if attempt or r["reason"] not in UPD.RETRY_REASONS or self._ins_cancel:
+                        break
+                    P.log(f"install: {it['id']} {r['reason']} {r['code']:#x}, trying once more")
+                    it.update(phase="prepare", got=0.0, total=0.0, speed=0.0)
+                    self.installChanged.emit()
+                    time.sleep(8)
                 it.update(state="ok" if r["ok"] else "failed", reason=r["reason"], code=f"{r['code']:#x}" if r["code"] else "", picked=False)
                 if r["ok"]:
                     self._ins_installed.add(it["id"])

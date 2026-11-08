@@ -948,9 +948,27 @@ def _demo_run(prog: Progress, size_mb: float = 6.5) -> None:
     time.sleep(1.2)
 
 
+# Download errors winget passes on from Windows' HTTP stack. 0x80072xxx: the connection itself (closed, reset, timed out,
+# name not found, TLS); 0x8019xxxx: the server answered with an HTTP error (0x801901F8 is 504); 0x80D02xxx: Delivery
+# Optimization made no progress. All of these are about the vendor's server or the way to it, not the installer.
+_NET_CODES = {0x80072EE2, 0x80072EE7, 0x80072EFD, 0x80072EFE, 0x80072EFF, 0x80072F78, 0x80072F06, 0x80072F7D, 0x80072F8F,
+              0x80072F05, 0x80072F0D, 0x80D02002, 0x80D0200B, 0x80D02011, 0x80D02017}
+RETRY_REASONS = ("net", "server", "download")     # worth one more try after a short pause
+
+
+def reason_for(code: int) -> str:
+    if code in REASONS:
+        return REASONS[code]
+    if code in _NET_CODES or (code & 0xFFFFF000) == 0x80072000:
+        return "net"
+    if (code & 0xFFFF0000) == 0x80190000:
+        return "gone" if (code & 0xFFFF) in (404, 410) else "server"
+    return "code"
+
+
 def _verdict(rc: int) -> tuple[int, str, bool]:
     code = rc & 0xFFFFFFFF
-    reason = "" if rc == 0 else REASONS.get(code, "timeout" if rc == -2 else "code")
+    reason = "" if rc == 0 else "timeout" if rc == -2 else reason_for(code)
     return code, reason, rc == 0 or reason in SUCCESS_REASONS
 
 

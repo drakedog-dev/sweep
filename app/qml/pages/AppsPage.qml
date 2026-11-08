@@ -306,7 +306,7 @@ Page {
                             Txt { visible: urow.done_; font.pixelSize: 12; bold: true; anchors.verticalCenter: parent.verticalCenter; elide: Text.ElideRight; wrapMode: Text.NoWrap
                                   color: modelData.reason === "reboot" ? Theme.warn : Theme.good
                                   text: modelData.reason === "reboot" ? tr("pu.r.reboot") : modelData.reason === "uptodate" ? tr("pu.r.uptodate") : tr1("pu.st.okTo", modelData.now || modelData.available) }
-                            Txt { visible: urow.fail; text: tr("pu.r." + (modelData.reason || "code")) + (modelData.reason === "code" && modelData.code ? " " + modelData.code : "")
+                            Txt { visible: urow.fail; text: tr("pu.r." + (modelData.reason || "code")) + (["code", "net", "server"].indexOf(modelData.reason) >= 0 && modelData.code ? " (" + modelData.code + ")" : "")
                                   color: Theme.bad; font.pixelSize: 12; elide: Text.ElideRight; wrapMode: Text.NoWrap; anchors.verticalCenter: parent.verticalCenter }
                             Txt { visible: modelData.state === "queued"; text: tr1("pu.st.queuedN", String(modelData.queue || "")); muted: true; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter } }
                         Row { visible: urow.warn; spacing: 6; width: parent.width
