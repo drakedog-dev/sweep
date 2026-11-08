@@ -1,6 +1,6 @@
 # Privacy policy
 
-*Applies to Sweep 1.0.16 and later. Last updated: 25 October 2026.*
+*Applies to Sweep 1.0.16 and later. Last updated: 8 November 2026.*
 
 **Short version:** Sweep has no accounts, no analytics, no ads and no telemetry. It does not collect, store or send personal data.
 
@@ -12,7 +12,7 @@ Sweep makes exactly these connections, and no others:
 
 | When | Who connects | Where | What is sent |
 |---|---|---|---|
-| On start-up (can be turned off: **Settings → Updates → Do not check**) and when you press **Check for updates** | Sweep | `api.github.com` | A standard request for the latest Sweep release |
+| On start-up (can be turned off: **Settings → Updates → Do not check**) and when you press **Check for updates** | Sweep | `api.github.com`, or `github.com` when the first does not answer | A standard request for the latest Sweep release |
 | When you agree to install a new Sweep version | Sweep | `github.com` and GitHub's download servers | A download request for the installer |
 | When you open **Programs → Updates**, press **Check** or **Analyze** on the Overview, or turn on **Check once a day** | Windows Package Manager (winget), part of Windows | The Microsoft winget catalogue (`cdn.winget.microsoft.com`) | A request for the package catalogue |
 | When you search on **Programs → Install** or open that tab | winget | The Microsoft winget catalogue (`cdn.winget.microsoft.com`) | Your search words and a request for the package catalogue |
@@ -46,7 +46,7 @@ Questions about privacy: [open an issue](https://github.com/drakedog-dev/sweep/i
 
 | Когда | Кто подключается | Куда | Что отправляется |
 |---|---|---|---|
-| При запуске (отключается: **Настройки → Обновления → Не проверять**) и по кнопке **Проверить обновления** | Sweep | `api.github.com` | Обычный запрос последней версии Sweep |
+| При запуске (отключается: **Настройки → Обновления → Не проверять**) и по кнопке **Проверить обновления** | Sweep | `api.github.com`, а если он не отвечает, `github.com` | Обычный запрос последней версии Sweep |
 | Когда вы соглашаетесь установить новую версию | Sweep | `github.com` и серверы загрузки GitHub | Запрос на скачивание установщика |
 | Когда вы открываете **Программы → Обновления**, нажимаете **Проверить** или **Проанализировать** на «Обзоре», или включаете **Проверять раз в день** | Менеджер пакетов Windows (winget) | Каталог Microsoft winget (`cdn.winget.microsoft.com`) | Запрос каталога пакетов |
 | Когда вы ищете программу на вкладке **Программы → Установка** или открываете её | winget | Каталог Microsoft winget (`cdn.winget.microsoft.com`) | Слова поиска и запрос каталога пакетов |

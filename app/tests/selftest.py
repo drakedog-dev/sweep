@@ -612,6 +612,9 @@ try:
     rel = SU.fetch_release(P.UPDATE_REPO)
     check(bool(rel["tag"] and rel["url"]), f"latest release {rel['tag']}: {rel['url'].rsplit('/', 1)[-1]}")
     check(len(rel["sha256"]) == 64, f"its SHA-256 is published: {rel['sha256'][:12]}…")
+    web = SU._from_web(P.UPDATE_REPO, 3)          # the way round when api.github.com is cut or rate limited
+    check(web["tag"] == rel["tag"] and web["url"] == rel["url"] and web["sha256"] == rel["sha256"],
+          f"github.com without the API gives the same release: {web['tag']} {web['sha256'][:12]}…")
     tmpd = tempfile.mkdtemp()
     got = SU.download(rel["url"], os.path.join(tmpd, "Sweep-Setup.exe"), rel["sha256"], pause=1)
     check(os.path.getsize(got) > 10_000_000, f"installer downloaded and matches its checksum ({os.path.getsize(got) // 1_000_000} MB)")

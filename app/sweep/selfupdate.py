@@ -20,6 +20,7 @@ import urllib.request
 from . import platform as P
 
 API = "https://api.github.com/repos/{repo}/releases/latest"
+WEB = "https://github.com/{repo}/releases/latest"
 
 
 class UpdateError(Exception):
@@ -43,28 +44,37 @@ def _ua() -> dict:
     return {"User-Agent": f"Sweep/{P.APP_VERSION}"}
 
 
+def _sha_near(name: str, text: str) -> str:
+    """The 64-digit hex closest to the file name: "hash  name" in SHA256SUMS.txt, a table row in the release notes."""
+    names = [m.start() for m in re.finditer(re.escape(name), text)]
+    best, dist = "", 1000
+    for m in re.finditer(r"(?<![0-9a-fA-F])[0-9a-fA-F]{64}(?![0-9a-fA-F])", text):
+        for at in names:
+            d = abs(m.start() - at)
+            if d < dist:
+                best, dist = m.group(0).lower(), d
+    return best
+
+
 def _sha_for(asset: dict, body: str) -> str:
     """The installer's SHA-256: the digest GitHub keeps for the asset, or the one in the release notes table."""
     d = (asset.get("digest") or "").lower()
     if d.startswith("sha256:") and len(d) == 71:
         return d[7:]
-    for line in body.splitlines():
-        if asset["name"] in line:
-            m = re.search(r"\b[0-9a-f]{64}\b", line)
-            if m:
-                return m.group(0)
-    return ""
+    return _sha_near(asset["name"], body)
 
 
-def fetch_release(repo: str, attempts: int = 3) -> dict:
-    """{"tag", "url", "sha256", "body"} of the latest release; a dropped connection is tried again."""
+def _get(url: str, timeout: int = 20) -> tuple[str, bytes]:
+    with urllib.request.urlopen(urllib.request.Request(url, headers=_ua()), timeout=timeout) as r:
+        return r.geturl(), r.read()
+
+
+def _with_retries(fn, attempts: int, what: str):
+    """fn() with more tries after a dropped connection or a 5xx; a rate limit or another answer is final."""
     last: BaseException | None = None
     for n in range(attempts):
         try:
-            req = urllib.request.Request(API.format(repo=repo), headers=_ua())
-            with urllib.request.urlopen(req, timeout=20) as r:
-                rel = json.loads(r.read().decode("utf-8"))
-            break
+            return fn()
         except urllib.error.HTTPError as e:
             if e.code in (403, 429):                 # rate limit: asking again now does not help
                 raise UpdateError("limit", e) from e
@@ -75,15 +85,52 @@ def fetch_release(repo: str, attempts: int = 3) -> dict:
             if not is_network_error(e):
                 raise
             last = e
-        P.log(f"self update: release check attempt {n + 1}: {last!r}")
+        P.log(f"self update: {what} attempt {n + 1}: {last!r}")
         if n + 1 < attempts:
             time.sleep(2 + 3 * n)
-    else:
-        raise UpdateError("network", last)
+    raise UpdateError("network", last)
+
+
+def _from_api(repo: str, attempts: int) -> dict:
+    _, raw = _with_retries(lambda: _get(API.format(repo=repo)), attempts, "release check")
+    rel = json.loads(raw.decode("utf-8"))
     body = rel.get("body") or ""
     asset = next((a for a in rel.get("assets", []) if a["name"].startswith("Sweep-Setup") and a["name"].endswith(".exe")), None)
     return {"tag": rel.get("tag_name", "").lstrip("v"), "url": asset["browser_download_url"] if asset else "",
             "sha256": _sha_for(asset, body) if asset else "", "body": body}
+
+
+def _from_web(repo: str, attempts: int) -> dict:
+    """The same answer from github.com itself, for networks that cut api.github.com or share one address among many
+    users (GitHub allows 60 API requests an hour per address). /releases/latest redirects to /releases/tag/vX.Y.Z."""
+    final, page = _with_retries(lambda: _get(WEB.format(repo=repo)), attempts, "release page")
+    m = re.search(r"/releases/tag/v?(\d+(?:\.\d+)+)/?$", final)
+    if not m:
+        raise UpdateError("network", ValueError(f"unexpected release address {final}"))
+    tag = m.group(1)
+    name = f"Sweep-Setup-{tag}.exe"
+    base = WEB.format(repo=repo).rsplit("/latest", 1)[0] + f"/download/v{tag}/"
+    sha = ""
+    try:
+        sha = _sha_near(name, _get(base + "SHA256SUMS.txt")[1].decode("utf-8", "replace"))
+    except Exception as e:  # noqa: BLE001
+        P.log(f"self update: SHA256SUMS.txt: {e!r}")
+    if not sha:
+        sha = _sha_near(name, page.decode("utf-8", "replace"))
+    return {"tag": tag, "url": base + name, "sha256": sha, "body": ""}
+
+
+def fetch_release(repo: str, attempts: int = 3) -> dict:
+    """{"tag", "url", "sha256", "body"} of the latest release. A dropped connection is tried again; when the GitHub API
+    cannot be reached or limits requests, the release page on github.com answers instead (without release notes)."""
+    try:
+        return _from_api(repo, attempts)
+    except UpdateError as api_err:
+        P.log(f"self update: GitHub API {api_err!r}, asking github.com")
+        try:
+            return _from_web(repo, attempts)
+        except UpdateError as web_err:
+            raise (web_err if web_err.kind == "network" and api_err.kind == "network" else api_err) from web_err
 
 
 def _sha256(path: str) -> str:

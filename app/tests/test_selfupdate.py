@@ -124,12 +124,94 @@ def test_server_gone_gives_up():
         assert e.kind == "download" and SU.is_network_error(e.cause)
 
 
+class GitHub(http.server.BaseHTTPRequestHandler):
+    """A tiny GitHub: /api/... (the API) and /web/... (github.com) with what each test sets."""
+    api = "reset"                 # reset | limit | ok
+    web = "ok"                    # ok | reset
+    sums = True                   # SHA256SUMS.txt published
+
+    def log_message(self, *a):
+        pass
+
+    def do_GET(self):  # noqa: N802
+        p = self.path
+        if p.startswith("/api/"):
+            if GitHub.api == "reset":
+                self.close_connection = True      # the network drops it: no answer at all
+                return
+            if GitHub.api == "limit":
+                self.send_error(403, "rate limit exceeded")
+                return
+        if p.startswith("/web/") and GitHub.web == "reset":
+            self.close_connection = True
+            return
+        if p == "/web/r/x/releases/latest":
+            self.send_response(302)
+            self.send_header("Location", "/web/r/x/releases/tag/v1.2.3")
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return
+        if p == "/web/r/x/releases/tag/v1.2.3":
+            html = (f'<table><tr><td><a href="/r/x/releases/download/v1.2.3/Sweep-Setup-1.2.3.exe">Sweep-Setup-1.2.3.exe</a></td>'
+                    f"<td>34.9 MB</td><td><code>{SHA}</code></td></tr></table>").encode()
+            return self._send(html)
+        if p == "/web/r/x/releases/download/v1.2.3/SHA256SUMS.txt" and GitHub.sums:
+            return self._send(f"{SHA}  Sweep-Setup-1.2.3.exe\n".encode())
+        self.send_error(404)
+
+    def _send(self, body: bytes):
+        self.send_response(200)
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+
+def _github(api, web="ok", sums=True):
+    GitHub.api, GitHub.web, GitHub.sums = api, web, sums
+    srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), GitHub)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    base = f"http://127.0.0.1:{srv.server_address[1]}"
+    SU.API, SU.WEB = base + "/api/{repo}", base + "/web/{repo}/releases/latest"
+    return srv, base
+
+
+def test_release_from_github_page_when_api_is_cut():
+    srv, base = _github("reset")
+    try:
+        rel = SU.fetch_release("r/x", attempts=1)
+        assert rel["tag"] == "1.2.3" and rel["sha256"] == SHA, rel
+        assert rel["url"] == base + "/web/r/x/releases/download/v1.2.3/Sweep-Setup-1.2.3.exe", rel["url"]
+    finally:
+        srv.shutdown()
+
+
+def test_release_checksum_from_page_without_sums_file():
+    srv, _ = _github("limit", sums=False)
+    try:
+        rel = SU.fetch_release("r/x", attempts=1)
+        assert rel["tag"] == "1.2.3" and rel["sha256"] == SHA, rel
+    finally:
+        srv.shutdown()
+
+
+def test_release_check_fails_when_all_github_is_cut():
+    srv, _ = _github("reset", web="reset")
+    try:
+        SU.fetch_release("r/x", attempts=1)
+        raise AssertionError("no error")
+    except SU.UpdateError as e:
+        assert e.kind == "network" and SU.is_network_error(e), e
+    finally:
+        srv.shutdown()
+
+
 def test_checksum_from_release():
     asset = {"name": "Sweep-Setup-1.0.23.exe", "digest": "sha256:" + SHA}
     assert SU._sha_for(asset, "") == SHA
     body = f"### Download\n\n| File | Size | SHA-256 |\n|---|---|---|\n| [Sweep-Setup-1.0.23.exe](https://x/Sweep-Setup-1.0.23.exe) | 34.8 MB | `{SHA}` |"
     assert SU._sha_for({"name": "Sweep-Setup-1.0.23.exe"}, body) == SHA
     assert SU._sha_for({"name": "Sweep-Setup-1.0.24.exe"}, body) == ""
+    assert SU._sha_near("Sweep-Setup-1.0.23.exe", f"{SHA}  Sweep-Setup-1.0.23.exe\n") == SHA
 
 
 def test_network_errors():

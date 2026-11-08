@@ -2,6 +2,9 @@
 
 All notable changes to Sweep. The newest version is at the top; the in-app update dialog and the GitHub release notes are built from this file.
 
+## 1.0.25
+- Checking for a new Sweep version works on networks that cut the connection to api.github.com or share one address among many users (GitHub allows 60 API checks an hour per address): Sweep then reads the latest release from github.com itself and takes the installer's SHA-256 from SHA256SUMS.txt
+
 ## 1.0.24
 - Sweep's own update no longer pops up or starts while programs are updating or installing, or while Sweep cleans: it waits until the task is done. "Update" pressed meanwhile installs Sweep right after it
 - The download of a new Sweep version survives a dropped connection: it continues where it stopped, up to five tries, instead of failing with "connection closed"
