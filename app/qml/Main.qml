@@ -10,6 +10,12 @@ ApplicationWindow {
     minimumWidth: 980; minimumHeight: 680
     visible: true
     title: "Sweep"
+    // the close button: ask, go to the tray, or quit (Settings); a real quit (update, admin restart, tray Quit) passes
+    onClosing: close => {
+        if (app.quitting) return
+        if (app.closeAction === "tray") { close.accepted = false; app.toTray() }
+        else if (app.closeAction === "ask") { close.accepted = false; app.askClose() }
+    }
     color: Theme.bg
     font.family: Theme.font
 
@@ -231,6 +237,17 @@ ApplicationWindow {
             AccentButton { visible: (app.releaseNotes["url"] || "") !== ""; text: tr("pu.notes.open"); primary: false; onClicked: app.openUrl(app.releaseNotes["url"]) } }
     }
 
+    Modal { id: closeModal; open: app.closeAsk; icon: "monitor-down"; title: tr("close.title"); subtitle: tr("close.sub"); boxWidth: 560
+        property bool remember: true
+        Row { spacing: 10
+            Check { on: closeModal.remember; onFlip: closeModal.remember = !closeModal.remember; anchors.verticalCenter: parent.verticalCenter }
+            Txt { text: tr("close.remember"); anchors.verticalCenter: parent.verticalCenter
+                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: closeModal.remember = !closeModal.remember } } }
+        Row { spacing: 10; topPadding: 4
+            AccentButton { text: tr("close.tray"); onClicked: app.closeChoice(true, closeModal.remember) }
+            AccentButton { text: tr("close.quit"); primary: false; onClicked: app.closeChoice(false, closeModal.remember) }
+            AccentButton { text: tr("common.cancel"); primary: false; onClicked: app.cancelClose() } }
+    }
     Modal { open: confirmFn !== null; icon: "triangle-alert"; title: confirmTitle; boxWidth: 520
         Txt { text: confirmText; width: parent.width }
         Row { spacing: 10

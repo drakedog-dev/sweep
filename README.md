@@ -94,7 +94,7 @@ Most cleaners delete first and ask later. Sweep is built the other way round:
 
 **Quarantine.** Files are moved to `ProgramData\Sweep\Quarantine`. **Restore** puts a session back, **Delete** removes it for good, and copies older than 30 days are deleted by themselves (you can turn that off in Settings).
 
-**Settings.** Language, theme, accent colour, animations, restore points, administrator rights, automatic removal of old copies, and how new versions of Sweep arrive (ask me, install automatically, or do not check).
+**Settings.** Language, theme, accent colour, animations, restore points, administrator rights, automatic removal of old copies, what the close button does (ask, minimise to the tray, quit), and how new versions of Sweep arrive (ask me, install automatically, or do not check).
 
 </details>
 

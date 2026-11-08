@@ -3,6 +3,11 @@
 All notable changes to Sweep. The newest version is at the top; the in-app update dialog and the GitHub release notes are built from this file.
 
 ## 1.0.26
+- The window opens where you left it, as big as it was and maximised if it was
+- Closing the window can send Sweep to the tray instead: Sweep asks once (with "Remember my choice"), and Settings has Ask, Minimise to tray and Quit. From the tray it still checks for updates once a day and says when there are some
+- Program icons are drawn from larger pictures at the screen's real pixel size, so they stay sharp at 125-200 % scaling instead of looking blocky
+- Programs whose installer refuses administrator rights (Spotify, for one) are now updated and installed: Sweep runs winget for them as the signed-in user
+- When the connection to GitHub is cut and a third-party antivirus is installed, Sweep explains how to add itself to the antivirus's trusted programs (Kaspersky keeps unsigned programs, and the winget they start, offline)
 - Program updates: when winget cannot check (an old winget on Windows 10, a source that cannot be opened), Sweep says so and offers to check again, instead of reporting that every program is up to date
 - Older winget versions work: flags they do not know are left out, and Sweep suggests updating App Installer from Microsoft Store
 

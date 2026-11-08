@@ -492,6 +492,14 @@ if exe:
     rc_bad, scr_bad, _ = UPD._capture(["upgrade", "--source", "sweep-no-such-source"] + UPD.COMMON, 120)
     why_bad = UPD.list_failed(rc_bad, scr_bad, UPD.parse_upgrades(scr_bad))
     check(bool(why_bad), f"a winget list that fails is reported as a failure, not as 'up to date' ({rc_bad & 0xFFFFFFFF:#x}: {why_bad})")
+    # installers that refuse administrator rights (Spotify) run as the signed-in user: the same mechanism with --version
+    rc_u, out_u = UPD.as_user(["--version"], 120)
+    if rc_u == -1:
+        note("winget as the signed-in user: no interactive user on this runner, skipped")
+    else:
+        check(rc_u == 0 and out_u.strip().lower().startswith(b"v"), f"winget runs as the signed-in user without admin rights: rc {rc_u}, {out_u[:40]!r}")
+    check(not os.path.exists(os.path.join(str(P.ROOT), "asuser")) or not os.listdir(os.path.join(str(P.ROOT), "asuser")),
+          "nothing left behind by the run as the user")
     known = [i for i in items if i["host"] and i["sha256"]]
     check(len(known) >= max(1, len(items) * 0.8), f"vendor address and SHA-256 known for most packages ({len(known)}/{len(items)})")
     pick = next((i for k in ("GitHub.cli", "7zip.7zip", "JRSoftware.InnoSetup", "Microsoft.PowerShell") for i in items if i["id"] == k), None)

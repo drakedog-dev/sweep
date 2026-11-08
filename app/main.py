@@ -131,9 +131,62 @@ def main() -> int:
         P.log("ui-test: Main.qml did not load: " + " | ".join(warnings))
         return 1
     frame_title_bar(engine.rootObjects()[0], bridge)
+    remember_window(engine.rootObjects()[0], bridge)
     if ui_test:
         return run_ui_test(qt_app, engine.rootObjects()[0], bridge, warnings)
     return qt_app.exec()
+
+
+def remember_window(root, bridge) -> None:
+    """The window opens where it was left and as big as it was, maximised if it was; a place on a monitor that is
+    gone now is replaced by the middle of the main one."""
+    import shiboken6
+    from PySide6.QtCore import QRect, QTimer
+    from PySide6.QtGui import QGuiApplication, QWindow
+    from PySide6.QtQuick import QQuickWindow
+    try:
+        win = shiboken6.wrapInstance(shiboken6.getCppPointer(root)[0], QQuickWindow)
+    except Exception as e:  # noqa: BLE001
+        P.log(f"window: {e}")
+        return
+    bridge.attach_window(win)
+    g = bridge.settings.get("window") or {}
+    try:
+        rect = QRect(int(g["x"]), int(g["y"]), max(int(g["w"]), win.minimumWidth()), max(int(g["h"]), win.minimumHeight()))
+    except (KeyError, TypeError, ValueError):
+        rect = None
+    if rect is not None:
+        if any(s.availableGeometry().intersected(rect).width() >= 200 and s.availableGeometry().intersected(rect).height() >= 120
+               for s in QGuiApplication.screens()):
+            win.setGeometry(rect)
+        else:
+            scr = QGuiApplication.primaryScreen().availableGeometry()
+            w, h = min(rect.width(), scr.width()), min(rect.height(), scr.height())
+            win.setGeometry(scr.x() + (scr.width() - w) // 2, scr.y() + (scr.height() - h) // 2, w, h)
+    state = {"rect": win.geometry(), "max": bool(g.get("max"))}
+    if state["max"]:
+        win.setVisibility(QWindow.Visibility.Maximized)
+
+    def settle():
+        """Called once the window has stopped changing: remember its normal place and whether it is maximised."""
+        v = win.visibility()
+        if v == QWindow.Visibility.Windowed:
+            state["rect"], state["max"] = win.geometry(), False
+        elif v == QWindow.Visibility.Maximized:
+            state["max"] = True
+        r = state["rect"]
+        bridge.settings["window"] = {"x": r.x(), "y": r.y(), "w": r.width(), "h": r.height(), "max": state["max"]}
+        P.save_settings(bridge.settings)
+
+    timer = QTimer(win)
+    timer.setSingleShot(True)
+    timer.setInterval(800)
+    timer.timeout.connect(settle)
+    for sig in (win.xChanged, win.yChanged, win.widthChanged, win.heightChanged, win.visibilityChanged):
+        sig.connect(lambda *_: timer.start())
+    QGuiApplication.instance().aboutToQuit.connect(settle)
+    # Windows shutting down or signing out: Sweep quits for real instead of going to the tray
+    QGuiApplication.instance().commitDataRequest.connect(lambda *_: setattr(bridge, "_quitting", True))
 
 
 def frame_title_bar(root, bridge) -> None:

@@ -67,24 +67,41 @@ class Worker(QThread):
 
 
 class AppIconProvider(QQuickImageProvider):
-    """image://appicon/<path>: the real icon of a program, taken from its exe or ico by Windows."""
+    """image://appicon/<path>: the real icon of a program, taken from its exe or ico by Windows.
+    QML asks for the size in screen pixels (sourceSize = logical size x scaling), so the icon is drawn 1:1 and stays
+    sharp at 125-200 % scaling. It is made from a larger picture (48 px, or 256 px when the file really has one)
+    scaled down smoothly, never from a 32 px icon blown up."""
 
     def __init__(self):
         super().__init__(QQuickImageProvider.ImageType.Pixmap)
-        self._cache: dict[str, QPixmap] = {}
+        self._cache: dict[tuple[str, int], QPixmap] = {}
+
+    @staticmethod
+    def _filled(pm: QPixmap) -> int:
+        """Width of the visible part: a 256 px "jumbo" icon made from a small one is a little picture in an empty square."""
+        from PySide6.QtGui import QBitmap, QRegion
+        return QRegion(QBitmap.fromImage(pm.toImage().createAlphaMask())).boundingRect().width()
 
     def requestPixmap(self, id_, size, requested):  # noqa: N802
         path = unquote(id_)
-        if path not in self._cache:
+        side = requested.width() if requested and requested.width() > 0 else 40
+        key = (path, side)
+        if key not in self._cache:
             from PySide6.QtWidgets import QFileIconProvider
-            side = requested.width() if requested and requested.width() > 0 else 40
-            pm = QPixmap(path) if path.lower().endswith((".png", ".jpg", ".jpeg")) else QPixmap()
-            if not pm.isNull():       # a Store app's logo is a picture, not a program file
-                pm = pm.scaled(side, side, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
-            else:
-                pm = QFileIconProvider().icon(QFileInfo(path)).pixmap(QSize(side, side))
-            self._cache[path] = pm
-        return self._cache[path]
+            src = QPixmap(path) if path.lower().endswith((".png", ".jpg", ".jpeg")) else QPixmap()
+            if src.isNull():             # a Store app's logo is a picture; a program file has icons of several sizes
+                icon = QFileIconProvider().icon(QFileInfo(path))
+                src = icon.pixmap(QSize(48, 48), 1.0)
+                if side > 48:
+                    big = icon.pixmap(QSize(256, 256), 1.0)
+                    if not big.isNull() and self._filled(big) >= 128:
+                        src = big
+            if not src.isNull():
+                src.setDevicePixelRatio(1.0)
+                if src.width() != side or src.height() != side:
+                    src = src.scaled(side, side, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+            self._cache[key] = src
+        return self._cache[key]
 
 
 class App(QObject):
@@ -183,6 +200,17 @@ class App(QObject):
         self._upd_wait = QTimer(self)
         self._upd_wait.setInterval(3000)
         self._upd_wait.timeout.connect(self._update_when_idle)
+        # window: closing to the tray, really quitting, daily checks while Sweep stays in the tray
+        self._win = None
+        self._tray = None
+        self._tray_menu = None
+        self._quitting = False
+        self._close_ask = False
+        self._net_hint = ""              # an antivirus may be cutting Sweep's (and winget's) connections
+        self._hourly = QTimer(self)
+        self._hourly.setInterval(3600 * 1000)
+        self._hourly.timeout.connect(self._hourly_check)
+        self._hourly.start()
         self._whats_new: dict = {}
         last = self.settings.get("lastVersion")
         updated = (last and self._newer(P.APP_VERSION, last)) or (last is None and had_settings)
@@ -218,6 +246,7 @@ class App(QObject):
         if isinstance(e, SU.UpdateError) and e.kind == "limit":
             return self.i18n.t("set.ratelimit")
         if SU.is_network_error(e):
+            self._note_net_block()
             return self.i18n.t("common.neterr")
         return self.i18n.t("common.error", str(e))
 
@@ -227,8 +256,7 @@ class App(QObject):
         if self._admin:
             return False
         if P.relaunch_elevated(["--page", page] + (["--do", action] if action else [])):
-            from PySide6.QtWidgets import QApplication
-            QApplication.quit()
+            self.quitNow()
         else:
             self._set_status(self.i18n.t("admin.declined"))
             self.toast.emit(self.i18n.t("admin.declined"))
@@ -384,8 +412,7 @@ class App(QObject):
 
     @Slot()
     def declineTerms(self):
-        from PySide6.QtWidgets import QApplication
-        QApplication.quit()
+        self.quitNow()
 
     @Slot()
     def dismissWhatsNew(self):
@@ -437,6 +464,146 @@ class App(QObject):
         self.changed.emit()
 
     @Slot()
+    def _note_net_block(self) -> None:
+        """Connections cut while a third-party antivirus is installed: say how to let Sweep through."""
+        av = P.third_party_av()
+        if av and not self._net_hint:
+            self._net_hint = self.i18n.t("net.av.kaspersky" if "kaspersky" in av.lower() else "net.av", av)
+            P.log(f"network: connections cut, {av} may be blocking Sweep")
+            self.changed.emit()
+
+    @Property(str, notify=changed)
+    def netHint(self):
+        return self._net_hint
+
+    # ---------- the window: close to the tray or quit ----------
+    def attach_window(self, win) -> None:
+        self._win = win
+        self.langChanged.connect(self._tray_texts)
+
+    @Property(str, notify=langChanged)
+    def closeAction(self):
+        return self.settings.get("closeAction", "ask")
+
+    @Slot(str)
+    def setCloseAction(self, action):
+        self.settings["closeAction"] = action if action in ("ask", "tray", "quit") else "ask"
+        P.save_settings(self.settings)
+        self.langChanged.emit()
+
+    @Property(bool, notify=changed)
+    def quitting(self):
+        return self._quitting
+
+    @Property(bool, notify=changed)
+    def closeAsk(self):
+        return self._close_ask
+
+    @Slot()
+    def askClose(self):
+        self._close_ask = True
+        self.changed.emit()
+
+    @Slot()
+    def cancelClose(self):
+        self._close_ask = False
+        self.changed.emit()
+
+    @Slot(bool, bool)
+    def closeChoice(self, tray, remember):
+        if remember:
+            self.setCloseAction("tray" if tray else "quit")
+        self._close_ask = False
+        self.changed.emit()
+        if tray:
+            self.toTray()
+        else:
+            self.quitNow()
+
+    @Slot()
+    def quitNow(self):
+        """Really quit (the tray choice does not apply): a new version, a restart with administrator rights, Quit."""
+        self._quitting = True
+        self.changed.emit()
+        if self._tray:
+            self._tray.hide()
+        from PySide6.QtWidgets import QApplication
+        QApplication.quit()
+
+    def _ensure_tray(self):
+        from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
+        if self._tray is None and QSystemTrayIcon.isSystemTrayAvailable():
+            tray = QSystemTrayIcon(QApplication.windowIcon(), self)
+            menu = QMenu()
+            menu.addAction("").triggered.connect(self.showWindow)
+            menu.addSeparator()
+            menu.addAction("").triggered.connect(self.quitNow)
+            tray.setContextMenu(menu)
+            tray.activated.connect(lambda reason: self.showWindow() if reason in (QSystemTrayIcon.ActivationReason.Trigger,
+                                                                                  QSystemTrayIcon.ActivationReason.DoubleClick) else None)
+            tray.messageClicked.connect(self.showWindow)
+            self._tray, self._tray_menu = tray, menu
+            self._tray_texts()
+        return self._tray
+
+    def _tray_texts(self) -> None:
+        if self._tray is None:
+            return
+        self._tray.setToolTip("Sweep " + P.APP_VERSION)
+        acts = [a for a in self._tray_menu.actions() if not a.isSeparator()]
+        acts[0].setText(self.i18n.t("tray.open"))
+        acts[1].setText(self.i18n.t("tray.quit"))
+
+    def _hidden(self) -> bool:
+        return self._win is not None and not self._win.isVisible()
+
+    def _tray_note(self, text: str) -> None:
+        if self._tray is not None and self._hidden():
+            from PySide6.QtWidgets import QSystemTrayIcon
+            self._tray.showMessage("Sweep", text, QSystemTrayIcon.MessageIcon.Information, 6000)
+
+    @Slot()
+    def toTray(self):
+        if self._win is None:
+            return
+        tray = self._ensure_tray()
+        if tray is None:                      # no notification area: just minimise
+            self._win.showMinimized()
+            return
+        tray.show()
+        self._win.hide()
+        if not self.settings.get("trayHinted"):
+            self.settings["trayHinted"] = True
+            P.save_settings(self.settings)
+            self._tray_note(self.i18n.t("tray.hint"))
+
+    @Slot()
+    def showWindow(self):
+        if self._win is None:
+            return
+        if (self.settings.get("window") or {}).get("max"):
+            self._win.showMaximized()
+        else:
+            self._win.showNormal()
+        self._win.raise_()
+        self._win.requestActivate()
+        if self._tray is not None:
+            self._tray.hide()
+
+    def _hourly_check(self) -> None:
+        """While Sweep stays open (often in the tray), the once-a-day checks still happen once a day."""
+        if not P.IS_WINDOWS or self._busy:
+            return
+        if self._pu_conf().get("auto") and self._pu_due():
+            self._scan_updates(quiet=True)
+        if self.settings.get("updateMode", "ask") != "off":
+            try:
+                due = (datetime.now() - datetime.fromisoformat(self.settings.get("lastSelfCheck", ""))).total_seconds() > 20 * 3600
+            except Exception:  # noqa: BLE001
+                due = True
+            if due:
+                self.autoUpdateCheck()
+
     def autoUpdateCheck(self):
         """Start-up check. "ask" shows a reminder with the changes, "auto" installs silently."""
         mode = self.settings.get("updateMode", "ask")
@@ -451,9 +618,12 @@ class App(QObject):
 
         def done(info):
             self.update_info = info
+            self.settings["lastSelfCheck"] = datetime.now().isoformat(timespec="seconds")
+            P.save_settings(self.settings)
             self.changed.emit()
             if not (info.get("newer") and info.get("url")) or info["tag"] == self.settings.get("skipVersion"):
                 return
+            self._tray_note(self.i18n.t("tray.newversion", info["tag"]))
             if mode == "auto":
                 self._install_after = True        # installs now, or as soon as the current task is over
                 self.toast.emit(self.i18n.t("set.autoinstalling", info["tag"]))
@@ -464,7 +634,8 @@ class App(QObject):
         w = Worker(work, self)
         self._workers.append(w)
         w.done.connect(lambda r: (self._workers.remove(w), done(r)))
-        w.failed.connect(lambda e: (self._workers.remove(w), P.log(f"auto update: {e}")))
+        w.failed.connect(lambda e: (self._workers.remove(w), P.log(f"auto update: {e}"),
+                                    self._note_net_block() if SU.is_network_error(e) else None))
         w.start()
 
     @Property(bool, notify=langChanged)
@@ -1768,6 +1939,8 @@ class App(QObject):
             self._pu_items = res["items"]
             self._pu.update(checking=False, checked=True, winget=res["winget"], when=datetime.now().strftime("%H:%M"), stage="",
                             error=res.get("error", ""), errorText=res.get("errorText", ""), old=bool(res.get("old")))
+            if res.get("error", "").startswith("0x") and UPD.reason_for(int(res["error"], 16)) == "net":
+                self._note_net_block()
             conf = self._pu_conf()
             conf["lastCheck"] = datetime.now().isoformat(timespec="seconds")
             if res.get("listSecs"):
@@ -1777,6 +1950,8 @@ class App(QObject):
             self.updatesChanged.emit()
             self.changed.emit()
             n = len(self._pu_safe())
+            if quiet and n:
+                self._tray_note(self.i18n.t("tray.updates", n))
             if not quiet:
                 self._set_status(self.i18n.t("pu.found", n) if n else self.i18n.t("pu.failed.short") if res.get("error")
                                  else self.i18n.t("pu.none") if res["winget"] else self.i18n.t("pu.nowinget.short"))
@@ -2380,8 +2555,7 @@ class App(QObject):
             return dst
 
         def done(_):
-            from PySide6.QtWidgets import QApplication
-            QApplication.quit()
+            self.quitNow()
 
         def failed(e):
             P.log(f"self update: {e!r}")

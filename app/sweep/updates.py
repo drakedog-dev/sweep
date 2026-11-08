@@ -52,7 +52,9 @@ REASONS = {
     0x8A15010F: "policy",     # INSTALL_BLOCKED_BY_POLICY
     0x8A150110: "deps",       # INSTALL_DEPENDENCIES
     0x8A150111: "inuse",      # INSTALL_PACKAGE_IN_USE_BY_APPLICATION
+    0x8A150056: "noadmin",    # INSTALLER_PROHIBITS_ELEVATION: tried as the signed-in user too, and that did not work
 }
+PROHIBITS_ELEVATION = 0x8A150056
 SUCCESS_REASONS = ("reboot", "uptodate")
 
 # ---------------- demo data (Linux / screenshots) ----------------
@@ -580,7 +582,7 @@ def _asset(folder: str, rel: str) -> str:
         n = os.path.basename(c).lower()
         m = re.search(r"targetsize-(\d+)", n)
         if m:
-            return (0 if "altform-unplated" in n else 1 if "unplated" not in n else 2, abs(int(m.group(1)) - 48))
+            return (0 if "altform-unplated" in n else 1 if "unplated" not in n else 2, abs(int(m.group(1)) - 64))   # sharp up to 200 %
         m = re.search(r"scale-(\d+)", n)
         return (3, abs(int(m.group(1)) - 200)) if m else (4, 0)
 
@@ -769,7 +771,7 @@ def list_failed(rc: int, screen: list[str], rows: list[dict]) -> str:
     if code in (0, NOT_FOUND, NOT_APPLICABLE) and not table:
         return ""
     said = [x.strip() for x in screen if x.strip() and not _SPINNER.match(x.strip())]
-    msg = next((x for x in said if re.search(r"error|failed|not recognized|ошибк|не удалось|не распознан|0x8a15", x, re.I)), said[-1] if said else "")
+    msg = next((x for x in said if re.search(r"error|failed|not recognized|ошибк|не удалось|не распознан|0x8a15", x, re.I)), said[0] if said else "")
     return (msg[:200] or "no answer") if not table else "unreadable table"
 
 
@@ -1022,6 +1024,94 @@ def reason_for(code: int) -> str:
     return "code"
 
 
+def _run_pkg(args: list[str], timeout: int, prog: Progress) -> tuple[int, bytes, str]:
+    """winget install/upgrade. Some installers (Spotify, for one) refuse to run as administrator, and Sweep always
+    runs as one: winget says INSTALLER_PROHIBITS_ELEVATION, and the same command is run again as the signed-in user."""
+    rc, raw, how = _stream(args, timeout, prog)
+    if (rc & 0xFFFFFFFF) == PROHIBITS_ELEVATION and P.is_admin():
+        P.log(f"winget {args[:3]}: the installer refuses administrator rights, running it as the signed-in user")
+        prog.phase, prog.got, prog.total = "install", 0.0, 0.0
+        prog._emit()
+        rc2, raw2 = as_user(args, timeout)
+        if rc2 != -1:
+            return rc2, raw2, "user"
+    return rc, raw, how
+
+
+_AS_USER_PS = r'''
+$ErrorActionPreference = 'Stop'
+$u = (Get-CimInstance Win32_ComputerSystem).UserName
+if (-not $u) {
+  $o = Get-CimInstance Win32_Process -Filter "Name='explorer.exe'" | Select-Object -First 1 | Invoke-CimMethod -MethodName GetOwner
+  if ($o -and $o.User) { $u = "$($o.Domain)\$($o.User)" }
+}
+if (-not $u) { throw 'nobody is signed in' }
+& icacls.exe $env:SWEEP_DIR /grant "$($u):(OI)(CI)M" | Out-Null
+$a = New-ScheduledTaskAction -Execute 'wscript.exe' -Argument ('//B //Nologo "' + $env:SWEEP_DIR + '\run.vbs"')
+$p = New-ScheduledTaskPrincipal -UserId $u -LogonType Interactive -RunLevel Limited
+$s = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Hours 1)
+Register-ScheduledTask -TaskName $env:SWEEP_TASK -TaskPath '\Sweep\' -Action $a -Principal $p -Settings $s -Force | Out-Null
+Start-ScheduledTask -TaskName $env:SWEEP_TASK -TaskPath '\Sweep\'
+$u
+'''
+
+
+def as_user(args: list[str], timeout: int) -> tuple[int, bytes]:
+    """Run `winget <args>` hidden as the signed-in user without administrator rights (a one-off scheduled task with
+    limited rights in that user's session). Returns (exit code, output); (-1, b"") when it could not be started."""
+    if not P.IS_WINDOWS:
+        return -1, b""
+    import secrets
+    tag = "AsUser-" + secrets.token_hex(4)
+    work = os.path.join(str(P.ROOT), "asuser", tag)
+    os.makedirs(work, exist_ok=True)
+    out, rcf = os.path.join(work, "out.txt"), os.path.join(work, "rc.txt")
+    cmd = subprocess.list2cmdline(["winget"] + _args(args)) + f' > "{out}" 2>&1'
+    vbs = ('Set sh = CreateObject("WScript.Shell")\r\n'
+           f'rc = sh.Run("cmd /c " & Chr(34) & {_vbs_str(cmd)} & Chr(34), 0, True)\r\n'
+           'Set f = CreateObject("Scripting.FileSystemObject").CreateTextFile(' + _vbs_str(rcf) + ', True)\r\n'
+           'f.WriteLine rc\r\nf.Close\r\n')
+    with open(os.path.join(work, "run.vbs"), "w", encoding="utf-16", newline="") as f:
+        f.write(vbs)
+    env = dict(os.environ, SWEEP_DIR=work, SWEEP_TASK=tag)
+    try:
+        r = subprocess.run(["powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", _AS_USER_PS],
+                           capture_output=True, timeout=120, env={k: v for k, v in env.items() if k.upper() != "PSMODULEPATH"},
+                           creationflags=0x08000000)
+        if r.returncode != 0:
+            P.log(f"as user: task not started: {r.stderr.decode('utf-8', 'replace').strip()[-300:]}")
+            return -1, b""
+        P.log(f"as user: {r.stdout.decode('utf-8', 'replace').strip()} runs winget {args[:3]}")
+        started = time.time() + 45              # cmd creates out.txt at once; nothing after 45 s: the task never ran
+        while time.time() < started and not os.path.exists(out):
+            time.sleep(0.5)
+        if not os.path.exists(out):
+            P.log("as user: the task did not start (is the user signed in?)")
+            return -1, b""
+        end = time.time() + timeout
+        while time.time() < end and not os.path.exists(rcf):
+            time.sleep(1.0)
+        time.sleep(0.5)
+        try:
+            rc = int(open(rcf, encoding="utf-8", errors="replace").read().strip() or "-1")
+        except (OSError, ValueError):
+            P.log("as user: winget did not finish in time")
+            return -2, b""
+        try:
+            raw = open(out, "rb").read()
+        except OSError:
+            raw = b""
+        return rc, raw
+    finally:
+        subprocess.run(["schtasks.exe", "/Delete", "/TN", "\\Sweep\\" + tag, "/F"], capture_output=True, creationflags=0x08000000)
+        shutil.rmtree(work, ignore_errors=True)
+
+
+def _vbs_str(s: str) -> str:
+    """A VBScript string literal."""
+    return '"' + s.replace('"', '""') + '"'
+
+
 def _verdict(rc: int) -> tuple[int, str, bool]:
     code = rc & 0xFFFFFFFF
     reason = "" if rc == 0 else "timeout" if rc == -2 else reason_for(code)
@@ -1046,7 +1136,7 @@ def upgrade(pid: str, timeout: int = 1800, progress=None, before: str = "", over
                 "after": d.get("version", "") if stuck else d.get("available", ""), "via": "demo", "frames": len(prog.log)}
     t0 = time.time()
     prog = Progress(progress)
-    rc, raw, how = _stream(["upgrade", "--id", pid, "--exact", "--source", SOURCE, "--silent", "--accept-package-agreements"] + COMMON, timeout, prog)
+    rc, raw, how = _run_pkg(["upgrade", "--id", pid, "--exact", "--source", SOURCE, "--silent", "--accept-package-agreements"] + COMMON, timeout, prog)
     code, reason, ok = _verdict(rc)
     route = "upgrade"
     P.log(f"updates: {pid} upgrade rc={code:#x} ok={ok} {time.time() - t0:.0f} s via {how}, progress frames {len(prog.log)}  {_tail(raw)}")
@@ -1058,7 +1148,7 @@ def upgrade(pid: str, timeout: int = 1800, progress=None, before: str = "", over
         listed = installed_version(pid, raw=True)
         P.log(f"updates: {pid}: winget list says: {listed[-300:]}")
         prog = Progress(progress)
-        rc, raw, how = _stream(["install", "--id", pid, "--exact", "--source", SOURCE, "--silent", "--accept-package-agreements"] + COMMON, timeout, prog)
+        rc, raw, how = _run_pkg(["install", "--id", pid, "--exact", "--source", SOURCE, "--silent", "--accept-package-agreements"] + COMMON, timeout, prog)
         code, reason, ok = _verdict(rc)
         route = "install"
         P.log(f"updates: {pid} install over the old version rc={code:#x} ok={ok} via {how}  {_tail(raw)}")
@@ -1076,7 +1166,7 @@ def install(pid: str, timeout: int = 1800, progress=None) -> dict:
         _demo_run(prog, 18.0)
         return {"ok": True, "code": 0, "reason": "", "via": "demo", "frames": len(prog.log)}
     t0 = time.time()
-    rc, raw, how = _stream(["install", "--id", pid, "--exact", "--source", SOURCE, "--silent", "--accept-package-agreements"] + COMMON, timeout, prog)
+    rc, raw, how = _run_pkg(["install", "--id", pid, "--exact", "--source", SOURCE, "--silent", "--accept-package-agreements"] + COMMON, timeout, prog)
     code, reason, ok = _verdict(rc)
     if reason == "uptodate":
         reason = "already"

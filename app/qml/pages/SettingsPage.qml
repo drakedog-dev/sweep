@@ -32,6 +32,14 @@ Page {
             Txt { text: tr("set.anim"); font.pixelSize: 15; bold: true; anchors.verticalCenter: parent.verticalCenter }
             Toggle { checked: Theme.anim; anchors.verticalCenter: parent.verticalCenter; onToggled: v => app.setAnimations(v) } }
     } }
+    Card { Column { width: parent.width; spacing: 10
+        Txt { text: tr("set.close"); font.pixelSize: 15; bold: true }
+        Row { spacing: 8
+            Chip { label: tr("set.close.ask"); on: app.closeAction === "ask"; onPick: app.setCloseAction("ask") }
+            Chip { label: tr("set.close.tray"); on: app.closeAction === "tray"; onPick: app.setCloseAction("tray") }
+            Chip { label: tr("set.close.quit"); on: app.closeAction === "quit"; onPick: app.setCloseAction("quit") } }
+        Txt { text: tr("set.close." + app.closeAction + ".hint"); muted: true; font.pixelSize: 12; width: parent.width }
+    } }
     Card { pad: 10
         Column { width: parent.width
             Txt { text: tr("set.safety"); font.pixelSize: 15; bold: true; leftPadding: 12; topPadding: 8; bottomPadding: 4 }
@@ -62,6 +70,9 @@ Page {
         Row { spacing: 10
             AccentButton { text: tr("set.check"); primary: false; compact: true; enabled: !app.busy; onClicked: app.checkUpdates() }
             AccentButton { text: tr1("set.install", app.updateInfo["tag"] || ""); compact: true; visible: app.updateInfo["newer"] === true; onClicked: app.installUpdate() } }
+        Row { spacing: 10; visible: app.netHint !== ""; width: parent.width
+            Icon { name: "shield-alert"; size: 18; color: Theme.warn; anchors.top: parent.top; anchors.topMargin: 1 }
+            Txt { text: app.netHint; font.pixelSize: 12; width: parent.width - 28 } }
     } }
     Card { Column { width: parent.width; spacing: 10
         Row { spacing: 12

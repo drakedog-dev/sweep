@@ -120,7 +120,9 @@ Page {
     component AppIcon: Rectangle {
         property string src: ""
         width: 40; height: 40; radius: 11; color: Theme.soft
-        Image { id: im; anchors.centerIn: parent; width: 28; height: 28; source: parent.src; sourceSize.width: 32; sourceSize.height: 32; asynchronous: true; visible: status === Image.Ready && parent.src !== "" }
+        Image { id: im; anchors.centerIn: parent; width: 28; height: 28; source: parent.src; smooth: true
+            // asked for in screen pixels, so the icon is drawn 1:1 at any scaling
+            sourceSize.width: Math.round(28 * Screen.devicePixelRatio); sourceSize.height: Math.round(28 * Screen.devicePixelRatio); asynchronous: true; visible: status === Image.Ready && parent.src !== "" }
         Icon { anchors.centerIn: parent; name: "app-window"; size: 18; color: Theme.accent2; visible: !im.visible }
     }
     // a letter on a colour of its own for programs that are not installed yet (the real icon once they are)
@@ -132,7 +134,9 @@ Page {
             gradient: Gradient { GradientStop { position: 0; color: Qt.hsla(hue, 0.62, Theme.dark ? 0.52 : 0.58, 1) } GradientStop { position: 1; color: Qt.hsla((hue + 0.07) % 1, 0.7, Theme.dark ? 0.36 : 0.44, 1) } }
             Text { anchors.centerIn: parent; color: "white"; font.family: Theme.font; font.pixelSize: 17; font.weight: Font.Bold; renderType: Text.NativeRendering
                 text: { var s = label.replace(/[^A-Za-zЀ-ӿ0-9]/g, ""); return s.length ? s.charAt(0).toUpperCase() : "?" } } }
-        Image { id: mi; anchors.centerIn: parent; width: 28; height: 28; source: parent.src; sourceSize.width: 32; sourceSize.height: 32; asynchronous: true; visible: status === Image.Ready && parent.src !== "" }
+        Image { id: mi; anchors.centerIn: parent; width: 28; height: 28; source: parent.src; smooth: true
+            // asked for in screen pixels, so the icon is drawn 1:1 at any scaling
+            sourceSize.width: Math.round(28 * Screen.devicePixelRatio); sourceSize.height: Math.round(28 * Screen.devicePixelRatio); asynchronous: true; visible: status === Image.Ready && parent.src !== "" }
     }
     // the queue card shown while updating or installing
     component QueueCard: Card {
@@ -256,7 +260,8 @@ Page {
                     Column { width: parent.width - 32; spacing: 4
                         Txt { text: tr("pu.failed"); width: parent.width }
                         Txt { text: (pu.errorText || "") + (pu.error ? " (" + pu.error + ")" : ""); color: Theme.muted; font.pixelSize: 12; width: parent.width }
-                        Txt { visible: pu.old === true; text: tr("pu.oldwinget"); color: Theme.muted; font.pixelSize: 12; width: parent.width } } }
+                        Txt { visible: pu.old === true; text: tr("pu.oldwinget"); color: Theme.muted; font.pixelSize: 12; width: parent.width }
+                        Txt { visible: app.netHint !== ""; text: app.netHint; font.pixelSize: 12; width: parent.width } } }
                 Row { spacing: 8
                     AccentButton { text: tr("pu.again"); compact: true; onClicked: app.scanUpdates() }
                     AccentButton { visible: pu.old === true; primary: false; text: tr("pu.getwinget.update"); compact: true; onClicked: app.openUrl("ms-windows-store://pdp/?productid=9NBLGGH4NNS1") } } }
