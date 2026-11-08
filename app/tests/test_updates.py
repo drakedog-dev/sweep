@@ -270,7 +270,7 @@ def test_download_errors():
 
 
 def test_broken_source_is_repaired_once():
-    saved = (U.P.IS_WINDOWS, U._run_once, U._capture_once, U.P.powershell, dict(U._fix))
+    saved = (U.P.IS_WINDOWS, U._run_once, U._capture_once, U.P.powershell, dict(U._fix), U.P.log)
     calls: list[str] = []
     broken = 0x8A15000F - (1 << 32)
     state = {"fixed": False}
@@ -288,6 +288,7 @@ def test_broken_source_is_repaired_once():
         return (0 if state["fixed"] else broken), ["ok"], "conpty"
     try:
         U.P.IS_WINDOWS, U._run_once, U._capture_once = True, run_once, capture_once
+        U.P.log = lambda msg: None                      # not into the real log: the Windows self-test reads it
         U.P.powershell = lambda script, timeout=120: (calls.append("register"), "no package on this PC")[1]
         U._fix.update(at=0.0, ok=False)
         assert U.source_broken(broken) and U.source_broken(0x8A15000F) and not U.source_broken(0x8A150012)
@@ -302,6 +303,7 @@ def test_broken_source_is_repaired_once():
         assert U.reason_for(0x8A15000F) == "source"
     finally:
         U.P.IS_WINDOWS, U._run_once, U._capture_once, U.P.powershell = saved[:4]
+        U.P.log = saved[5]
         U._fix.clear()
         U._fix.update(saved[4])
 
