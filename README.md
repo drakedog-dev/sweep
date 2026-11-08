@@ -57,7 +57,7 @@ Most cleaners delete first and ask later. Sweep is built the other way round:
 <tr>
 <td valign="top"><b>Registry</b><br>Safe categories only, file associations never touched, every key backed up to a <code>.reg</code> file with a Restore button.</td>
 <td valign="top"><b>System</b><br>CPU, GPU, board, BIOS, memory modules, disks and temperatures on one screen. Copy as text.</td>
-<td valign="top"><b>Made with care</b><br>English and Russian, dark and light themes down to the window title bar, five accents. Drawn by the CPU, so games stay smooth.</td>
+<td valign="top"><b>Made with care</b><br>English and Russian, dark and light themes down to the window title bar, five accents, sharp at any scaling. Remembers its window, can live in the tray. Drawn by the CPU, so games stay smooth.</td>
 </tr>
 </table>
 
@@ -76,7 +76,7 @@ Most cleaners delete first and ask later. Sweep is built the other way round:
 
 **Programs.** Every installed program with its icon, size and date. Sweep runs the program's own uninstaller, then finds what it left behind (program folders, AppData, ProgramData, registry keys, shortcuts, Run entries, scheduled tasks, services) and shows the list before removing anything. Force mode handles programs whose uninstaller is broken; locked files are removed at the next restart, and registry keys an installer locked against changes are unlocked first. When everything still works, **All works, delete the copies** removes the backups of that uninstall for good.
 
-**Updates.** Sweep asks winget, the package manager built into Windows, which installed programs have a newer version, with a progress bar while it looks. Each one shows where the installer comes from (7-zip.org, videolan.org, github.com/notepad-plus-plus and so on) and what is new in the version. Nothing is ticked by itself: tick what you want or press Update all, and Sweep updates them one by one, silently, with the download in megabytes and a percentage for every program; winget refuses to run any file whose SHA-256 differs from the catalogue. Afterwards Sweep reads the installed version again, so "updated" always means the new version is really there. Forks and look-alikes that winget mistakes for the original program (FlClash X for FlClash, say) are flagged and never updated by accident.
+**Updates.** Sweep asks winget, the package manager built into Windows, which installed programs have a newer version, with a progress bar while it looks. Each one shows where the installer comes from (7-zip.org, videolan.org, github.com/notepad-plus-plus and so on) and what is new in the version. Nothing is ticked by itself: tick what you want or press Update all, and Sweep updates them one by one, silently, with the download in megabytes and a percentage for every program; winget refuses to run any file whose SHA-256 differs from the catalogue. Afterwards Sweep reads the installed version again, so "updated" always means the new version is really there. Forks and look-alikes that winget mistakes for the original program (FlClash X for FlClash, say) are flagged and never updated by accident. A dropped connection or a busy vendor server gets one more try a few seconds later; installers that refuse administrator rights (Spotify, for one) are run as you instead. When winget cannot check at all (an old winget on Windows 10, a source that will not open), Sweep says so with winget's own message instead of claiming everything is up to date, and offers to update winget.
 
 **Install.** Popular free programs in one click, by category (browsers, messaging, video and music, documents, utilities, passwords, games, development, components), plus ready-made sets for a fresh Windows, gaming or work, and a search through the whole winget catalogue. Programs already on the PC are marked; the rest install one after another from the vendors' sites, with the same live progress and SHA-256 check.
 
@@ -117,7 +117,7 @@ Most cleaners delete first and ask later. Sweep is built the other way round:
 
 1. Get **`Sweep-Setup-x.y.z.exe`** from the [latest release](../../releases/latest).
 2. Run it. Sweep asks for administrator rights (the usual UAC prompt): privacy switches, services and system startup cannot be changed without them. If you say no, it still opens and shows a **Grant rights** button.
-3. Sweep checks for its own updates when it starts and asks before installing them.
+3. Sweep checks for its own updates when it starts (and once a day if it stays in the tray) and asks before installing them. It never restarts itself in the middle of a program update or a clean, picks up an interrupted download where it stopped, and starts the new installer only if its SHA-256 matches the one published with the release. If api.github.com cannot be reached, it asks github.com itself.
 
 <details>
 <summary><b>Windows SmartScreen says "unknown publisher"</b></summary>
@@ -128,7 +128,7 @@ Releases are not code-signed yet (see [code signing](#code-signing-policy)). Cli
 <details>
 <summary><b>Kaspersky users</b></summary>
 
-Kaspersky puts unsigned programs into a restricted group and silently blocks their registry changes, so privacy switches will not stick. Add `C:\Program Files\Sweep\Sweep.exe` to trusted applications (Settings → Threats and Exclusions → Specify trusted applications) and tick "Do not monitor application activity". Sweep recognises this situation and shows the same hint on the Privacy page.
+Kaspersky puts unsigned programs into a restricted group. It can silently block their registry changes (privacy switches will not stick) and cut their internet connections, including those of winget started by Sweep: update checks then fail with "connection closed" although GitHub opens in the browser. Add `C:\Program Files\Sweep\Sweep.exe` to trusted applications (Settings → Threats and Exclusions → Specify trusted applications) and tick "Do not monitor application activity", "Do not inherit restrictions of the parent process" and "Do not scan network traffic". If Kaspersky crashes in that dialog, quit Sweep first, or search Kaspersky settings for Application management and move Sweep to the Trusted group. Sweep recognises both situations and shows these hints on the Privacy page and next to update checks. Code signing (see below) will make this unnecessary.
 </details>
 
 ## How Sweep keeps you safe
@@ -140,6 +140,7 @@ Kaspersky puts unsigned programs into a restricted group and silently blocks the
 | Privacy switches, services, startup | The same switch turns it back; Guard keeps your choice |
 | Big changes (privacy, uninstall, updates) | Windows restore point first (at most once a day) |
 | Program updates and installs | Vendor's official installer only, SHA-256 checked by winget; forks and look-alikes are flagged, never updated by accident |
+| Sweep's own updates | Offered when Sweep is idle, resumed after a dropped connection, run only if the SHA-256 matches the release |
 | Default apps and file associations | Never touched by cleaning; built-in apps that open your files are marked before removal |
 | Files in use | Skipped, or removed at the next restart if you force it |
 
@@ -178,6 +179,18 @@ Windows 10 and Windows 11, 64-bit. Program updates and installs need winget (App
 </details>
 
 <details>
+<summary><b>Sweep says it cannot reach GitHub, or that winget could not check</b></summary>
+
+If GitHub opens in your browser, something on the PC is cutting Sweep's connections, most often an antivirus that keeps unsigned programs offline (see **Kaspersky users** above). Otherwise it is the network: try again later or with a VPN. Without a working connection Sweep never pretends everything is up to date: it shows what went wrong.
+</details>
+
+<details>
+<summary><b>Does Sweep run in the background?</b></summary>
+
+Only if you want it to. When you close the window, Sweep asks whether to quit or stay in the tray next to the clock (Settings → When the window is closed). In the tray it uses no CPU, checks for updates once a day if that is on, and quits from the tray icon's menu. Guard and scheduled cleaning are Windows tasks and work either way.
+</details>
+
+<details>
 <summary><b>How do I remove Sweep?</b></summary>
 
 Windows Settings → Apps → Sweep → Uninstall. If Guard is on, its scheduled task is removed too.
@@ -192,11 +205,13 @@ flowchart LR
     B --> T["tweaks.py<br/>privacy, services, startup"]
     B --> U["uninstall.py<br/>uninstaller and leftovers"]
     B --> W["updates.py<br/>program updates and installs"]
+    B --> S["selfupdate.py<br/>Sweep's own updates"]
     B --> G["guard.py<br/>watches settings"]
     B --> X["boot.py<br/>Boot X-ray"]
     T --> R[("Registry")]
     U --> R
     W --> WG[["winget"]]
+    S --> GH[("GitHub releases")]
     G --> TS[["Task Scheduler"]]
     X --> EV[("Diagnostics log")]
 ```
@@ -206,7 +221,7 @@ app/
   main.py            entry point, UAC, --auto / --guard / --ui-test
   sweep/             all logic, plain Python, one module per feature
   qml/               interface: Main.qml, pages/, components/, Sweep/Theme.qml
-  tests/             winget parser unit tests, Windows self-test
+  tests/             unit tests (winget parser, update download), Windows self-test
   Sweep.iss          Inno Setup installer
 .github/workflows/   release build, Windows self-test, lint and tests
 docs/                screenshots and images for this page
@@ -216,8 +231,8 @@ legacy/              the original PowerShell version 0.x
 
 Every push runs three pipelines:
 
-- **Lint and tests** on Linux: ruff, parser unit tests, and the whole interface in demo mode with zero QML warnings allowed.
-- **Windows self-test** on a real Windows machine: privacy switches written and read back, startup entries switched, browser history cleaned and restored, default apps checked unchanged after a full clean, Guard, restore points, a test program uninstalled end to end, and a real program updated through winget.
+- **Lint and tests** on Linux: ruff, unit tests (winget parser; Sweep's update download against a server that drops the connection), and the whole interface in demo mode with zero QML warnings allowed.
+- **Windows self-test** on a real Windows machine: privacy switches written and read back, startup entries switched, browser history cleaned and restored, default apps checked unchanged after a full clean, Guard, restore points, a test program uninstalled end to end, a real program updated through winget, winget run as the signed-in user, and the latest Sweep release downloaded and checked against its SHA-256 by both routes (api.github.com and github.com).
 - **Release build**: PyInstaller and Inno Setup, then the packaged `Sweep.exe` opens every page before the release is published.
 
 ## Building from source
