@@ -1,0 +1,30 @@
+build: success
+run: https://github.com/drakedog-dev/sweep/actions/runs/42473199816
+commit: 69dbc97746754f5814d0236240fa36f36bdb0718
+
+--- build.txt (last 16 of 16 lines)
+version 1.0.24, tag existed before: False
+- Sweep's own update no longer pops up or starts while programs are updating or installing, or while Sweep cleans: it waits until the task is done. "Update" pressed meanwhile installs Sweep right after it
+- The download of a new Sweep version survives a dropped connection: it continues where it stopped, up to five tries, instead of failing with "connection closed"
+- The downloaded installer is started only when its SHA-256 matches the one published with the release
+- Clear messages instead of raw errors when GitHub cannot be reached or limits update checks, with the download progress in percent
+- Program updates and installs: a dropped connection or a busy vendor server (for example HTTP 504 from GitHub, where 7-Zip and many others are hosted) gets one more try a few seconds later, and is then reported as a connection or server problem instead of "Installer error"
+
+### Download
+
+| File | Size | SHA-256 |
+|---|---|---|
+| [Sweep-Setup-1.0.24.exe](https://github.com/drakedog-dev/sweep/releases/download/v1.0.24/Sweep-Setup-1.0.24.exe) | 34.9 MB | `78676c9070edf5d33bd354ba5b640f1d28b91832449603a3442997719d4015e1` |
+
+Windows 10 and 11, 64-bit. Installer not signed yet. Check the file in PowerShell: `Get-FileHash .\Sweep-Setup-1.0.24.exe`
+
+Sweep offers this update by itself when it starts. Full list of commits: [v1.0.23...v1.0.24](https://github.com/drakedog-dev/sweep/compare/v1.0.23...v1.0.24)
+
+--- log.txt (last 7 of 7 lines)
+2026-11-08 10:52:40  auto clean 20261108_105235: freed 302250622
+2026-11-08 10:52:42  titlebar dark: dark=0x80070006, caption=0x80070006, border=0x80070006, text=0x80070006
+2026-11-08 10:52:44  context: Sweep 1.0.24, admin=True, 64bit, user=runnervmm7ud1\runneradmin, os=Microsoft Windows Server 2025 Datacenter 26100, antivirus=none reported, exe=D:\a\sweep\sweep\app\dist\Sweep\Sweep.exe
+2026-11-08 10:53:06  updates: winget upgrade rc=0x0 via conpty, 18 updates, 4 s
+2026-11-08 10:55:35  install: search 'vlc' rc=0x0 via conpty: 10 found
+2026-11-08 10:55:42  ui-test: analysis done, junk=done:clean, drives=done:90 KB can be freed, registry=done:no problems, startup=done:3 programs start with Windows, privacy=done:tracking on: 15 of 17, updates=done:18 updates available
+2026-11-08 10:55:42  ui-test: pages 14, programs 59, boots 0, updates 18 (winget=True, checked=True, suspect 0), install picks 45 (installed 4), search 10, QML warnings 0
