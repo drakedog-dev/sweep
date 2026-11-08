@@ -5,6 +5,9 @@ All notable changes to Sweep. The newest version is at the top; the in-app updat
 ## 1.0.28
 - Smooth edges everywhere: the program icon is redrawn with antialiasing at every size Windows uses (title bar, taskbar, Start, Explorer), so it is no longer stair-stepped
 - Rounded shapes with a colour gradient (the Sweep logo, page headers, buttons, switches, progress bars) now have smooth corners; the CPU renderer used to draw their corners in visible steps
+- Icons inside the app are drawn without font hinting, so thin lines stay smooth instead of snapping into blocky pixels
+- Programs installed from Microsoft Store are kept apart from programs installed from websites. A Store app (Spotify, for one) is no longer "updated" with the vendor's website installer, which used to put a second, separate copy next to it: its row says it comes from Microsoft Store and opens the Store's updates page instead
+- Install tab: a program you already have from Microsoft Store is marked "From Store", in the categories and in search results, so the website version is not installed on top of it
 
 ## 1.0.27
 - Antivirus hints name the folder Sweep is really installed in (it can be changed during setup) and the exact Kaspersky options: Do not monitor application activity, Do not inherit restrictions of the parent process, Do not monitor child application activity, Do not scan encrypted traffic

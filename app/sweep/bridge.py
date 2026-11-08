@@ -169,6 +169,8 @@ class App(QObject):
                      "searching": False, "searched": False, "query": ""}
         self._ins_state: dict[str, dict] = {}
         self._ins_installed: set[str] = set()
+        self._ins_store: dict[str, str] = {}     # catalogue id -> name of the same program installed from Microsoft Store
+        self._ins_apps: list[dict] | None = None  # Microsoft Store apps on this PC, read once per Install tab load
         self._ins_results: list[dict] = []
         self._ins_cancel = False
         self.sysinfo = {}
@@ -1877,7 +1879,7 @@ class App(QObject):
 
     def _pu_safe(self) -> list[dict]:
         """Open updates that surely belong to the installed program (no fork or look-alike from the catalogue)."""
-        return [it for it in self._pu_open() if not it.get("suspect")]
+        return [it for it in self._pu_open() if not it.get("suspect") and not it.get("storeOnly")]
 
     @staticmethod
     def _major(v: str) -> str:
@@ -1892,8 +1894,9 @@ class App(QObject):
         skip = set(self._pu_conf().get("skip", []))
         items = [{k: v for k, v in it.items() if not k.startswith("_")} for it in self._pu_items if it["id"] not in skip]
         open_ = [it for it in items if it.get("state") != "ok"]
-        safe = sum(1 for it in open_ if not it.get("suspect"))
-        return dict(self._pu, items=items, count=safe, safe=safe, suspects=len(open_) - safe,
+        safe = sum(1 for it in open_ if not it.get("suspect") and not it.get("storeOnly"))
+        store = sum(1 for it in open_ if it.get("storeOnly"))
+        return dict(self._pu, items=items, count=safe, safe=safe, suspects=len(open_) - safe - store, store=store,
                     picked=sum(1 for it in open_ if it.get("picked")), skipped=len(skip), auto=bool(self._pu_conf().get("auto")),
                     busy=self._wg_running())
 
@@ -1935,7 +1938,7 @@ class App(QObject):
                 it["icon"] = ("image://appicon/" + quote(path, safe="")) if path else ""
                 major = self._major(it.get("current") or it["version"]) != self._major(it["available"])
                 keep = old[it["id"]]["picked"] if it["id"] in old else False      # nothing is ticked by itself
-                it.update(major=major, state="", reason="", code="", now="", picked=bool(keep) and not it.get("suspect"))
+                it.update(major=major, state="", reason="", code="", now="", picked=bool(keep) and not it.get("suspect") and not it.get("storeOnly"))
             self._pu_items = res["items"]
             self._pu.update(checking=False, checked=True, winget=res["winget"], when=datetime.now().strftime("%H:%M"), stage="",
                             error=res.get("error", ""), errorText=res.get("errorText", ""), old=bool(res.get("old")))
@@ -1972,7 +1975,7 @@ class App(QObject):
     @Slot(str, bool)
     def setUpdatePick(self, pid, on):
         for it in self._pu_items:
-            if it["id"] == pid and not it.get("suspect"):
+            if it["id"] == pid and not it.get("suspect") and not it.get("storeOnly"):
                 it["picked"] = on
         self.updatesChanged.emit()
 
@@ -1986,7 +1989,7 @@ class App(QObject):
         if self._pu["running"]:
             return
         for it in self._pu_open():
-            it["picked"] = not it.get("suspect") and (mode == "all" or (mode == "minor" and not it.get("major")))
+            it["picked"] = not it.get("suspect") and not it.get("storeOnly") and (mode == "all" or (mode == "minor" and not it.get("major")))
         self.updatesChanged.emit()
 
     @Slot(str)
@@ -2065,6 +2068,7 @@ class App(QObject):
 
     def _install_updates(self, todo: list[dict]):
         """One package after another: winget downloads it from the vendor, checks the SHA-256, installs silently."""
+        todo = [it for it in todo if not it.get("storeOnly")]     # Store apps are updated by the Store
         if not todo or self._wg_running() or self._busy:
             return
         if self._need_admin("progupdates:" + "|".join(it["id"] for it in todo) + ":1", "apps"):
@@ -2158,11 +2162,16 @@ class App(QObject):
             it["version"] = version
         return it
 
+    def _ins_have(self, pid: str) -> bool:
+        """On this PC already: from the catalogue, or the same program from Microsoft Store."""
+        return pid in self._ins_installed or pid in self._ins_store
+
     def _ins_row(self, pid: str, name: str, cat: str = "") -> dict:
         it = self._ins_item(pid, name)
         k = CAT.key(pid)
-        installed = pid in self._ins_installed or it.get("state") == "ok"
-        return {"id": pid, "name": name, "cat": cat, "desc": self.i18n.t("ins.d." + k) if cat else pid,
+        store = self._ins_store.get(pid, "") if pid not in self._ins_installed else ""
+        installed = pid in self._ins_installed or bool(store) or it.get("state") == "ok"
+        return {"id": pid, "name": name, "cat": cat, "desc": self.i18n.t("ins.d." + k) if cat else pid, "store": store,
                 "version": it.get("version", ""), "installed": installed, "picked": bool(it.get("picked")) and not installed,
                 "state": it.get("state", ""), "reason": it.get("reason", ""), "code": it.get("code", ""), "queue": it.get("queue", 0),
                 "phase": it.get("phase", ""), "got": float(it.get("got", 0.0)), "total": float(it.get("total", 0.0)), "speed": float(it.get("speed", 0.0)),
@@ -2183,7 +2192,7 @@ class App(QObject):
             items = [self._ins_row(pid, name, cat) for pid, name, c in CAT.PROGRAMS if c == cat]
             cats.append({"key": cat, "icon": icon, "title": self.i18n.t("ins.cat." + cat), "items": items})
         results = [self._ins_row(r["id"], r["name"]) | {"version": r.get("version", "")} for r in self._ins_results]
-        picked = [it for it in self._ins_state.values() if it.get("picked") and it["id"] not in self._ins_installed and it.get("state") != "ok"]
+        picked = [it for it in self._ins_state.values() if it.get("picked") and not self._ins_have(it["id"]) and it.get("state") != "ok"]
         return dict({k: v for k, v in self._ins.items() if not k.startswith("_")}, cats=cats, results=results, picked=len(picked),
                     presets=[{"key": k, "title": self.i18n.t("ins.preset." + k), "count": len(v)} for k, v in CAT.PRESETS.items()],
                     busy=self._wg_running(), winget=self._winget_ok())
@@ -2201,8 +2210,19 @@ class App(QObject):
         self._ins["loading"] = True
         self.installChanged.emit()
 
-        def done(ids):
+        def work():
+            ids = UPD.installed_ids()
+            # a program already installed from Microsoft Store: the website installer would add a second copy
+            apps = UPD.store_apps()
+            store = {pid: m for pid, name, _ in CAT.PROGRAMS if pid not in ids and (m := UPD.store_name_match(name, apps))}
+            return ids, store, apps
+
+        def done(res):
+            ids, store, apps = res
             self._ins_installed = set(ids)
+            self._ins_store = store | {r["id"]: m for r in self._ins_results
+                                       if r["id"] not in ids and (m := UPD.store_name_match(r["name"], apps))}
+            self._ins_apps = apps
             self._ins.update(loading=False, loaded=True)
             self.installChanged.emit()
 
@@ -2210,7 +2230,7 @@ class App(QObject):
             self._ins.update(loading=False, loaded=True)
             self.installChanged.emit()
 
-        self._bg(UPD.installed_ids, done, failed)
+        self._bg(work, done, failed)
 
     @Slot(str, bool)
     def setInstallPick(self, pid, on):
@@ -2226,7 +2246,7 @@ class App(QObject):
             return
         names = {i: n for i, n, _ in CAT.PROGRAMS}
         for pid in CAT.PRESETS.get(key, []):
-            if pid not in self._ins_installed:
+            if not self._ins_have(pid):
                 self._ins_item(pid, names.get(pid, pid))["picked"] = True
         self.installChanged.emit()
 
@@ -2251,10 +2271,21 @@ class App(QObject):
         self._ins.update(searching=True, query=q)
         self.installChanged.emit()
 
-        def done(rows):
+        known = self._ins_apps
+
+        def work():
+            rows = UPD.search(q)
+            apps = known if known is not None else UPD.store_apps()
+            return rows, apps
+
+        def done(res):
+            rows, apps = res
             self._ins_results = rows
+            self._ins_apps = apps
             for r in rows:
                 self._ins_item(r["id"], r["name"], r.get("version", ""))
+                if r["id"] not in self._ins_installed and (m := UPD.store_name_match(r["name"], apps)):
+                    self._ins_store[r["id"]] = m      # found in the catalogue, but this PC has it from Microsoft Store
             self._ins.update(searching=False, searched=True)
             self.installChanged.emit()
 
@@ -2263,11 +2294,11 @@ class App(QObject):
             self._ins_results = []
             self.installChanged.emit()
 
-        self._bg(lambda: UPD.search(q), done, failed)
+        self._bg(work, done, failed)
 
     @Slot()
     def installPicked(self):
-        todo = [it for it in self._ins_state.values() if it.get("picked") and it["id"] not in self._ins_installed and it.get("state") != "ok"]
+        todo = [it for it in self._ins_state.values() if it.get("picked") and not self._ins_have(it["id"]) and it.get("state") != "ok"]
         order = {p[0]: n for n, p in enumerate(CAT.PROGRAMS)}
         todo.sort(key=lambda it: order.get(it["id"], 999))
         self._install_programs(todo)

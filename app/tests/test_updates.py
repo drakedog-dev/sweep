@@ -216,6 +216,27 @@ def test_exit_codes():
     assert U.REASONS[0x8A150101] == "inuse"
 
 
+def test_store_apps_are_updated_by_the_store():
+    apps = [{"name": "Spotify Music", "folder": "", "icon": ""}, {"name": "Windows Terminal", "folder": "", "icon": ""}]
+    rows = [{"id": "Spotify.Spotify", "name": "Spotify", "installer": "https://download.scdn.co/SpotifyFullSetup.exe"},
+            {"id": "Microsoft.WindowsTerminal", "name": "Windows Terminal", "installer": "https://github.com/x/Terminal_1.22.msixbundle"},
+            {"id": "7zip.7zip", "name": "7-Zip", "installer": "https://7-zip.org/a/7z2600-x64.exe", "_arp": {"name": "7-Zip"}}]
+    U.match_store(rows, apps)
+    U.mark_store_only(rows)
+    assert rows[0]["storeOnly"] is True                  # the website installer would add a second Spotify
+    assert rows[1]["storeOnly"] is False                 # the same MSIX package: fine to update
+    assert rows[2]["storeOnly"] is False                 # installed from the website
+    assert U.store_name_match("Spotify", apps) == "Spotify Music"
+    assert U.store_name_match("Git", apps) == ""          # too short to tell
+    more = apps + [{"name": n} for n in ("Notepad", "Opera GX", "Steam Link", "Telegram Desktop", "Microsoft PowerToys")]
+    assert U.store_name_match("Telegram", more) == "Telegram Desktop"
+    assert U.store_name_match("PowerToys", more) == "Microsoft PowerToys"
+    assert U.store_name_match("Notepad++", more) == ""     # not the Windows Notepad
+    assert U.store_name_match("Opera", more) == ""         # Opera GX is another browser
+    assert U.store_name_match("Steam", more) == ""         # Steam Link is another program
+    assert U.is_msix("https://x/y/App.MSIXBUNDLE?sig=1") and not U.is_msix("https://x/setup.exe")
+
+
 def test_failed_list_is_not_up_to_date():
     help_text = ["Argument name was not recognized for the current command: '--disable-interactivity'", "",
                  "Upgrades the selected package.", "usage: winget upgrade [[-q] <query>] [<options>]"]

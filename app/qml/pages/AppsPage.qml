@@ -280,13 +280,14 @@ Page {
                     Chip { small: true; label: tr("pu.pick.none"); enabled: !pu.running && selBar.sel > 0; onHit: app.pickUpdates("none") } }
             }
             Repeater { model: pu.items || []
-                Rectangle { id: urow; width: parent.width; height: urow.suspect ? 96 : urow.warn ? 86 : 66; radius: 12
+                Rectangle { id: urow; width: parent.width; height: urow.suspect ? 96 : urow.warn || urow.store ? 86 : 66; radius: 12
                     property bool done_: modelData.state === "ok"
                     property bool warn: modelData.state === "warn"
                     property bool fail: modelData.state === "failed"
                     property bool active: modelData.state === "working" || modelData.state === "queued"
                     property bool suspect: modelData.suspect === true && !done_
-                    property bool canPick: !done_ && !suspect && !pu.running
+                    property bool store: modelData.storeOnly === true && !done_     // from Microsoft Store: the Store updates it
+                    property bool canPick: !done_ && !suspect && !store && !pu.running
                     color: uHov.containsMouse && canPick ? Theme.cardAlt : modelData.picked === true && !done_ ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.07) : "transparent"
                     border.color: urow.suspect ? Qt.rgba(Theme.warn.r, Theme.warn.g, Theme.warn.b, 0.45) : "transparent"
                     Behavior on color { ColorAnimation { duration: Theme.dur } }
@@ -327,6 +328,9 @@ Page {
                             Icon { name: "circle-alert"; size: 13; color: Theme.warn; anchors.top: parent.top; anchors.topMargin: 2 }
                             Txt { width: parent.width - 20; color: Theme.warn; font.pixelSize: 12; elide: Text.ElideRight; maximumLineCount: 2
                                   text: tr("pu.r." + (modelData.reason || "nochange")) } }
+                        Row { visible: urow.store; spacing: 6; width: parent.width
+                            Icon { name: "package"; size: 13; color: Theme.accent2; anchors.top: parent.top; anchors.topMargin: 2 }
+                            Txt { width: parent.width - 20; muted: true; font.pixelSize: 12; elide: Text.ElideRight; maximumLineCount: 2; text: tr("pu.store") } }
                         Row { visible: urow.suspect; spacing: 6; width: parent.width
                             Icon { name: "triangle-alert"; size: 13; color: Theme.warn; anchors.top: parent.top; anchors.topMargin: 2 }
                             Txt { width: parent.width - 20; color: Theme.warn; font.pixelSize: 12; elide: Text.ElideRight; maximumLineCount: 2
@@ -341,14 +345,16 @@ Page {
                             MouseArea { id: nHov; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: app.showNotes(modelData.id) }
                             Tip { show: nHov.containsMouse; text: tr("pu.notes"); anchors.bottom: parent.top; anchors.bottomMargin: 6; anchors.right: parent.right } }
                         // where it comes from: the vendor's own address, checked by SHA-256
-                        Rectangle { visible: (modelData.host || "") !== ""; height: 28; width: Math.min(200, srcRow.implicitWidth + 20); radius: 14; color: Theme.soft; anchors.verticalCenter: parent.verticalCenter; clip: true
+                        Rectangle { visible: (modelData.host || "") !== "" && !urow.store; height: 28; width: Math.min(200, srcRow.implicitWidth + 20); radius: 14; color: Theme.soft; anchors.verticalCenter: parent.verticalCenter; clip: true
                             Row { id: srcRow; anchors.verticalCenter: parent.verticalCenter; x: 10; spacing: 6
                                 Icon { name: modelData.sha256 ? "lock" : "globe"; size: 13; color: modelData.sha256 ? Theme.good : Theme.muted; anchors.verticalCenter: parent.verticalCenter }
                                 Txt { text: modelData.host; font.pixelSize: 11; anchors.verticalCenter: parent.verticalCenter; width: Math.min(implicitWidth, 160); elide: Text.ElideRight; wrapMode: Text.NoWrap } }
                             MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: app.openUrl(modelData.homepage || modelData.installer) } }
                         Item { width: 112; height: 34; anchors.verticalCenter: parent.verticalCenter
-                            AccentButton { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; visible: !urow.active && !urow.done_ && !urow.suspect
+                            AccentButton { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; visible: !urow.active && !urow.done_ && !urow.suspect && !urow.store
                                 compact: true; primary: false; text: tr("pu.update"); enabled: !app.busy && !pu.busy; onClicked: app.updateOne(modelData.id) }
+                            AccentButton { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; visible: urow.store
+                                compact: true; primary: false; text: tr("pu.store.open"); onClicked: app.openUrl("ms-windows-store://downloadsandupdates") }
                             AccentButton { id: sameBtn; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; visible: urow.suspect && !pu.running
                                 compact: true; primary: false; text: tr("pu.itsSame"); onClicked: app.trustUpdate(modelData.id)
                                 Tip { show: sameBtn.hovered; text: tr("pu.itsSame.tip"); anchors.bottom: parent.top; anchors.bottomMargin: 6; anchors.right: parent.right } }
@@ -416,7 +422,7 @@ Page {
                             compact: true; primary: false; text: tr("ins.install"); enabled: !app.busy && !ins.busy; onClicked: app.installOne(modelData.id) }
                         Row { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; spacing: 6; visible: modelData.installed || modelData.state === "ok"
                             Icon { name: "circle-check"; size: 16; color: Theme.good; anchors.verticalCenter: parent.verticalCenter }
-                            Txt { text: tr("ins.installed"); color: Theme.good; bold: true; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter } }
+                            Txt { text: modelData.store ? tr("ins.fromstore") : tr("ins.installed"); color: Theme.good; bold: true; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter } }
                         Txt { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; visible: modelData.state === "working" && pg.rowPct(modelData) >= 0
                               text: Math.round(pg.rowPct(modelData)) + "%"; bold: true; font.pixelSize: 15; color: Theme.accent2 }
                         Txt { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; visible: modelData.state === "queued"; text: tr1("pu.st.queuedN", String(modelData.queue || "")); muted: true; font.pixelSize: 12 }
@@ -476,7 +482,7 @@ Page {
                                       on: tile.on; onFlip: app.setInstallPick(modelData.id, !modelData.picked) }
                                 Icon { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; visible: modelData.installed || modelData.state === "ok"; name: "circle-check"; size: 20; color: Theme.good
                                     MouseArea { id: okHov; anchors.fill: parent; hoverEnabled: true }
-                                    Tip { show: okHov.containsMouse; text: tr("ins.installed"); anchors.bottom: parent.top; anchors.bottomMargin: 6; anchors.right: parent.right } }
+                                    Tip { show: okHov.containsMouse; text: modelData.store ? tr1("ins.fromstore.tip", modelData.store) : tr("ins.installed"); anchors.bottom: parent.top; anchors.bottomMargin: 6; anchors.right: parent.right } }
                                 Txt { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; visible: modelData.state === "working"
                                       text: pg.rowPct(modelData) >= 0 ? Math.round(pg.rowPct(modelData)) + "%" : ""; bold: true; font.pixelSize: 13; color: Theme.accent2 }
                                 Row { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; spacing: 3; visible: modelData.state === "queued"

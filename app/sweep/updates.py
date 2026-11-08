@@ -59,6 +59,8 @@ SUCCESS_REASONS = ("reboot", "uptodate")
 
 # ---------------- demo data (Linux / screenshots) ----------------
 _DEMO = [
+    {"id": "Spotify.Spotify", "name": "Spotify", "version": "1.2.40.599", "available": "1.2.48.405", "publisher": "Spotify AB",
+     "installer": "https://download.scdn.co/SpotifyFullSetup.exe", "homepage": "https://www.spotify.com", "notes": "", "notesUrl": ""},
     {"id": "7zip.7zip", "name": "7-Zip 23.01 (x64)", "version": "23.01", "available": "24.09", "publisher": "Igor Pavlov",
      "installer": "https://7-zip.org/a/7z2409-x64.exe", "homepage": "https://www.7-zip.org/",
      "notes": "Improved code for unpacking Z archives and Mach-O files.\nSome bugs and vulnerabilities were fixed.",
@@ -592,7 +594,7 @@ def _asset(folder: str, rel: str) -> str:
 def store_apps() -> list[dict]:
     """[{name, folder, icon}] for the user's Store and other MSIX apps."""
     if not P.IS_WINDOWS:
-        return []
+        return [{"name": "Spotify Music", "folder": "", "icon": ""}]      # demo: Spotify from Microsoft Store
     data = P.ps_json(_STORE_PS, 90) or []
     if isinstance(data, dict):
         data = [data]
@@ -616,6 +618,45 @@ def match_store(rows: list[dict], apps: list[dict] | None = None) -> None:
         hits = [a for a in apps if a["name"] and any(k in _norm(a["name"]) for k in keys)]
         if hits:
             r["_store"] = min(hits, key=lambda a: len(a["name"]))
+
+
+_MSIX = (".msix", ".msixbundle", ".appx", ".appxbundle")
+
+
+def is_msix(url: str) -> bool:
+    return urlparse(url or "").path.lower().endswith(_MSIX)
+
+
+def mark_store_only(rows: list[dict]) -> None:
+    """A program installed from Microsoft Store that the catalogue would update with the vendor's website installer:
+    that installer puts a second, separate copy next to the Store one (Spotify, Telegram...). Such rows are updated by
+    the Store, not by Sweep. An MSIX installer is the same package as the Store one and stays allowed."""
+    for r in rows:
+        r["storeOnly"] = bool(r.get("_store")) and not is_msix(r.get("installer", ""))
+
+
+# words a Store listing adds to a program's own name: "Spotify Music", "Telegram Desktop", "Zoom Workplace"
+_STORE_EXTRA = {"music", "desktop", "app", "for", "windows", "pc", "workplace", "client"}
+
+
+def _words(name: str) -> list[str]:
+    """Words of a name with "+" kept, so Notepad++ is not Notepad; the word "microsoft" is dropped."""
+    return [w for w in re.findall(r"[a-z0-9+а-яё]+", (name or "").lower()) if w != "microsoft"]
+
+
+def store_name_match(name: str, apps: list[dict]) -> str:
+    """Name of the Store app that is this program (catalogue name "Spotify" and Store app "Spotify Music"), or "".
+    The Store name must start with every word of the program's name and add only listing words, so Notepad++ does
+    not match Windows Notepad and Opera does not match Opera GX: a wrong hit would hide a program from installing."""
+    want = _words(name)
+    if len("".join(want)) < 4:
+        return ""
+    hits = []
+    for a in apps:
+        got = _words(a.get("name", ""))
+        if got[:len(want)] == want and all(w in _STORE_EXTRA for w in got[len(want):]):
+            hits.append(a["name"])
+    return min(hits, key=len) if hits else ""
 
 
 def mark_running(rows: list[dict]) -> None:
@@ -749,6 +790,7 @@ def scan(details: bool = True, progress=None, programs: list[dict] | None = None
         check_identity(r)
     try:
         match_store(rows)
+        mark_store_only(rows)
         mark_running(rows)
     except Exception as e:  # noqa: BLE001
         P.log(f"updates: store apps or running programs not read: {e}")

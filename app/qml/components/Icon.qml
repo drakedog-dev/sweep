@@ -12,5 +12,8 @@ Text {
     width: size; height: size
     horizontalAlignment: Text.AlignHCenter
     verticalAlignment: Text.AlignVCenter
+    // Icons are line drawings, not letters: no hinting, which snaps thin strokes to whole pixels and makes them
+    // blocky. No layer.enabled here: the software renderer cuts a layered item in half at 125% and 150% scale.
+    font.hintingPreference: Font.PreferNoHinting
     Behavior on color { ColorAnimation { duration: Theme.dur } }
 }
