@@ -1,0 +1,11 @@
+lint: success
+run: https://github.com/drakedog-dev/sweep/actions/runs/42473199834
+commit: 69dbc97746754f5814d0236240fa36f36bdb0718
+
+--- log.txt (last 6 of 6 lines)
+2026-11-08 10:52:00  self update: download attempt 1: IncompleteRead(0 bytes read, 200000 more expected)
+2026-11-08 10:52:00  self update: download attempt 2: IncompleteRead(0 bytes read, 100000 more expected)
+2026-11-08 10:52:03  self update: download attempt 1: URLError(ConnectionRefusedError(111, 'Connection refused'))
+2026-11-08 10:52:03  self update: download attempt 2: URLError(ConnectionRefusedError(111, 'Connection refused'))
+2026-11-08 10:52:36  ui-test: analysis done, junk=done:4.7 GB can be freed, drives=done:3.1 GB can be freed, registry=done:problems: 28, startup=done:7 programs start with Windows, privacy=done:tracking on: 14 of 17, updates=done:6 updates available
+2026-11-08 10:52:36  ui-test: pages 14, programs 15, boots 10, updates 6 (winget=True, checked=True, suspect 1), install picks 45 (installed 6), search 1, QML warnings 0
