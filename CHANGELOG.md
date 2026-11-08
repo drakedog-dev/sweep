@@ -2,6 +2,10 @@
 
 All notable changes to Sweep. The newest version is at the top; the in-app update dialog and the GitHub release notes are built from this file.
 
+## 1.0.27
+- Antivirus hints name the folder Sweep is really installed in (it can be changed during setup) and the exact Kaspersky options: Do not monitor application activity, Do not inherit restrictions of the parent process, Do not monitor child application activity, Do not scan encrypted traffic
+- Privacy: the Error reporting switch says that with it off, a crashing program may show a bare "Unknown Hard Error" box
+
 ## 1.0.26
 - The window opens where you left it, as big as it was and maximised if it was
 - Closing the window can send Sweep to the tray instead: Sweep asks once (with "Remember my choice"), and Settings has Ask, Minimise to tray and Quit. From the tray it still checks for updates once a day and says when there are some

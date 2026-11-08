@@ -162,6 +162,13 @@ def is_access_denied(e: BaseException) -> bool:
 ANTIVIRUS = ""   # filled by log_context(): names reported by Windows Security Center
 
 
+def exe_path() -> str:
+    """Where Sweep.exe really is: the folder can be changed when installing (C:\\Программы\\Sweep, say)."""
+    if getattr(sys, "frozen", False):
+        return sys.executable
+    return r"C:\Program Files\Sweep\Sweep.exe"
+
+
 def third_party_av() -> str:
     """Antivirus other than Microsoft Defender, e.g. 'Kaspersky Total Security' (empty if none)."""
     names = [n.strip() for n in ANTIVIRUS.split(",") if n.strip()]

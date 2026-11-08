@@ -468,7 +468,7 @@ class App(QObject):
         """Connections cut while a third-party antivirus is installed: say how to let Sweep through."""
         av = P.third_party_av()
         if av and not self._net_hint:
-            self._net_hint = self.i18n.t("net.av.kaspersky" if "kaspersky" in av.lower() else "net.av", av)
+            self._net_hint = self.i18n.t("net.av.kaspersky" if "kaspersky" in av.lower() else "net.av", av, P.exe_path())
             P.log(f"network: connections cut, {av} may be blocking Sweep")
             self.changed.emit()
 
@@ -1211,7 +1211,7 @@ class App(QObject):
         if not self._priv_hint:
             return ""
         key, arg = self._priv_hint
-        return self.i18n.t(key, arg)
+        return self.i18n.t(key, arg, P.exe_path())
 
     def _privacy_report(self, failed: list) -> None:
         self._compute_health()
