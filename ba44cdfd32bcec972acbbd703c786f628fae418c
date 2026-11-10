@@ -1,0 +1,18 @@
+lint: success
+run: https://github.com/drakedog-dev/sweep/actions/runs/42886398603
+commit: ba44cdfd32bcec972acbbd703c786f628fae418c
+
+--- log.txt (last 13 of 13 lines)
+2026-11-10 19:33:24  self update: download attempt 1: IncompleteRead(0 bytes read, 200000 more expected)
+2026-11-10 19:33:24  self update: download attempt 2: IncompleteRead(0 bytes read, 100000 more expected)
+2026-11-10 19:33:27  self update: download attempt 1: URLError(ConnectionRefusedError(111, 'Connection refused'))
+2026-11-10 19:33:27  self update: download attempt 2: URLError(ConnectionRefusedError(111, 'Connection refused'))
+2026-11-10 19:33:27  self update: release check attempt 1: RemoteDisconnected('Remote end closed connection without response')
+2026-11-10 19:33:27  self update: GitHub API UpdateError("network: RemoteDisconnected('Remote end closed connection without response')"), asking github.com
+2026-11-10 19:33:27  self update: GitHub API UpdateError("limit: <HTTPError 403: 'rate limit exceeded'>"), asking github.com
+2026-11-10 19:33:27  self update: SHA256SUMS.txt: <HTTPError 404: 'Not Found'>
+2026-11-10 19:33:28  self update: release check attempt 1: RemoteDisconnected('Remote end closed connection without response')
+2026-11-10 19:33:28  self update: GitHub API UpdateError("network: RemoteDisconnected('Remote end closed connection without response')"), asking github.com
+2026-11-10 19:33:28  self update: release page attempt 1: RemoteDisconnected('Remote end closed connection without response')
+2026-11-10 19:34:02  ui-test: analysis done, junk=done:4.7 GB can be freed, drives=done:3.1 GB can be freed, registry=done:problems: 28, startup=done:7 programs start with Windows, privacy=done:tracking on: 14 of 17, updates=done:6 updates available
+2026-11-10 19:34:02  ui-test: pages 14, programs 15, boots 10, updates 6 (winget=True, checked=True, suspect 1), install picks 45 (installed 6), search 1, QML warnings 0
