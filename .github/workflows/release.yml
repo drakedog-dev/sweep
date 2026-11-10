@@ -57,7 +57,7 @@ jobs:
           python tools/make_version_file.py version_info.txt
           pyinstaller --noconfirm --clean --onedir --windowed --name Sweep --icon sweep.ico --uac-admin --version-file version_info.txt `
             --add-data "qml;qml" --add-data "sweep.ico;." --add-data "..\CHANGELOG.md;." `
-            --hidden-import PySide6.QtQuick --hidden-import PySide6.QtQml --hidden-import PySide6.QtQuickControls2 --hidden-import PySide6.QtWidgets `
+            --hidden-import PySide6.QtQuick --hidden-import PySide6.QtQml --hidden-import PySide6.QtQuickControls2 --hidden-import PySide6.QtWidgets --hidden-import PySide6.QtNetwork `
             $ex main.py
           # prune Qt modules that the exclude list cannot reach (DLLs pulled by QML plugins)
           $prune = 'Qt6WebEngine*','Qt6Pdf*','Qt6Multimedia*','Qt63D*','Qt6Charts*','Qt6DataVis*','Qt6Graphs*','Qt6Quick3D*','Qt6Bluetooth*','Qt6Nfc*','Qt6Positioning*','Qt6Location*','Qt6Sensors*','Qt6Serial*','Qt6Sql*','Qt6Test*','Qt6Designer*','Qt6Help*','Qt6RemoteObjects*','Qt6Scxml*','Qt6StateMachine*','Qt6TextToSpeech*','Qt6WebChannel*','Qt6WebSockets*','Qt6WebView*','Qt6SpatialAudio*','Qt6HttpServer*','Qt6ShaderTools*','Qt6VirtualKeyboard*','Qt6Labs*','opengl32sw.dll','d3dcompiler_47.dll'

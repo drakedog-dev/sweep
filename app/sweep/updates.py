@@ -666,7 +666,7 @@ def _asset(folder: str, rel: str) -> str:
 def store_apps() -> list[dict]:
     """[{name, folder, icon}] for the user's Store and other MSIX apps."""
     if not P.IS_WINDOWS:
-        return [{"name": "Spotify Music", "folder": "", "icon": ""}]      # demo: Spotify from Microsoft Store
+        return [{"name": "SpotifyAB.SpotifyMusic", "folder": "", "icon": ""}]      # demo: Spotify from Microsoft Store
     data = P.ps_json(_STORE_PS, 90) or []
     if isinstance(data, dict):
         data = [data]
@@ -707,28 +707,43 @@ def mark_store_only(rows: list[dict]) -> None:
         r["storeOnly"] = bool(r.get("_store")) and not is_msix(r.get("installer", ""))
 
 
-# words a Store listing adds to a program's own name: "Spotify Music", "Telegram Desktop", "Zoom Workplace"
-_STORE_EXTRA = {"music", "desktop", "app", "for", "windows", "pc", "workplace", "client"}
+# words a Store package adds to a program's own name: SpotifyMusic, TelegramDesktop, WhatsAppDesktop
+_STORE_EXTRA = ("music", "desktop", "app", "for", "windows", "pc", "workplace", "client")
 
 
-def _words(name: str) -> list[str]:
-    """Words of a name with "+" kept, so Notepad++ is not Notepad; the word "microsoft" is dropped."""
-    return [w for w in re.findall(r"[a-z0-9+а-яё]+", (name or "").lower()) if w != "microsoft"]
+def _compact(name: str) -> str:
+    """Lower case, letters, digits and "+" only (so Notepad++ is not Notepad), without the word "microsoft"."""
+    return re.sub(r"[^a-z0-9+\u0430-\u044f\u0451]+", "", (name or "").lower()).replace("microsoft", "")
+
+
+def _only_extras(rest: str) -> bool:
+    if not rest:
+        return True
+    return any(rest.startswith(w) and _only_extras(rest[len(w):]) for w in _STORE_EXTRA)
+
+
+def store_title(package: str) -> str:
+    """"SpotifyAB.SpotifyMusic" -> "SpotifyMusic": Windows names Store packages Publisher.ProgramName."""
+    parts = (package or "").split(".")
+    return ".".join(parts[1:]) if len(parts) > 1 else (package or "")
 
 
 def store_name_match(name: str, apps: list[dict]) -> str:
-    """Name of the Store app that is this program (catalogue name "Spotify" and Store app "Spotify Music"), or "".
-    The Store name must start with every word of the program's name and add only listing words, so Notepad++ does
-    not match Windows Notepad and Opera does not match Opera GX: a wrong hit would hide a program from installing."""
-    want = _words(name)
-    if len("".join(want)) < 4:
+    """Readable name of the Store app that is this program, or "". Store apps come as package names
+    (SpotifyAB.SpotifyMusic, TelegramMessengerLLP.TelegramDesktop, 5319275A.WhatsAppDesktop): the part after the
+    publisher must start with the program's whole name and add only listing words, so Notepad++ does not match
+    Microsoft.WindowsNotepad and Opera does not match OperaGX: a wrong hit would hide a program from installing."""
+    want = _compact(name)
+    if len(want) < 4:
         return ""
     hits = []
     for a in apps:
-        got = _words(a.get("name", ""))
-        if got[:len(want)] == want and all(w in _STORE_EXTRA for w in got[len(want):]):
-            hits.append(a["name"])
-    return min(hits, key=len) if hits else ""
+        pkg = a.get("name") or ""
+        parts = pkg.split(".")
+        cands = {pkg, parts[-1]} | ({".".join(parts[1:])} if len(parts) > 1 else set())
+        if any((c := _compact(x)).startswith(want) and _only_extras(c[len(want):]) for x in cands):
+            hits.append(pkg)
+    return store_title(min(hits, key=len)) if hits else ""
 
 
 def mark_running(rows: list[dict]) -> None:

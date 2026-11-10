@@ -18,7 +18,7 @@ Page {
                           text: tr("disk.used").replace("{0}", app.size(vol.used || 0)).replace("{1}", app.size(vol.total || 0)) + "  ·  " + (vol.pct || 0) + "%"; muted: true; elide: Text.ElideRight; wrapMode: Text.NoWrap }
                     Txt { id: dState; anchors.right: parent.right; anchors.rightMargin: 10; anchors.baseline: dName.baseline
                           text: modelData.scanned ? (modelData.rows.length ? app.size(modelData.total) : tr("disk.clean")) : tr("disk.notscanned"); bold: true; wrapMode: Text.NoWrap
-                          color: modelData.scanned && modelData.rows.length ? Theme.accent2 : Theme.muted }
+                          color: modelData.scanned && modelData.rows.length ? Theme.accentText : Theme.muted }
                 }
                 Rectangle { width: parent.width - 20; x: 10; height: 8; radius: 4; color: Theme.track
                     Rectangle { width: Math.max(6, parent.width * (vol.pct || 0) / 100); height: parent.height; radius: 4

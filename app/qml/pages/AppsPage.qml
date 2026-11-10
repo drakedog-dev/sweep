@@ -102,7 +102,7 @@ Page {
         opacity: enabled ? 1 : 0.4
         Behavior on color { ColorAnimation { duration: Theme.dur } }
         Row { id: chRow; anchors.centerIn: parent; spacing: 6
-            Icon { visible: icon !== ""; name: icon; size: small ? 13 : 14; color: active ? "white" : Theme.accent2; anchors.verticalCenter: parent.verticalCenter }
+            Icon { visible: icon !== ""; name: icon; size: small ? 13 : 14; color: active ? "white" : Theme.accentText; anchors.verticalCenter: parent.verticalCenter }
             Txt { text: label; font.pixelSize: small ? 11 : 12; bold: true; color: active ? "white" : Theme.text; anchors.verticalCenter: parent.verticalCenter } }
         MouseArea { id: chHov; anchors.fill: parent; hoverEnabled: true; enabled: parent.enabled; cursorShape: Qt.PointingHandCursor; onClicked: parent.hit() }
     }
@@ -112,7 +112,7 @@ Page {
         Txt { id: tipT; anchors.centerIn: parent; text: parent.text; color: "white"; font.pixelSize: 11; wrapMode: Text.NoWrap }
     }
     component Spin: Icon {
-        name: "refresh-cw"; size: 18; color: Theme.accent2
+        name: "refresh-cw"; size: 18; color: Theme.accentText
         RotationAnimation on rotation { from: 0; to: 360; duration: 1100; loops: Animation.Infinite; running: parent.visible }
     }
     component AppIcon: Rectangle {
@@ -121,7 +121,7 @@ Page {
         Image { id: im; anchors.centerIn: parent; width: 28; height: 28; source: parent.src; smooth: true
             // asked for in screen pixels, so the icon is drawn 1:1 at any scaling
             sourceSize.width: Math.round(28 * Screen.devicePixelRatio); sourceSize.height: Math.round(28 * Screen.devicePixelRatio); asynchronous: true; visible: status === Image.Ready && parent.src !== "" }
-        Icon { anchors.centerIn: parent; name: "app-window"; size: 18; color: Theme.accent2; visible: !im.visible }
+        Icon { anchors.centerIn: parent; name: "app-window"; size: 18; color: Theme.accentText; visible: !im.visible }
     }
     // a letter on a colour of its own for programs that are not installed yet (the real icon once they are)
     component Mono: Rectangle {
@@ -145,7 +145,7 @@ Page {
                 Spin { anchors.verticalCenter: parent.verticalCenter }
                 Txt { text: tr(textKey).replace("{0}", String(Math.min((st.done || 0) + 1, st.total || 1))).replace("{1}", String(st.total || 0)).replace("{2}", st.current || "")
                       bold: true; font.pixelSize: 14; width: parent.width - 40 - qPct.width - 12; elide: Text.ElideRight; wrapMode: Text.NoWrap; anchors.verticalCenter: parent.verticalCenter }
-                Txt { id: qPct; text: Math.round(pg.queuePct(st, list) * 100) + "%"; bold: true; font.pixelSize: 20; color: Theme.accent2; anchors.verticalCenter: parent.verticalCenter } }
+                Txt { id: qPct; text: Math.round(pg.queuePct(st, list) * 100) + "%"; bold: true; font.pixelSize: 20; color: Theme.accentText; anchors.verticalCenter: parent.verticalCenter } }
             Bar { width: parent.width; height: 8; value: pg.queuePct(st, list) }
             Txt { property var w: pg.working(list); visible: w !== null; text: w ? (w.title || w.name) + ":  " + pg.phaseText(w) : ""; muted: true; font.pixelSize: 12; width: parent.width; elide: Text.ElideRight; wrapMode: Text.NoWrap }
         }
@@ -215,7 +215,7 @@ Page {
             Row { width: parent.width; spacing: 12
                 Spin { anchors.verticalCenter: parent.verticalCenter }
                 Txt { text: tr("pu.scan.title"); bold: true; font.pixelSize: 15; width: parent.width - 40 - sPct.width - 12; anchors.verticalCenter: parent.verticalCenter }
-                Txt { id: sPct; text: Math.round(pg.scanPct * 100) + "%"; bold: true; font.pixelSize: 20; color: Theme.accent2; anchors.verticalCenter: parent.verticalCenter } }
+                Txt { id: sPct; text: Math.round(pg.scanPct * 100) + "%"; bold: true; font.pixelSize: 20; color: Theme.accentText; anchors.verticalCenter: parent.verticalCenter } }
             Bar { width: parent.width; height: 8; value: pg.scanPct }
             Txt { width: parent.width; muted: true; font.pixelSize: 12
                   text: pu.stage === "details" ? tr("pu.scan.details").replace("{0}", String(pu.sdone || 0)).replace("{1}", String(pu.stotal || 0))
@@ -229,7 +229,7 @@ Page {
                         width: stR.implicitWidth + 22; height: 28; radius: 14
                         color: now_ ? Theme.soft : "transparent"; border.color: done_ ? Theme.good : now_ ? Theme.accent : Theme.border
                         Row { id: stR; anchors.centerIn: parent; spacing: 6
-                            Icon { id: stI; name: done_ ? "check" : now_ ? "loader" : "clock"; size: 13; color: done_ ? Theme.good : now_ ? Theme.accent2 : Theme.faint; anchors.verticalCenter: parent.verticalCenter
+                            Icon { id: stI; name: done_ ? "check" : now_ ? "loader" : "clock"; size: 13; color: done_ ? Theme.good : now_ ? Theme.accentText : Theme.faint; anchors.verticalCenter: parent.verticalCenter
                                 // the spinner stops at any angle; the tick that replaces it must stand upright
                                 RotationAnimation on rotation { from: 0; to: 360; duration: 1400; loops: Animation.Infinite; running: now_ && pg.visible; onRunningChanged: if (!running) stI.rotation = 0 } }
                             Txt { text: tr("pu.step." + modelData); font.pixelSize: 11; bold: now_; muted: !now_ && !done_; anchors.verticalCenter: parent.verticalCenter } } } }
@@ -307,7 +307,7 @@ Page {
                         Row { spacing: 6; width: parent.width; visible: modelData.state !== "working"
                             Txt { visible: !urow.done_; text: modelData.current || modelData.version; muted: true; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
                             Icon { visible: !urow.done_; name: "arrow-right"; size: 12; color: Theme.faint; anchors.verticalCenter: parent.verticalCenter }
-                            Txt { visible: !urow.done_; text: modelData.available; font.pixelSize: 12; bold: true; color: Theme.accent2; anchors.verticalCenter: parent.verticalCenter }
+                            Txt { visible: !urow.done_; text: modelData.available; font.pixelSize: 12; bold: true; color: Theme.accentText; anchors.verticalCenter: parent.verticalCenter }
                             Rectangle { visible: modelData.major === true && !urow.done_ && !urow.fail && !urow.suspect; height: 18; width: mj.implicitWidth + 14; radius: 9; color: "transparent"; border.color: Theme.warn; anchors.verticalCenter: parent.verticalCenter
                                 Txt { id: mj; anchors.centerIn: parent; text: tr("pu.major"); color: Theme.warn; font.pixelSize: 10; bold: true } }
                             // the program is open right now: its installer may not be able to replace it
@@ -330,7 +330,7 @@ Page {
                             Txt { width: parent.width - 20; color: Theme.warn; font.pixelSize: 12; elide: Text.ElideRight; maximumLineCount: 2
                                   text: tr("pu.r." + (modelData.reason || "nochange")) } }
                         Row { visible: urow.store; spacing: 6; width: parent.width
-                            Icon { name: "package"; size: 13; color: Theme.accent2; anchors.top: parent.top; anchors.topMargin: 2 }
+                            Icon { name: "package"; size: 13; color: Theme.accentText; anchors.top: parent.top; anchors.topMargin: 2 }
                             Txt { width: parent.width - 20; muted: true; font.pixelSize: 12; elide: Text.ElideRight; maximumLineCount: 2; text: tr("pu.store") } }
                         Row { visible: urow.suspect; spacing: 6; width: parent.width
                             Icon { name: "triangle-alert"; size: 13; color: Theme.warn; anchors.top: parent.top; anchors.topMargin: 2 }
@@ -342,7 +342,7 @@ Page {
                         // what is new in this version: release notes straight from the catalogue
                         Rectangle { visible: !urow.done_ && ((modelData.notes || "") !== "" || (modelData.notesUrl || "") !== ""); width: 30; height: 30; radius: 10; anchors.verticalCenter: parent.verticalCenter
                             color: nHov.containsMouse ? Theme.soft : "transparent"
-                            Icon { anchors.centerIn: parent; name: "sparkles"; size: 15; color: Theme.accent2 }
+                            Icon { anchors.centerIn: parent; name: "sparkles"; size: 15; color: Theme.accentText }
                             MouseArea { id: nHov; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: app.showNotes(modelData.id) }
                             Tip { show: nHov.containsMouse; text: tr("pu.notes"); anchors.bottom: parent.top; anchors.bottomMargin: 6; anchors.right: parent.right } }
                         // where it comes from: the vendor's own address, checked by SHA-256
@@ -360,7 +360,7 @@ Page {
                                 compact: true; primary: false; text: tr("pu.itsSame"); onClicked: app.trustUpdate(modelData.id)
                                 Tip { show: sameBtn.hovered; text: tr("pu.itsSame.tip"); anchors.bottom: parent.top; anchors.bottomMargin: 6; anchors.right: parent.right } }
                             Txt { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; visible: modelData.state === "working"
-                                  text: pg.rowPct(modelData) >= 0 ? Math.round(pg.rowPct(modelData)) + "%" : ""; bold: true; font.pixelSize: 15; color: Theme.accent2 }
+                                  text: pg.rowPct(modelData) >= 0 ? Math.round(pg.rowPct(modelData)) + "%" : ""; bold: true; font.pixelSize: 15; color: Theme.accentText }
                             Icon { anchors.right: parent.right; anchors.rightMargin: 8; anchors.verticalCenter: parent.verticalCenter; visible: modelData.state === "queued"; name: "hourglass"; size: 16; color: Theme.faint }
                             Icon { anchors.right: parent.right; anchors.rightMargin: 8; anchors.verticalCenter: parent.verticalCenter; visible: urow.done_; name: "circle-check"; size: 22
                                    color: Theme.good } }
@@ -425,7 +425,7 @@ Page {
                             Icon { name: "circle-check"; size: 16; color: Theme.good; anchors.verticalCenter: parent.verticalCenter }
                             Txt { text: modelData.store ? tr("ins.fromstore") : tr("ins.installed"); color: Theme.good; bold: true; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter } }
                         Txt { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; visible: modelData.state === "working" && pg.rowPct(modelData) >= 0
-                              text: Math.round(pg.rowPct(modelData)) + "%"; bold: true; font.pixelSize: 15; color: Theme.accent2 }
+                              text: Math.round(pg.rowPct(modelData)) + "%"; bold: true; font.pixelSize: 15; color: Theme.accentText }
                         Txt { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; visible: modelData.state === "queued"; text: tr1("pu.st.queuedN", String(modelData.queue || "")); muted: true; font.pixelSize: 12 }
                         Txt { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; visible: modelData.state === "failed"; width: parent.width; horizontalAlignment: Text.AlignRight
                               text: tr("pu.r." + (modelData.reason || "code")); color: Theme.bad; font.pixelSize: 11; elide: Text.ElideRight; wrapMode: Text.NoWrap } }
@@ -437,7 +437,7 @@ Page {
     Card { visible: pg.tab === 3 && ins.winget !== false; pad: 16
         Column { width: parent.width; spacing: 10
             Row { width: parent.width; spacing: 10
-                Icon { name: "sparkles"; size: 18; color: Theme.accent2; anchors.verticalCenter: parent.verticalCenter }
+                Icon { name: "sparkles"; size: 18; color: Theme.accentText; anchors.verticalCenter: parent.verticalCenter }
                 Txt { text: tr("ins.presets"); bold: true; font.pixelSize: 15; anchors.verticalCenter: parent.verticalCenter }
                 Txt { text: tr("ins.presets.hint"); muted: true; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter; width: parent.width - 220; elide: Text.ElideRight; wrapMode: Text.NoWrap } }
             Flow { width: parent.width; spacing: 8
@@ -455,7 +455,7 @@ Page {
             Column { width: parent.width; spacing: 12
                 Row { spacing: 10
                     Rectangle { width: 30; height: 30; radius: 9; color: Theme.soft; anchors.verticalCenter: parent.verticalCenter
-                        Icon { anchors.centerIn: parent; name: modelData.icon; size: 15; color: Theme.accent2 } }
+                        Icon { anchors.centerIn: parent; name: modelData.icon; size: 15; color: Theme.accentText } }
                     Txt { text: modelData.title; bold: true; font.pixelSize: 15; anchors.verticalCenter: parent.verticalCenter } }
                 Flow { id: grid; width: parent.width; spacing: 10
                     property int cols: width > 820 ? 3 : 2
@@ -485,7 +485,7 @@ Page {
                                     MouseArea { id: okHov; anchors.fill: parent; hoverEnabled: true }
                                     Tip { show: okHov.containsMouse; text: modelData.store ? tr1("ins.fromstore.tip", modelData.store) : tr("ins.installed"); anchors.bottom: parent.top; anchors.bottomMargin: 6; anchors.right: parent.right } }
                                 Txt { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; visible: modelData.state === "working"
-                                      text: pg.rowPct(modelData) >= 0 ? Math.round(pg.rowPct(modelData)) + "%" : ""; bold: true; font.pixelSize: 13; color: Theme.accent2 }
+                                      text: pg.rowPct(modelData) >= 0 ? Math.round(pg.rowPct(modelData)) + "%" : ""; bold: true; font.pixelSize: 13; color: Theme.accentText }
                                 Row { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; spacing: 3; visible: modelData.state === "queued"
                                     Icon { name: "hourglass"; size: 14; color: Theme.faint; anchors.verticalCenter: parent.verticalCenter }
                                     Txt { text: String(modelData.queue || ""); muted: true; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter } } }

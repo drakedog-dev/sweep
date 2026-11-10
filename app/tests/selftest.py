@@ -547,6 +547,13 @@ if exe:
     store = [r for r in items if not r.get("_arp")]
     note("Store apps: " + ", ".join(f"{r['id']} -> {(r.get('_store') or {}).get('name')} {os.path.basename((r.get('_store') or {}).get('icon', ''))}" for r in store))
     check(all(r.get("_store") and os.path.isfile(r["_store"]["icon"]) for r in store), f"Store apps found with their logo ({len(store)})")
+    note("kept for the Store (website installer over a Store app): " + (", ".join(r["id"] for r in items if r.get("storeOnly")) or "none"))
+    pkgs = UPD.store_apps()
+    note(f"Store packages: {len(pkgs)}, e.g. " + ", ".join(a["name"] for a in pkgs[:6]))
+    term = next((a["name"] for a in pkgs if a["name"].endswith(".WindowsTerminal")), "")
+    if term:      # the Install tab finds a program the PC has from the Store by its real package name
+        check(UPD.store_name_match("Windows Terminal", pkgs) == "WindowsTerminal", f"catalogue name matched to the Store package {term}")
+    check(not UPD.store_name_match("Notepad++", pkgs) and not UPD.store_name_match("7-Zip", pkgs), "website programs are not taken for Store apps")
     note("open programs: " + (", ".join(r["id"] for r in items if r.get("running")) or "none"))
     sus = [r for r in items if r.get("suspect")]
     note("look-alikes: " + (", ".join(f"{r['id']} ({r['why']}: {r.get('installedName')} / {r.get('catName')})" for r in sus) or "none"))
@@ -660,6 +667,26 @@ for theme in ("dark", "light"):
     if build >= 22000:
         check(res.get("caption") == 0 and res.get("text") == 0, f"{theme}: caption colours accepted by Windows 11")
 w.close()
+
+# ---------------- started twice: the second start shows the open window and leaves ----------------
+print("\n== second start")
+main_py = str(Path(__file__).resolve().parents[1] / "main.py")
+env2 = dict(os.environ, QT_QPA_PLATFORM="offscreen")
+first = subprocess.Popen([sys.executable, main_py, "--no-elevate"], env=env2)
+try:
+    rc2 = None
+    for _ in range(12):                      # the first copy needs a few seconds to open its window
+        time.sleep(3)
+        try:
+            rc2 = subprocess.run([sys.executable, main_py, "--no-elevate"], env=env2, timeout=6).returncode
+            break
+        except subprocess.TimeoutExpired:    # the first one was not listening yet, so this one opened as well: stopped by the timeout
+            continue
+    check(rc2 == 0 and first.poll() is None, f"a second start left at once (rc={rc2}) and the first copy stays open")
+    log_tail = P.LOG_FILE.read_text("utf-8", "replace")[-600:] if P.LOG_FILE.exists() else ""
+    check("started again while open" in log_tail, "the open window was asked to come up")
+finally:
+    first.kill()
 
 print()
 print("FAILED:" if fails else "ALL PASSED", *fails, sep="\n  ")

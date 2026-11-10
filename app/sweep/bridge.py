@@ -465,7 +465,6 @@ class App(QObject):
         self._update_later = True
         self.changed.emit()
 
-    @Slot()
     def _note_net_block(self) -> None:
         """Connections cut while a third-party antivirus is installed: say how to let Sweep through."""
         av = P.third_party_av()

@@ -19,7 +19,7 @@ Free and open source · no ads · no telemetry · every change can be undone
 ![Qt 6 / QML](https://img.shields.io/badge/Qt%206-QML-41CD52?style=flat-square&logo=qt&logoColor=white)
 [![MIT licence](https://img.shields.io/badge/licence-MIT-34D399?style=flat-square)](LICENSE)
 
-[**Download**](../../releases/latest) · [Features](#features) · [Screenshots](#screenshots) · [Safety](#how-sweep-keeps-you-safe) · [FAQ](#faq) · [Build](#building-from-source) · [Русский](README.ru.md)
+[**Download**](../../releases/latest) · [What's new](#whats-new) · [Features](#features) · [Screenshots](#screenshots) · [Safety](#how-sweep-keeps-you-safe) · [FAQ](#faq) · [Build](#building-from-source) · [Русский](README.ru.md)
 
 <img src="docs/hero-en.png" alt="Sweep: Overview after Analyze in the dark theme and the Install tab in the light theme" width="100%">
 
@@ -35,6 +35,17 @@ Most cleaners delete first and ask later. Sweep is built the other way round:
 - **Nothing phones home.** No accounts, no analytics, no ads. The code is right here.
 - **Your choices stay yours.** Nothing is scanned or changed until you press a button, and cleaning never touches the programs you picked to open your videos, photos and documents.
 - **Tested on real Windows.** Every change runs a self-test on a Windows machine that flips real privacy switches, cleans real browser history, checks that default apps survive a full clean, uninstalls a test program, and updates and installs real ones.
+
+## What's new
+
+- **Microsoft Store apps stay Store apps** (1.0.28). A program installed from the Store is updated by the Store; Sweep no longer puts the website version next to it and marks it "From Store" on the Install tab.
+- **Sweep repairs winget by itself** (1.0.28). A damaged package source ("Failed when opening source(s)") is refreshed, registered again or reset, and the check is repeated.
+- **Smooth everywhere** (1.0.28). The program icon, gradients and icons inside the app are antialiased at any scaling.
+- **Tray and window** (1.0.26, 1.0.29). Sweep remembers its window, can stay in the tray, and a second start just brings the open window to the front.
+- **Updates that survive a bad connection** (1.0.24). Sweep's own update resumes an interrupted download, checks SHA-256 and waits until Sweep is idle.
+- **Analyze on the Overview** (1.0.22). One button checks junk, drives, registry, startup, privacy and program updates.
+
+Every version is described in the [changelog](CHANGELOG.md).
 
 ## Features
 
@@ -57,7 +68,7 @@ Most cleaners delete first and ask later. Sweep is built the other way round:
 <tr>
 <td valign="top"><b>Registry</b><br>Safe categories only, file associations never touched, every key backed up to a <code>.reg</code> file with a Restore button.</td>
 <td valign="top"><b>System</b><br>CPU, GPU, board, BIOS, memory modules, disks and temperatures on one screen. Copy as text.</td>
-<td valign="top"><b>Made with care</b><br>English and Russian, dark and light themes down to the window title bar, five accents, sharp at any scaling. Remembers its window, can live in the tray. Drawn by the CPU, so games stay smooth.</td>
+<td valign="top"><b>Made with care</b><br>English and Russian, dark and light themes down to the window title bar, five accents, sharp at any scaling. Remembers its window, can live in the tray, opens only once. Drawn by the CPU, so games stay smooth.</td>
 </tr>
 </table>
 

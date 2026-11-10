@@ -67,7 +67,7 @@ Page {
                 Repeater { model: g["watched"] || []
                     Rectangle { height: 30; radius: 15; width: chipRow.implicitWidth + 24; color: Theme.soft
                         Row { id: chipRow; anchors.centerIn: parent; spacing: 6
-                            Icon { name: "lock"; size: 12; color: Theme.accent2; anchors.verticalCenter: parent.verticalCenter }
+                            Icon { name: "lock"; size: 12; color: Theme.accentText; anchors.verticalCenter: parent.verticalCenter }
                             Txt { text: modelData; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter } } } }
             }
         }

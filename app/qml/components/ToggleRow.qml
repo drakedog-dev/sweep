@@ -21,14 +21,14 @@ Rectangle {
         id: iconBox; visible: row.icon !== ""; width: visible ? 36 : 0; height: 36; radius: 10
         anchors.left: parent.left; anchors.leftMargin: 10; anchors.verticalCenter: parent.verticalCenter
         color: Theme.soft
-        Icon { anchors.centerIn: parent; name: row.icon; size: 18; color: row.checked ? Theme.accent2 : Theme.muted }
+        Icon { anchors.centerIn: parent; name: row.icon; size: 18; color: row.checked ? Theme.accentText : Theme.muted }
     }
     Column {
         id: col; anchors.left: iconBox.visible ? iconBox.right : parent.left; anchors.right: sw.left; anchors.verticalCenter: parent.verticalCenter
         anchors.leftMargin: 12; anchors.rightMargin: 16; spacing: 2
         Row { spacing: 10
             Txt { text: row.title; bold: true; font.pixelSize: 14 }
-            Txt { text: row.meta; font.pixelSize: 14; color: Theme.accent2; visible: row.meta !== "" }
+            Txt { text: row.meta; font.pixelSize: 14; color: Theme.accentText; visible: row.meta !== "" }
         }
         Txt { text: row.hint; muted: true; font.pixelSize: 12; width: col.width; visible: row.hint !== "" }
     }

@@ -91,7 +91,7 @@ ApplicationWindow {
             Repeater { model: navKeys.length
                 Item { width: side.width; height: 36
                     Row { anchors.fill: parent; anchors.leftMargin: 26; spacing: 12
-                        Icon { name: navIcons[index]; size: 18; color: current === index ? Theme.accent2 : Theme.muted; anchors.verticalCenter: parent.verticalCenter
+                        Icon { name: navIcons[index]; size: 18; color: current === index ? Theme.accentText : Theme.muted; anchors.verticalCenter: parent.verticalCenter
                             Behavior on color { ColorAnimation { duration: Theme.dur } } }
                         Txt { text: tr("nav." + navKeys[index]); font.pixelSize: 14; bold: true; color: current === index ? Theme.text : Theme.muted; anchors.verticalCenter: parent.verticalCenter
                             Behavior on color { ColorAnimation { duration: Theme.dur } } }
@@ -198,7 +198,7 @@ ApplicationWindow {
     Modal { open: app.needTerms; icon: "shield-check"; title: tr("terms.title"); subtitle: tr("terms.sub")
         Repeater { model: ["terms.1", "terms.2", "terms.3", "terms.4"]
             Row { spacing: 12; width: parent.width
-                Icon { name: "circle-check"; size: 18; color: Theme.accent2; anchors.top: parent.top; anchors.topMargin: 1 }
+                Icon { name: "circle-check"; size: 18; color: Theme.accentText; anchors.top: parent.top; anchors.topMargin: 1 }
                 Txt { text: tr(modelData); width: parent.width - 30 } } }
         Row { spacing: 10; topPadding: 6
             AccentButton { text: tr("terms.accept"); onClicked: app.acceptTerms() }
@@ -262,7 +262,7 @@ ApplicationWindow {
         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: parent.flip() }
     }
     component Spinner: Icon {
-        name: "refresh-cw"; size: 22; color: Theme.accent2
+        name: "refresh-cw"; size: 22; color: Theme.accentText
         RotationAnimation on rotation { from: 0; to: 360; duration: 1100; loops: Animation.Infinite; running: parent.visible }
     }
     Modal {

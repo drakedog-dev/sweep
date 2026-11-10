@@ -100,6 +100,8 @@ def main() -> int:
     ui_test = "--ui-test" in sys.argv
     if ui_test:
         os.environ["QT_QPA_PLATFORM"] = "offscreen"    # CI: no visible window
+    elif show_running_copy():
+        return 0                                       # Sweep is already open (maybe in the tray): its window came up
     else:
         ensure_admin()
     os.environ.setdefault("QT_QUICK_CONTROLS_STYLE", "Basic")
@@ -132,9 +134,63 @@ def main() -> int:
         return 1
     frame_title_bar(engine.rootObjects()[0], bridge)
     remember_window(engine.rootObjects()[0], bridge)
+    if not ui_test:
+        listen_for_second_start(qt_app, bridge)
     if ui_test:
         return run_ui_test(qt_app, engine.rootObjects()[0], bridge, warnings)
     return qt_app.exec()
+
+
+INSTANCE = "Sweep-window-1"          # the pipe a second start uses to bring the open Sweep to the front
+
+
+def show_running_copy() -> bool:
+    """Sweep is started while it is already open, usually hidden in the tray: show that window instead of opening a
+    second Sweep (two copies would overwrite each other's settings). A copy Sweep restarted itself as (--page, --do:
+    administrator rights) is never stopped, the old one is closing."""
+    if "--page" in sys.argv or "--do" in sys.argv or "--second" in sys.argv:
+        return False
+    try:
+        from PySide6.QtNetwork import QLocalSocket
+        if P.IS_WINDOWS:
+            import ctypes
+            ctypes.windll.user32.AllowSetForegroundWindow(-1)      # let the open copy come to the front
+        sock = QLocalSocket()
+        sock.connectToServer(INSTANCE)
+        if not sock.waitForConnected(400):
+            return False
+        sock.write(b"show")
+        sock.waitForBytesWritten(1000)
+        answered = sock.waitForReadyRead(2000) and bytes(sock.readAll()) == b"ok"   # a copy that hangs does not answer
+        sock.disconnectFromServer()
+        if answered:
+            P.log("started again while open: the open window was shown")
+        return bool(answered)
+    except Exception as e:  # noqa: BLE001
+        P.log(f"second start check: {e!r}")
+        return False
+
+
+def listen_for_second_start(qt_app, bridge, tries: int = 5) -> None:
+    from PySide6.QtCore import QTimer
+    from PySide6.QtNetwork import QLocalServer
+    server = QLocalServer(qt_app)
+    server.setSocketOptions(QLocalServer.SocketOption.WorldAccessOption)   # the asking copy has no administrator rights yet
+    if not P.IS_WINDOWS:
+        QLocalServer.removeServer(INSTANCE)            # a socket file left by a crash
+
+    def incoming():
+        while server.hasPendingConnections():
+            c = server.nextPendingConnection()
+            c.readyRead.connect(lambda c=c: (c.readAll(), bridge.showWindow(), c.write(b"ok"), c.flush(), c.disconnectFromServer()))
+            c.disconnected.connect(c.deleteLater)
+
+    server.newConnection.connect(incoming)
+    if not server.listen(INSTANCE):
+        P.log(f"second start pipe: {server.errorString()}")
+        server.deleteLater()
+        if tries > 0:                                  # the copy that restarted us is still closing
+            QTimer.singleShot(3000, lambda: listen_for_second_start(qt_app, bridge, tries - 1))
 
 
 def remember_window(root, bridge) -> None:

@@ -2,6 +2,12 @@
 
 All notable changes to Sweep. The newest version is at the top; the in-app update dialog and the GitHub release notes are built from this file.
 
+## 1.0.29
+- Starting Sweep while it is already open (hidden in the tray, for one) now brings the open window to the front instead of opening a second copy; two copies used to overwrite each other's settings
+- Install tab: programs you have from Microsoft Store are now really marked "From Store". In 1.0.28 Windows' package names (SpotifyAB.SpotifyMusic) were not recognised, so the mark never appeared
+- Light theme: status texts (what can be freed, warnings, sizes, percentages) are drawn in deeper colours and are easy to read on white
+- README: new screenshots and a "What's new" section
+
 ## 1.0.28
 - Smooth edges everywhere: the program icon is redrawn with antialiasing at every size Windows uses (title bar, taskbar, Start, Explorer), so it is no longer stair-stepped
 - Rounded shapes with a colour gradient (the Sweep logo, page headers, buttons, switches, progress bars) now have smooth corners; the CPU renderer used to draw their corners in visible steps

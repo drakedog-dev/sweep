@@ -30,9 +30,11 @@ QtObject {
     readonly property color softHover: dark ? "#2C2559" : "#D8D0F7"
     readonly property color status:    dark ? "#0A0816" : "#ECE8FB"
     readonly property color statusText:dark ? "#8B86B0" : "#5B5680"
-    readonly property color good:   "#34D399"
-    readonly property color warn:   "#FBBF24"
-    readonly property color bad:    "#F87171"
+    // On the light theme the bright status colours are unreadable as text on white, so they get deeper shades there
+    readonly property color good:   dark ? "#34D399" : "#059669"
+    readonly property color warn:   dark ? "#FBBF24" : "#B45309"
+    readonly property color bad:    dark ? "#F87171" : "#DC2626"
+    readonly property color accentText: dark ? accent2 : accent      // accent-coloured text and icons
     readonly property color track:  dark ? "#2F2A5A" : "#C4BCEB"
     readonly property color knobOff: dark ? "#CBD5E1" : "#FFFFFF"
 

@@ -65,4 +65,7 @@ git notes --ref=lint show HEAD         # Linux: ruff, unit tests, demo UI test
 - winget tables (upgrade, search, show, list) are read from a 512-column pseudo console through `updates.vt_screen`, so nothing is shortened with "…"; the pipe is only the fallback.
 - winget sometimes links a fork to the original (FlClash X to chen08209.FlClash). `updates.check_identity` compares the installed name and GitHub author with the catalogue; suspect rows cannot be ticked until the user presses "Same program".
 - When `winget upgrade` answers NO_APPLICATIONS_FOUND, `updates.upgrade` installs over the old version (only if Windows still lists the program) and then reads the installed version again.
+- Sweep opens once: a second start asks the open copy through a local pipe (`INSTANCE` in `main.py`) to show its window and leaves. Copies Sweep restarts itself as (`--page`, `--do`) skip that check.
+- Windows gives Store apps as package names (`SpotifyAB.SpotifyMusic`), not display names: `updates.store_name_match` compares the part after the publisher.
+- Text and icons in status colours use `Theme.good/warn/bad` and `Theme.accentText`; these get deeper shades on the light theme. `Theme.accent2` is for fills only.
 - Open questions: a paid Pro tier (the leaning is open code with a licence key, to stay eligible for SignPath) and the SignPath application.

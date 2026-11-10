@@ -31,14 +31,14 @@ Page {
                     Rectangle { width: (anGrid.width - 10) / 2; height: 54; radius: 12; color: rowHov.containsMouse && modelData.state === "done" ? Theme.softHover : Theme.cardAlt
                         Behavior on color { ColorAnimation { duration: Theme.dur } }
                         Rectangle { id: ic; width: 34; height: 34; radius: 10; color: Theme.soft; anchors.left: parent.left; anchors.leftMargin: 10; anchors.verticalCenter: parent.verticalCenter
-                            Icon { anchors.centerIn: parent; name: anCard.icons[modelData.id] || "circle-check"; size: 17; color: modelData.bad ? Theme.warn : Theme.accent2 } }
+                            Icon { anchors.centerIn: parent; name: anCard.icons[modelData.id] || "circle-check"; size: 17; color: modelData.bad ? Theme.warn : Theme.accentText } }
                         Column { anchors.left: ic.right; anchors.leftMargin: 12; anchors.right: mark.left; anchors.rightMargin: 10; anchors.verticalCenter: parent.verticalCenter; spacing: 2
                             Txt { text: tr("an.s." + modelData.id); bold: true; font.pixelSize: 13; width: parent.width; elide: Text.ElideRight; wrapMode: Text.NoWrap }
                             Txt { width: parent.width; elide: Text.ElideRight; wrapMode: Text.NoWrap; font.pixelSize: 12
                                 text: modelData.state === "done" ? modelData.text : modelData.state === "working" ? tr("an.working") : tr("an.wait")
                                 color: modelData.state === "done" ? (modelData.bad ? Theme.warn : Theme.good) : Theme.muted } }
                         Item { id: mark; width: 22; height: 22; anchors.right: parent.right; anchors.rightMargin: 12; anchors.verticalCenter: parent.verticalCenter
-                            Icon { anchors.centerIn: parent; name: "refresh-cw"; size: 16; color: Theme.accent2; visible: modelData.state === "working"
+                            Icon { anchors.centerIn: parent; name: "refresh-cw"; size: 16; color: Theme.accentText; visible: modelData.state === "working"
                                 RotationAnimation on rotation { from: 0; to: 360; duration: 1100; loops: Animation.Infinite; running: modelData.state === "working" } }
                             Icon { anchors.centerIn: parent; name: "arrow-right"; size: 16; color: Theme.faint; visible: modelData.state === "done" } }
                         MouseArea { id: rowHov; anchors.fill: parent; hoverEnabled: true; enabled: modelData.state === "done"; cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor

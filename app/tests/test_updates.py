@@ -226,14 +226,22 @@ def test_store_apps_are_updated_by_the_store():
     assert rows[0]["storeOnly"] is True                  # the website installer would add a second Spotify
     assert rows[1]["storeOnly"] is False                 # the same MSIX package: fine to update
     assert rows[2]["storeOnly"] is False                 # installed from the website
-    assert U.store_name_match("Spotify", apps) == "Spotify Music"
-    assert U.store_name_match("Git", apps) == ""          # too short to tell
-    more = apps + [{"name": n} for n in ("Notepad", "Opera GX", "Steam Link", "Telegram Desktop", "Microsoft PowerToys")]
-    assert U.store_name_match("Telegram", more) == "Telegram Desktop"
-    assert U.store_name_match("PowerToys", more) == "Microsoft PowerToys"
-    assert U.store_name_match("Notepad++", more) == ""     # not the Windows Notepad
-    assert U.store_name_match("Opera", more) == ""         # Opera GX is another browser
-    assert U.store_name_match("Steam", more) == ""         # Steam Link is another program
+    # Windows gives Store apps as package names, Publisher.ProgramName
+    real = [{"name": n} for n in ("SpotifyAB.SpotifyMusic", "TelegramMessengerLLP.TelegramDesktop", "5319275A.WhatsAppDesktop",
+                                  "Microsoft.WindowsNotepad", "OperaSoftware.OperaGX", "ValveCorporation.SteamLink", "Microsoft.PowerToys",
+                                  "PythonSoftwareFoundation.Python.3.12", "Microsoft.WindowsTerminal", "AppleInc.iTunes")]
+    assert U.store_name_match("Spotify", real) == "SpotifyMusic"
+    assert U.store_name_match("Telegram", real) == "TelegramDesktop"
+    assert U.store_name_match("WhatsApp", real) == "WhatsAppDesktop"
+    assert U.store_name_match("PowerToys", real) == "PowerToys"
+    assert U.store_name_match("Windows Terminal", real) == "WindowsTerminal"
+    assert U.store_name_match("Python 3.12", real) == "Python.3.12"
+    assert U.store_name_match("iTunes", real) == "iTunes"
+    assert U.store_name_match("Git", real) == ""           # too short to tell
+    assert U.store_name_match("Notepad++", real) == ""     # not the Windows Notepad
+    assert U.store_name_match("Opera", real) == ""         # Opera GX is another browser
+    assert U.store_name_match("Steam", real) == ""         # Steam Link is another program
+    assert U.store_name_match("Spotify", [{"name": "Spotify Music"}]) == "Spotify Music"   # a plain display name works too
     assert U.is_msix("https://x/y/App.MSIXBUNDLE?sig=1") and not U.is_msix("https://x/setup.exe")
 
 

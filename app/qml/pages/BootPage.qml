@@ -101,7 +101,7 @@ Page {
                     color: hov.containsMouse ? Theme.cardAlt : "transparent"
                     MouseArea { id: hov; anchors.fill: parent; hoverEnabled: true; acceptedButtons: Qt.NoButton }
                     Rectangle { id: ib; width: 38; height: 38; radius: 11; color: Theme.soft; anchors.left: parent.left; anchors.leftMargin: 10; anchors.verticalCenter: parent.verticalCenter
-                        Icon { anchors.centerIn: parent; size: 18; color: Theme.accent2
+                        Icon { anchors.centerIn: parent; size: 18; color: Theme.accentText
                             name: ({app: "app-window", driver: "cpu", service: "server", device: "hard-drive", policy: "layers"})[modelData.kind] || "layers" } }
                     Column { anchors.left: ib.right; anchors.leftMargin: 12; anchors.right: pill.left; anchors.rightMargin: 12; anchors.verticalCenter: parent.verticalCenter; spacing: 2
                         Txt { text: modelData.name; bold: true; font.pixelSize: 14; width: parent.width; elide: Text.ElideRight; wrapMode: Text.NoWrap }
