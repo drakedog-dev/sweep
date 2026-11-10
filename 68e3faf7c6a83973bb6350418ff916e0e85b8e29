@@ -1,0 +1,30 @@
+build: success
+run: https://github.com/drakedog-dev/sweep/actions/runs/42888101341
+commit: 68e3faf7c6a83973bb6350418ff916e0e85b8e29
+
+--- build.txt (last 15 of 15 lines)
+version 1.0.29, tag existed before: False
+- Starting Sweep while it is already open (hidden in the tray, for one) now brings the open window to the front instead of opening a second copy; two copies used to overwrite each other's settings
+- Install tab: programs you have from Microsoft Store are now really marked "From Store". In 1.0.28 Windows' package names (SpotifyAB.SpotifyMusic) were not recognised, so the mark never appeared
+- Light theme: status texts (what can be freed, warnings, sizes, percentages) are drawn in deeper colours and are easy to read on white
+- README: new screenshots and a "What's new" section
+
+### Download
+
+| File | Size | SHA-256 |
+|---|---|---|
+| [Sweep-Setup-1.0.29.exe](https://github.com/drakedog-dev/sweep/releases/download/v1.0.29/Sweep-Setup-1.0.29.exe) | 35.0 MB | `c5a5f3037a6f1416f17015ea07c9c10a190727976d15e154505572db09c5a5a4` |
+
+Windows 10 and 11, 64-bit. Installer not signed yet. Check the file in PowerShell: `Get-FileHash .\Sweep-Setup-1.0.29.exe`
+
+Sweep offers this update by itself when it starts. Full list of commits: [v1.0.28...v1.0.29](https://github.com/drakedog-dev/sweep/compare/v1.0.28...v1.0.29)
+
+--- log.txt (last 8 of 8 lines)
+2026-11-10 19:44:28  auto clean 20261110_194421: freed 311062248
+2026-11-10 19:44:30  titlebar dark: dark=0x80070006, caption=0x80070006, border=0x80070006, text=0x80070006
+2026-11-10 19:44:33  context: Sweep 1.0.29, admin=True, 64bit, user=runnervmm7ud1\runneradmin, os=Microsoft Windows Server 2025 Datacenter 26100, antivirus=none reported, exe=D:\a\sweep\sweep\app\dist\Sweep\Sweep.exe
+2026-11-10 19:44:57  winget version 1.11.510
+2026-11-10 19:45:04  updates: winget upgrade rc=0x0 via conpty, 18 updates, 11 s
+2026-11-10 20:01:51  install: search 'vlc' rc=0x0 via conpty: 10 found
+2026-11-10 20:01:57  ui-test: analysis done, junk=done:clean, drives=done:90 KB can be freed, registry=done:no problems, startup=done:3 programs start with Windows, privacy=done:tracking on: 15 of 17, updates=done:18 updates available
+2026-11-10 20:01:57  ui-test: pages 14, programs 59, boots 0, updates 18 (winget=True, checked=True, suspect 0), install picks 45 (installed 4), search 10, QML warnings 0
