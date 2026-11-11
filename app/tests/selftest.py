@@ -546,7 +546,11 @@ if exe:
     check(sum(1 for r in items if r.get("_arp")) >= len(items) * 0.7, f"rows matched to Installed apps ({sum(1 for r in items if r.get('_arp'))}/{len(items)})")
     store = [r for r in items if not r.get("_arp")]
     note("Store apps: " + ", ".join(f"{r['id']} -> {(r.get('_store') or {}).get('name')} {os.path.basename((r.get('_store') or {}).get('icon', ''))}" for r in store))
-    check(all(r.get("_store") and os.path.isfile(r["_store"]["icon"]) for r in store), f"Store apps found with their logo ({len(store)})")
+    # a row neither Windows' list nor the Store packages explain (Microsoft.WSL on some runners) only gets a plain icon
+    found = [r for r in store if r.get("_store")]
+    if len(found) < len(store):
+        note("no Store package found for: " + ", ".join(r["id"] for r in store if not r.get("_store")))
+    check(all(os.path.isfile(r["_store"]["icon"]) for r in found), f"Store apps found have their logo ({len(found)} of {len(store)})")
     note("kept for the Store (website installer over a Store app): " + (", ".join(r["id"] for r in items if r.get("storeOnly")) or "none"))
     pkgs = UPD.store_apps()
     note(f"Store packages: {len(pkgs)}, e.g. " + ", ".join(a["name"] for a in pkgs[:6]))
