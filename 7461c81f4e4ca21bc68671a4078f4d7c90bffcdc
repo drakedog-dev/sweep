@@ -1,0 +1,14 @@
+lint: failure
+run: https://github.com/drakedog-dev/sweep/actions/runs/43039361910
+commit: 7461c81f4e4ca21bc68671a4078f4d7c90bffcdc
+
+--- ci.txt (last 9 of 9 lines)
+W: Failed to fetch mirror+file:/etc/apt/apt-mirrors.txt/dists/resolute/InRelease  Temporary failure resolving 'security.ubuntu.com'
+W: Failed to fetch mirror+file:/etc/apt/apt-mirrors.txt/dists/resolute-updates/InRelease  Temporary failure resolving 'security.ubuntu.com'
+W: Failed to fetch mirror+file:/etc/apt/apt-mirrors.txt/dists/resolute-backports/InRelease  Temporary failure resolving 'security.ubuntu.com'
+W: Failed to fetch mirror+file:/etc/apt/apt-mirrors.txt/dists/resolute-security/InRelease  Temporary failure resolving 'security.ubuntu.com'
+W: Some index files failed to download. They have been ignored, or old ones used instead.
+E: Failed to fetch https://security.ubuntu.com/ubuntu/pool/main/m/mesa/libegl-mesa0_26.0.8-1ubuntu0.3_amd64v3.deb  Temporary failure resolving 'security.ubuntu.com'
+E: Failed to fetch https://security.ubuntu.com/ubuntu/pool/main/libg/libglvnd/libegl1_1.7.0-3_amd64v3.deb  Temporary failure resolving 'security.ubuntu.com'
+E: Unable to fetch some archives, maybe run apt update or try with --fix-missing?
+steps: apt=failure pip=skipped ruff=skipped unit=skipped ui=skipped
