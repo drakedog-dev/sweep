@@ -1,0 +1,32 @@
+build: success
+run: https://github.com/drakedog-dev/sweep/actions/runs/43043491078
+commit: fca48743efaf33793c3b46a52ad01534afecfb5f
+
+--- build.txt (last 17 of 17 lines)
+version 1.0.30, tag existed before: False
+- Program updates: a Store-style package that is open (ChatGPT, for one) is updated in the background by Windows and switches to the new version when the program is closed. Sweep now says "The update is installed. Close the program and open it again" instead of "the version stayed the same, press Update again"
+- After updating or installing programs Sweep checks whether an installer left work for a restart of Windows (files to be replaced at the next start, or winget saying so) and shows a calm "Restart the PC when it suits you" note. Sweep never restarts the PC itself
+- Store-style packages show their progress in percent while they install; the bar used to stand still
+- On a big or maximised window the pages keep a comfortable width in the middle instead of stretching from edge to edge, so switches and buttons stay next to what they belong to
+- Overview: the health and PC profile cards are the same height
+- The line that kept running across the bottom of the window while Sweep worked is gone: the status dot is amber while Sweep works and green when it is done
+
+### Download
+
+| File | Size | SHA-256 |
+|---|---|---|
+| [Sweep-Setup-1.0.30.exe](https://github.com/drakedog-dev/sweep/releases/download/v1.0.30/Sweep-Setup-1.0.30.exe) | 35.0 MB | `1dc9f44bbd25eee3cd08d350db08c8eae5d68aebc23c319bab37b4028f120574` |
+
+Windows 10 and 11, 64-bit. Installer not signed yet. Check the file in PowerShell: `Get-FileHash .\Sweep-Setup-1.0.30.exe`
+
+Sweep offers this update by itself when it starts. Full list of commits: [v1.0.29...v1.0.30](https://github.com/drakedog-dev/sweep/compare/v1.0.29...v1.0.30)
+
+--- log.txt (last 8 of 8 lines)
+2026-11-11 14:58:24  auto clean 20261111_145819: freed 311299832
+2026-11-11 14:58:26  titlebar dark: dark=0x80070006, caption=0x80070006, border=0x80070006, text=0x80070006
+2026-11-11 14:58:28  context: Sweep 1.0.30, admin=True, 64bit, user=runnervmm7ud1\runneradmin, os=Microsoft Windows Server 2025 Datacenter 26100, antivirus=none reported, exe=D:\a\sweep\sweep\app\dist\Sweep\Sweep.exe
+2026-11-11 14:58:47  winget version 1.11.510
+2026-11-11 14:58:50  updates: winget upgrade rc=0x0 via conpty, 23 updates, 3 s
+2026-11-11 15:01:18  install: search 'vlc' rc=0x0 via conpty: 10 found
+2026-11-11 15:01:25  ui-test: analysis done, junk=done:clean, drives=done:90 KB can be freed, registry=done:no problems, startup=done:3 programs start with Windows, privacy=done:tracking on: 15 of 17, updates=done:23 updates available
+2026-11-11 15:01:25  ui-test: pages 14, programs 59, boots 0, updates 23 (winget=True, checked=True, suspect 0), install picks 45 (installed 4), search 10, QML warnings 0
