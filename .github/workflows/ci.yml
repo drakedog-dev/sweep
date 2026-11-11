@@ -13,8 +13,7 @@ permissions:
 
 jobs:
   check:
-    # A fixed Ubuntu release: when ubuntu-latest moved to 26.04 its package servers could not be reached from the
-    # runners and the Qt libraries stopped installing. Move on deliberately, not when the label moves.
+    # A fixed Ubuntu release, so the checks change only when we decide to move on
     runs-on: ubuntu-24.04
     defaults: { run: { shell: bash } }      # bash with pipefail: a failing command before `| tee` fails the step
     steps:
@@ -27,11 +26,12 @@ jobs:
         # Ubuntu's package servers drop out now and then: three tries, and lint and unit tests run even without the libraries
         run: |
           for n in 1 2 3; do
-            if (sudo apt-get update -qq && sudo apt-get install -y -qq libegl1 libgl1 libxkbcommon0 libfontconfig1 libdbus-1-3) > "$RUNNER_TEMP/apt.txt" 2>&1; then echo "apt: ok (try $n)" | tee -a "$RUNNER_TEMP/ci.txt"; exit 0; fi
+            if (sudo apt-get update -qq && sudo apt-get install -y -qq libegl1 libgl1 libxkbcommon0 libfontconfig1 libdbus-1-3) > "$RUNNER_TEMP/apt.txt" 2>&1; then echo "apt: ok (try $n)" | tee -a "$RUNNER_TEMP/ci.txt"; echo "ok=true" >> "$GITHUB_OUTPUT"; exit 0; fi
             echo "apt: try $n failed: $(grep -m1 '^E:' "$RUNNER_TEMP/apt.txt")" | tee -a "$RUNNER_TEMP/ci.txt"
             sleep 40
           done
-          echo "apt: Qt libraries not installed, the interface test may fail for that reason" | tee -a "$RUNNER_TEMP/ci.txt"
+          echo "apt: Ubuntu's package servers cannot be reached, so the demo interface test is skipped here; every page is still opened by the Windows self-test" | tee -a "$RUNNER_TEMP/ci.txt"
+          echo "::warning title=Interface test skipped::Qt libraries could not be installed (Ubuntu package servers unreachable)"
       - name: Install
         id: pip
         run: pip install -r app/requirements.txt ruff 2>&1 | tail -20 | tee -a "$RUNNER_TEMP/ci.txt"
@@ -45,6 +45,7 @@ jobs:
           python app/tests/test_selfupdate.py 2>&1 | tee -a "$RUNNER_TEMP/ci.txt"
       - name: Interface test (demo mode)
         id: ui
+        if: steps.apt.outputs.ok == 'true'      # needs libEGL; without it only lint and unit tests run here
         env: { QT_QPA_PLATFORM: offscreen }
         run: |
           python app/main.py --ui-test --no-elevate 2>&1 | tee -a "$RUNNER_TEMP/ci.txt"
