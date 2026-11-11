@@ -6,6 +6,8 @@ All notable changes to Sweep. The newest version is at the top; the in-app updat
 - Program updates: a Store-style package that is open (ChatGPT, for one) is updated in the background by Windows and switches to the new version when the program is closed. Sweep now says "The update is installed. Close the program and open it again" instead of "the version stayed the same, press Update again"
 - After updating or installing programs Sweep checks whether an installer left work for a restart of Windows (files to be replaced at the next start, or winget saying so) and shows a calm "Restart the PC when it suits you" note. Sweep never restarts the PC itself
 - Store-style packages show their progress in percent while they install; the bar used to stand still
+- On a big or maximised window the pages keep a comfortable width in the middle instead of stretching from edge to edge, so switches and buttons stay next to what they belong to
+- Overview: the health and PC profile cards are the same height
 - The line that kept running across the bottom of the window while Sweep worked is gone: the status dot is amber while Sweep works and green when it is done
 
 ## 1.0.29

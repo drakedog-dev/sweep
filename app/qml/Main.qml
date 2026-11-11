@@ -128,8 +128,12 @@ ApplicationWindow {
     // ---------- content ----------
     Item {
         id: content
-        anchors.left: side.right; anchors.right: parent.right; anchors.top: parent.top; anchors.bottom: statusBar.top
-        anchors.margins: 26; anchors.bottomMargin: 14
+        // On a big or maximised window the pages keep a comfortable width in the middle instead of stretching edge to
+        // edge, where a switch ends up half a metre from its label.
+        readonly property real room: win.width - side.width - 52
+        width: Math.min(room, 1280); x: side.width + 26 + (room - width) / 2
+        anchors.top: parent.top; anchors.bottom: statusBar.top
+        anchors.topMargin: 26; anchors.bottomMargin: 14
 
         // no administrator rights: say so and offer the UAC prompt
         Rectangle {
@@ -157,13 +161,13 @@ ApplicationWindow {
         anchors.left: side.right; anchors.right: parent.right; anchors.bottom: parent.bottom
         height: 44; color: Theme.status
         Behavior on color { ColorAnimation { duration: Theme.dur } }
-        Row { anchors.left: parent.left; anchors.leftMargin: 26; anchors.verticalCenter: parent.verticalCenter; spacing: 10
+        Row { anchors.left: parent.left; anchors.leftMargin: content.x - side.width; anchors.verticalCenter: parent.verticalCenter; spacing: 10
             // calm on purpose: a steady dot, amber while Sweep works, green when it is done; nothing runs across the window
             Rectangle { width: 8; height: 8; radius: 4; anchors.verticalCenter: parent.verticalCenter; color: app.busy ? Theme.warn : Theme.good
                 Behavior on color { ColorAnimation { duration: Theme.dur } } }
-            Text { text: app.status; color: Theme.statusText; font.family: Theme.font; font.pixelSize: 12; renderType: Text.NativeRendering; width: statusBar.width - 200; elide: Text.ElideRight }
+            Text { text: app.status; color: Theme.statusText; font.family: Theme.font; font.pixelSize: 12; renderType: Text.NativeRendering; width: content.width - 180; elide: Text.ElideRight }
         }
-        Txt { anchors.right: parent.right; anchors.rightMargin: 26; anchors.verticalCenter: parent.verticalCenter; text: app.demo ? tr("common.demo") : ""; color: Theme.warn; font.pixelSize: 11 }
+        Txt { anchors.right: parent.right; anchors.rightMargin: statusBar.width - (content.x - side.width) - content.width; anchors.verticalCenter: parent.verticalCenter; text: app.demo ? tr("common.demo") : ""; color: Theme.warn; font.pixelSize: 11 }
     }
 
     // ---------- toast ----------

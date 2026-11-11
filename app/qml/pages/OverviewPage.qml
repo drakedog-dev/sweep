@@ -54,8 +54,8 @@ Page {
     }
 
     // Health + profile
-    Row { width: parent.width; spacing: 14
-        Card { width: (parent.width - 14) * 0.58
+    Row { id: hp; width: parent.width; spacing: 14
+        Card { id: hpA; width: (parent.width - 14) * 0.58; height: Math.max(hpA.implicitHeight, hpB.implicitHeight)
             Row { width: parent.width; spacing: 22
                 Item { width: 104; height: 104
                     Ring { anchors.fill: parent; value: app.health["score"] || 0
@@ -77,7 +77,7 @@ Page {
                 }
             }
         }
-        Card { width: (parent.width - 14) * 0.42
+        Card { id: hpB; width: (parent.width - 14) * 0.42; height: Math.max(hpA.implicitHeight, hpB.implicitHeight)
             Column { width: parent.width; spacing: 8
                 Row { spacing: 8
                     Rectangle { width: 10; height: 10; radius: 5; anchors.verticalCenter: parent.verticalCenter
