@@ -554,6 +554,8 @@ if exe:
     if term:      # the Install tab finds a program the PC has from the Store by its real package name
         check(UPD.store_name_match("Windows Terminal", pkgs) == "WindowsTerminal", f"catalogue name matched to the Store package {term}")
     check(not UPD.store_name_match("Notepad++", pkgs) and not UPD.store_name_match("7-Zip", pkgs), "website programs are not taken for Store apps")
+    marks = UPD.restart_pending()
+    check(isinstance(marks, set), f"restart marks read: {len(marks)} waiting now")
     note("open programs: " + (", ".join(r["id"] for r in items if r.get("running")) or "none"))
     sus = [r for r in items if r.get("suspect")]
     note("look-alikes: " + (", ".join(f"{r['id']} ({r['why']}: {r.get('installedName')} / {r.get('catName')})" for r in sus) or "none"))

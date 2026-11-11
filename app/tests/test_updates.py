@@ -316,6 +316,24 @@ def test_broken_source_is_repaired_once():
         U._fix.update(saved[4])
 
 
+def test_msix_package_shows_its_percentage():
+    # ChatGPT, Windows Terminal: no "Downloading https://" line and no sizes, only the taskbar percentage
+    seen = []
+    p = U.Progress(lambda ph, got, total: seen.append((ph, got, total)))
+    p.feed_text("Хэш установщика успешно проверен\r\nЗапуск установки пакета...\x1b]9;4;3;0\x1b\\\r\n")
+    assert p.phase == "prepare"
+    p.feed_text("\x1b]9;4;1;40\x1b\\████▌  40%\r")
+    p.feed_text("\x1b]9;4;1;95\x1b\\█████████▌  95%\r")
+    assert ("download", 40.0, 100.0) in seen and ("download", 95.0, 100.0) in seen, seen
+    p.feed_text("\x1b]9;4;0;0\x1b\\\r\nУспешно установлено. Перезапустите приложение, чтобы завершить обновление.\r\n")
+    assert p.phase == "install", seen
+
+
+def test_restart_marks_are_empty_off_windows():
+    assert U.restart_pending() == set()
+    assert "restartapp" in U.SUCCESS_REASONS
+
+
 if __name__ == "__main__":
     failed = 0
     for name, fn in list(globals().items()):

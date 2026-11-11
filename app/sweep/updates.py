@@ -59,7 +59,7 @@ REASONS = {
     0x8A15000F: "source",     # SOURCE_DATA_MISSING: "Failed when opening source(s)", repair was tried and did not help
 }
 PROHIBITS_ELEVATION = 0x8A150056
-SUCCESS_REASONS = ("reboot", "uptodate")
+SUCCESS_REASONS = ("reboot", "uptodate", "restartapp")
 
 # ---------------- demo data (Linux / screenshots) ----------------
 _DEMO = [
@@ -1022,6 +1022,8 @@ class Progress:
             self.feed(frame)
 
     def _taskbar(self, state: int, value: int) -> None:
+        if self.phase == "prepare" and state == 1 and 0 < value <= 100 and not self.sized:
+            self.phase = "download"      # an MSIX package: no "Downloading https://" line, only the percentage
         if self.phase != "download":
             return
         if state in (1, 4) and not self.sized and 0 <= value <= 100:
@@ -1253,7 +1255,29 @@ def _verdict(rc: int) -> tuple[int, str, bool]:
     return code, reason, rc == 0 or reason in SUCCESS_REASONS
 
 
-def upgrade(pid: str, timeout: int = 1800, progress=None, before: str = "", over=lambda: True, target: str = "") -> dict:
+def restart_pending() -> set[str]:
+    """What waits for a restart of Windows right now: files to be replaced at the next start and Windows' own
+    "restart required" marks. Compared before and after installing, it tells whether an installer left work for a restart."""
+    if not P.IS_WINDOWS:
+        return set()
+    import winreg
+    out: set[str] = set()
+    try:
+        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Control\Session Manager") as k:
+            out |= {v.lower() for v in (winreg.QueryValueEx(k, "PendingFileRenameOperations")[0] or []) if v.strip()}
+    except OSError:
+        pass
+    for mark, path in (("wu", r"SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired"),
+                       ("cbs", r"SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending")):
+        try:
+            winreg.CloseKey(winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, path, 0, winreg.KEY_READ | winreg.KEY_WOW64_64KEY))
+            out.add("mark:" + mark)
+        except OSError:
+            pass
+    return out
+
+
+def upgrade(pid: str, timeout: int = 1800, progress=None, before: str = "", over=lambda: True, target: str = "", msix: bool = False) -> dict:
     """Download the new version from the vendor, check its SHA-256 and install it silently.
     When winget does not see the program installed (it listed it a minute ago, but cannot pick it now), the new
     version is installed over the old one, which is what its installer does on an update anyway. Afterwards the
@@ -1289,7 +1313,9 @@ def upgrade(pid: str, timeout: int = 1800, progress=None, before: str = "", over
         P.log(f"updates: {pid} install over the old version rc={code:#x} ok={ok} via {how}  {_tail(raw)}")
     after = installed_version(pid) if ok and reason != "reboot" else ""
     if ok and not reason and before and after and after == before and before[:1] not in "<>":
-        reason = "nochange"
+        # A Store-style package (MSIX) that is open is not replaced on the spot: Windows keeps the new version ready and
+        # switches to it when the program is closed ("Successfully installed. Restart the application to complete the upgrade").
+        reason = "restartapp" if msix else "nochange"
     P.log(f"updates: {pid} done: {before or '?'} -> {after or '?'} route={route} reason={reason or 'ok'}")
     return {"ok": ok, "code": code, "reason": reason, "route": route, "after": after, "via": how, "frames": len(prog.log)}
 

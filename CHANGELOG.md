@@ -2,6 +2,12 @@
 
 All notable changes to Sweep. The newest version is at the top; the in-app update dialog and the GitHub release notes are built from this file.
 
+## 1.0.30
+- Program updates: a Store-style package that is open (ChatGPT, for one) is updated in the background by Windows and switches to the new version when the program is closed. Sweep now says "The update is installed. Close the program and open it again" instead of "the version stayed the same, press Update again"
+- After updating or installing programs Sweep checks whether an installer left work for a restart of Windows (files to be replaced at the next start, or winget saying so) and shows a calm "Restart the PC when it suits you" note. Sweep never restarts the PC itself
+- Store-style packages show their progress in percent while they install; the bar used to stand still
+- The line that kept running across the bottom of the window while Sweep worked is gone: the status dot is amber while Sweep works and green when it is done
+
 ## 1.0.29
 - Starting Sweep while it is already open (hidden in the tray, for one) now brings the open window to the front instead of opening a second copy; two copies used to overwrite each other's settings
 - Install tab: programs you have from Microsoft Store are now really marked "From Store". In 1.0.28 Windows' package names (SpotifyAB.SpotifyMusic) were not recognised, so the mark never appeared

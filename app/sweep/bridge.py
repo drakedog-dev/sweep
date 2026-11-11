@@ -169,6 +169,7 @@ class App(QObject):
                      "searching": False, "searched": False, "query": ""}
         self._ins_state: dict[str, dict] = {}
         self._ins_installed: set[str] = set()
+        self._need_restart = False               # an installer run from Sweep left work for a restart of Windows
         self._ins_store: dict[str, str] = {}     # catalogue id -> name of the same program installed from Microsoft Store
         self._ins_apps: list[dict] | None = None  # Microsoft Store apps on this PC, read once per Install tab load
         self._ins_results: list[dict] = []
@@ -2086,6 +2087,7 @@ class App(QObject):
         def work():
             import time
             self._restore_point("update programs")
+            waiting = UPD.restart_pending()
             ok = 0
             for n, it in enumerate(todo):
                 if self._pu_cancel:
@@ -2096,7 +2098,8 @@ class App(QObject):
                 self.updatesChanged.emit()
                 for attempt in range(2):     # a dropped connection or a busy vendor server usually works a few seconds later
                     r = UPD.upgrade(it["id"], progress=lambda ph, got, total, it=it: self._q_progress(self._pu, self.updatesChanged, it, ph, got, total),
-                                    before=it.get("version", ""), over=still_there(it), target=it.get("available", ""))
+                                    before=it.get("version", ""), over=still_there(it), target=it.get("available", ""),
+                                    msix=UPD.is_msix(it.get("installer", "")) or (bool(it.get("_store")) and not it.get("installer")))
                     if attempt or r["reason"] not in UPD.RETRY_REASONS or self._pu_cancel:
                         break
                     P.log(f"updates: {it['id']} {r['reason']} {r['code']:#x}, trying once more")
@@ -2112,12 +2115,13 @@ class App(QObject):
                 ok += state == "ok"
                 self._pu.update(done=n + 1, frac=0.0)
                 self.updatesChanged.emit()
+            self._note_restart(todo, waiting)
             return ok
 
         def done(ok):
             self._pu.update(running=False, current="", done=len(todo), frac=0.0)
             msg = self.i18n.t("pu.done", ok, len(todo))
-            if any(it.get("reason") == "reboot" for it in todo):
+            if self._need_restart:
                 msg += ". " + self.i18n.t("pu.r.reboot")
             self._set_status(msg)
             self.toast.emit(msg)
@@ -2134,6 +2138,20 @@ class App(QObject):
             self.updatesChanged.emit()
 
         self._run(work, done, self.i18n.t("pu.installing"), failed)
+
+    def _note_restart(self, todo: list[dict], waiting: set) -> None:
+        """After a batch of installers: does Windows need a restart to finish? Either winget said so for a program, or
+        an installer left files to be replaced at the next start. Stays on until Sweep is closed."""
+        asked = [it.get("title") or it.get("name") or it["id"] for it in todo if it.get("reason") == "reboot"]
+        left = UPD.restart_pending() - waiting
+        if asked or left:
+            P.log(f"restart needed: asked by {asked or 'none'}, new pending marks {len(left)}: {sorted(left)[:3]}")
+            self._need_restart = True
+            self.updatesChanged.emit()
+
+    @Property(bool, notify=updatesChanged)
+    def needRestart(self):
+        return self._need_restart
 
     # what changed in a new version: release notes from the catalogue, shown in a window
     @Property("QVariantMap", notify=updatesChanged)
@@ -2327,6 +2345,7 @@ class App(QObject):
         def work():
             import time
             self._restore_point("install programs")
+            waiting = UPD.restart_pending()
             ok = 0
             for n, it in enumerate(todo):
                 if self._ins_cancel:
@@ -2349,12 +2368,13 @@ class App(QObject):
                 ok += bool(r["ok"])
                 self._ins.update(done=n + 1, frac=0.0)
                 self.installChanged.emit()
+            self._note_restart(todo, waiting)
             return ok
 
         def done(ok):
             self._ins.update(running=False, current="", done=len(todo), frac=0.0)
             msg = self.i18n.t("ins.done", ok, len(todo))
-            if any(it.get("reason") == "reboot" for it in todo):
+            if self._need_restart:
                 msg += ". " + self.i18n.t("pu.r.reboot")
             self._set_status(msg)
             self.toast.emit(msg)

@@ -157,14 +157,10 @@ ApplicationWindow {
         anchors.left: side.right; anchors.right: parent.right; anchors.bottom: parent.bottom
         height: 44; color: Theme.status
         Behavior on color { ColorAnimation { duration: Theme.dur } }
-        Rectangle { // progress line
-            anchors.top: parent.top; height: 2; width: parent.width * 0.3; color: Theme.accent2; visible: app.busy
-            SequentialAnimation on x { running: app.busy; loops: Animation.Infinite
-                NumberAnimation { from: -statusBar.width * 0.3; to: statusBar.width; duration: 1100; easing.type: Easing.InOutQuad } }
-        }
         Row { anchors.left: parent.left; anchors.leftMargin: 26; anchors.verticalCenter: parent.verticalCenter; spacing: 10
+            // calm on purpose: a steady dot, amber while Sweep works, green when it is done; nothing runs across the window
             Rectangle { width: 8; height: 8; radius: 4; anchors.verticalCenter: parent.verticalCenter; color: app.busy ? Theme.warn : Theme.good
-                SequentialAnimation on opacity { running: app.busy; loops: Animation.Infinite; NumberAnimation { to: 0.3; duration: 500 } NumberAnimation { to: 1; duration: 500 } } }
+                Behavior on color { ColorAnimation { duration: Theme.dur } } }
             Text { text: app.status; color: Theme.statusText; font.family: Theme.font; font.pixelSize: 12; renderType: Text.NativeRendering; width: statusBar.width - 200; elide: Text.ElideRight }
         }
         Txt { anchors.right: parent.right; anchors.rightMargin: 26; anchors.verticalCenter: parent.verticalCenter; text: app.demo ? tr("common.demo") : ""; color: Theme.warn; font.pixelSize: 11 }

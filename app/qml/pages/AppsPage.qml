@@ -237,6 +237,13 @@ Page {
         }
     }
     QueueCard { visible: pg.tab === 2 && pu.running === true; st: pu; list: pu.items || []; textKey: "pu.progress" }
+    // an installer left work for a restart of Windows
+    Card { visible: (pg.tab === 2 || pg.tab === 3) && app.needRestart && !pu.running && !ins.running; pad: 16
+        Row { spacing: 12; width: parent.width
+            Icon { name: "power"; size: 20; color: Theme.warn; anchors.top: parent.top; anchors.topMargin: 1 }
+            Column { width: parent.width - 34; spacing: 3
+                Txt { text: tr("pu.restart.title"); bold: true; width: parent.width }
+                Txt { text: tr("pu.restart.text"); muted: true; font.pixelSize: 12; width: parent.width } } } }
     // no winget on this PC
     Card { visible: (pg.tab === 2 && pu.checked && pu.winget === false) || (pg.tab === 3 && ins.winget === false); pad: 18
         Column { width: parent.width; spacing: 12
@@ -319,7 +326,9 @@ Page {
                                 Tip { show: rnHov.containsMouse; text: tr("pu.running.tip"); anchors.bottom: parent.top; anchors.bottomMargin: 6; anchors.left: parent.left } }
                             // result
                             Icon { visible: urow.done_; name: "circle-check"; size: 14; color: modelData.reason === "reboot" ? Theme.warn : Theme.good; anchors.verticalCenter: parent.verticalCenter }
-                            Txt { visible: urow.done_; font.pixelSize: 12; bold: true; anchors.verticalCenter: parent.verticalCenter; elide: Text.ElideRight; wrapMode: Text.NoWrap
+                            Txt { visible: urow.done_ && modelData.reason === "restartapp"; font.pixelSize: 12; bold: true; color: Theme.good; anchors.verticalCenter: parent.verticalCenter
+                                  width: Math.min(implicitWidth, parent.width - 24); elide: Text.ElideRight; wrapMode: Text.NoWrap; text: tr("pu.r.restartapp") }
+                            Txt { visible: urow.done_ && modelData.reason !== "restartapp"; font.pixelSize: 12; bold: true; anchors.verticalCenter: parent.verticalCenter; elide: Text.ElideRight; wrapMode: Text.NoWrap
                                   color: modelData.reason === "reboot" ? Theme.warn : Theme.good
                                   text: modelData.reason === "reboot" ? tr("pu.r.reboot") : modelData.reason === "uptodate" ? tr("pu.r.uptodate") : tr1("pu.st.okTo", modelData.now || modelData.available) }
                             Txt { visible: urow.fail; text: tr("pu.r." + (modelData.reason || "code")) + (["code", "net", "server"].indexOf(modelData.reason) >= 0 && modelData.code ? " (" + modelData.code + ")" : "")
