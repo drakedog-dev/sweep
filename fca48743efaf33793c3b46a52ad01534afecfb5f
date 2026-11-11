@@ -1,0 +1,87 @@
+lint: failure
+run: https://github.com/drakedog-dev/sweep/actions/runs/43043491112
+commit: fca48743efaf33793c3b46a52ad01534afecfb5f
+
+--- ci.txt (last 69 of 69 lines)
+apt: try 1 failed: E: Failed to fetch https://security.ubuntu.com/ubuntu/pool/main/m/mesa/libegl-mesa0_26.0.8-1ubuntu0.3_amd64v3.deb  Temporary failure resolving 'security.ubuntu.com'
+apt: try 2 failed: E: Failed to fetch https://security.ubuntu.com/ubuntu/pool/main/m/mesa/libegl-mesa0_26.0.8-1ubuntu0.3_amd64v3.deb  Temporary failure resolving 'security.ubuntu.com'
+apt: try 3 failed: E: Failed to fetch https://security.ubuntu.com/ubuntu/pool/main/m/mesa/libegl-mesa0_26.0.8-1ubuntu0.3_amd64v3.deb  Temporary failure resolving 'security.ubuntu.com'
+apt: Qt libraries not installed, the interface test may fail for that reason
+Collecting psutil==6.1.0 (from -r app/requirements.txt (line 2))
+  Using cached psutil-6.1.0-cp36-abi3-manylinux_2_12_x86_64.manylinux2010_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (22 kB)
+Collecting shiboken6==6.8.1 (from PySide6==6.8.1->-r app/requirements.txt (line 1))
+  Using cached shiboken6-6.8.1-cp39-abi3-manylinux_2_28_x86_64.whl.metadata (2.5 kB)
+Collecting PySide6-Essentials==6.8.1 (from PySide6==6.8.1->-r app/requirements.txt (line 1))
+  Using cached PySide6_Essentials-6.8.1-cp39-abi3-manylinux_2_28_x86_64.whl.metadata (3.7 kB)
+Collecting PySide6-Addons==6.8.1 (from PySide6==6.8.1->-r app/requirements.txt (line 1))
+  Using cached PySide6_Addons-6.8.1-cp39-abi3-manylinux_2_28_x86_64.whl.metadata (4.0 kB)
+Using cached PySide6-6.8.1-cp39-abi3-manylinux_2_28_x86_64.whl (532 kB)
+Using cached psutil-6.1.0-cp36-abi3-manylinux_2_12_x86_64.manylinux2010_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl (287 kB)
+Using cached PySide6_Addons-6.8.1-cp39-abi3-manylinux_2_28_x86_64.whl (160.3 MB)
+Using cached PySide6_Essentials-6.8.1-cp39-abi3-manylinux_2_28_x86_64.whl (95.3 MB)
+Using cached shiboken6-6.8.1-cp39-abi3-manylinux_2_28_x86_64.whl (203 kB)
+Using cached ruff-0.17.4-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (10.6 MB)
+Installing collected packages: shiboken6, ruff, psutil, PySide6-Essentials, PySide6-Addons, PySide6
+
+Successfully installed PySide6-6.8.1 PySide6-Addons-6.8.1 PySide6-Essentials-6.8.1 psutil-6.1.0 ruff-0.17.4 shiboken6-6.8.1
+
+[notice] A new release of pip is available: 26.2.2 -> 26.3
+[notice] To update, run: pip install --upgrade pip
+All checks passed!
+  ok   test_upgrade_table_english
+  ok   test_upgrade_table_with_source_column
+  ok   test_upgrade_table_russian_and_second_table
+  ok   test_shortened_id_is_repaired
+  ok   test_nothing_to_upgrade
+  ok   test_show
+  ok   test_progress_noise_is_dropped
+  ok   test_live_progress
+  ok   test_live_progress_in_a_pseudo_console
+  ok   test_progress_survives_any_chunking
+  ok   test_show_publisher_and_release_notes
+  ok   test_search_table
+  ok   test_pseudo_console_screen
+  ok   test_screen_scrolls
+  ok   test_fork_is_not_offered_as_an_update
+  ok   test_titles_and_store_apps
+  ok   test_exit_codes
+  ok   test_store_apps_are_updated_by_the_store
+  ok   test_failed_list_is_not_up_to_date
+  ok   test_flags_for_old_winget
+  ok   test_download_errors
+  ok   test_broken_source_is_repaired_once
+  ok   test_msix_package_shows_its_percentage
+  ok   test_restart_marks_are_empty_off_windows
+ALL PASSED
+  ok   test_resumes_after_cut
+  ok   test_wrong_file_is_never_kept
+  ok   test_stale_part_is_fetched_again
+  ok   test_missing_file_fails_at_once
+  ok   test_server_gone_gives_up
+  ok   test_release_from_github_page_when_api_is_cut
+  ok   test_release_checksum_from_page_without_sums_file
+  ok   test_release_check_fails_when_all_github_is_cut
+  ok   test_checksum_from_release
+  ok   test_network_errors
+ALL PASSED
+Traceback (most recent call last):
+  File "/home/runner/work/sweep/sweep/app/main.py", line 329, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/home/runner/work/sweep/sweep/app/main.py", line 111, in main
+    from PySide6.QtGui import QIcon
+ImportError: libEGL.so.1: cannot open shared object file: No such file or directory
+steps: apt=success pip=success ruff=success unit=success ui=failure
+
+--- log.txt (last 11 of 11 lines)
+2026-11-11 15:32:40  self update: download attempt 1: IncompleteRead(0 bytes read, 200000 more expected)
+2026-11-11 15:32:40  self update: download attempt 2: IncompleteRead(0 bytes read, 100000 more expected)
+2026-11-11 15:32:43  self update: download attempt 1: URLError(ConnectionRefusedError(111, 'Connection refused'))
+2026-11-11 15:32:43  self update: download attempt 2: URLError(ConnectionRefusedError(111, 'Connection refused'))
+2026-11-11 15:32:43  self update: release check attempt 1: RemoteDisconnected('Remote end closed connection without response')
+2026-11-11 15:32:43  self update: GitHub API UpdateError("network: RemoteDisconnected('Remote end closed connection without response')"), asking github.com
+2026-11-11 15:32:43  self update: GitHub API UpdateError("limit: <HTTPError 403: 'rate limit exceeded'>"), asking github.com
+2026-11-11 15:32:43  self update: SHA256SUMS.txt: <HTTPError 404: 'Not Found'>
+2026-11-11 15:32:44  self update: release check attempt 1: RemoteDisconnected('Remote end closed connection without response')
+2026-11-11 15:32:44  self update: GitHub API UpdateError("network: RemoteDisconnected('Remote end closed connection without response')"), asking github.com
+2026-11-11 15:32:44  self update: release page attempt 1: RemoteDisconnected('Remote end closed connection without response')
