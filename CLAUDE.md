@@ -14,10 +14,10 @@ Sweep is a free, open-source (MIT) Windows 10/11 cleaner and optimiser: Python 3
 |---|---|
 | `app/main.py` | Entry point: UAC, `--auto`, `--guard`, `--ui-test`, themed title bar |
 | `app/sweep/bridge.py` | `App` QObject: every property and slot QML uses; `_run` (busy) and `_bg` (not busy) workers |
-| `app/sweep/*.py` | One module per feature: `cleaner`, `tweaks` (privacy, services, startup), `uninstall`, `updates` (winget: scan, look-alike check, upgrade, install, search), `catalog` (programs offered on the Install tab), `selfupdate` (Sweep's own release check and resumable, checksum-verified download), `conpty` (pseudo console for live winget progress), `guard`, `boot`, `extras`, `winframe` |
+| `app/sweep/*.py` | One module per feature: `cleaner`, `tweaks` (privacy, services, startup), `uninstall`, `updates` (winget: scan, look-alike check, upgrade, install, search), `catalog` (programs offered on the Install tab), `selfupdate` (Sweep's own release check and resumable, checksum-verified download), `conpty` (pseudo console for live winget progress), `history` (what Sweep did and when, for the History page), `guard`, `boot`, `extras`, `winframe` |
 | `app/sweep/i18n.py` | All UI strings, `ru` and `en` |
 | `app/qml/` | `Main.qml`, `pages/`, `components/`, `Sweep/Theme.qml` (colours, Lucide icon map) |
-| `app/tests/` | `test_updates.py` and `test_selfupdate.py` (run anywhere), `selftest.py` (Windows only, changes and restores real settings) |
+| `app/tests/` | `test_updates.py`, `test_selfupdate.py` and `test_history.py` (run anywhere), `selftest.py` (Windows only, changes and restores real settings) |
 | `tools/` | `make_icon_font.py` (Lucide subset), `make_app_icon.py` (draws `app/sweep.ico` and `docs/logo.png` smoothly at every size), `ci_report.py` (CI reports as git notes) |
 
 ## Run and check
@@ -28,6 +28,7 @@ python app/main.py                                # Linux/macOS: demo mode with 
 QT_QPA_PLATFORM=offscreen python app/main.py --ui-test --no-elevate   # every page, fails on any QML warning
 python app/tests/test_updates.py
 python app/tests/test_selfupdate.py
+python app/tests/test_history.py
 ruff check app tools
 ```
 

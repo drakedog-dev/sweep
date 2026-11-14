@@ -2,6 +2,9 @@
 
 All notable changes to Sweep. The newest version is at the top; the in-app update dialog and the GitHub release notes are built from this file.
 
+## 1.0.31
+- History: the Quarantine page is now History. It lists what Sweep did and when (clean-ups, registry fixes, programs updated, installed or removed, privacy, startup and service switches) and, while the copies exist, puts files or registry entries back with one button. The list is kept on your PC only and can be cleared; the quarantine itself is below it, as before
+
 ## 1.0.30
 - Program updates: a Store-style package that is open (ChatGPT, for one) is updated in the background by Windows and switches to the new version when the program is closed. Sweep now says "The update is installed. Close the program and open it again" instead of "the version stayed the same, press Update again"
 - After updating or installing programs Sweep checks whether an installer left work for a restart of Windows (files to be replaced at the next start, or winget saying so) and shows a calm "Restart the PC when it suits you" note. Sweep never restarts the PC itself

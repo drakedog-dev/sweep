@@ -26,6 +26,7 @@ Everything Sweep keeps stays in `C:\ProgramData\Sweep` and never leaves your PC:
 
 - `settings.json`: your choices (language, theme, ticked categories, Guard settings, hidden program updates);
 - `log.txt`: a technical log of actions and errors, which you can open from the app and share yourself if you report a problem;
+- `history.json`: the list of what Sweep did and when (clean-ups, updates, switches), shown on the History page; you can clear it there;
 - `Quarantine` and `RegBackup`: removed files and registry backups, so changes can be undone.
 
 Uninstalling Sweep removes the program and its scheduled tasks. The `ProgramData\Sweep` folder is kept so that quarantined files are not lost; delete it yourself when you no longer need them.
@@ -56,4 +57,4 @@ GitHub, Microsoft и производители программ получаю�
 
 ## Что хранится на компьютере
 
-Всё лежит в `C:\ProgramData\Sweep` и никуда не уходит: настройки (`settings.json`), технический журнал (`log.txt`), карантин и резервные копии реестра. При удалении Sweep папка остаётся, чтобы не потерять файлы из карантина; её можно удалить вручную.
+Всё лежит в `C:\ProgramData\Sweep` и никуда не уходит: настройки (`settings.json`), технический журнал (`log.txt`), список сделанного для страницы «История» (`history.json`), карантин и резервные копии реестра. При удалении Sweep папка остаётся, чтобы не потерять файлы из карантина; её можно удалить вручную.

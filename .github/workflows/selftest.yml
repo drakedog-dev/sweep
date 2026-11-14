@@ -24,6 +24,7 @@ jobs:
         run: |
           python app/tests/test_updates.py
           python app/tests/test_selfupdate.py
+          python app/tests/test_history.py
       - name: Self test
         run: |
           [Console]::OutputEncoding = [Text.Encoding]::UTF8; $env:PYTHONIOENCODING = 'utf-8'

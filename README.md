@@ -103,7 +103,7 @@ Every version is described in the [changelog](CHANGELOG.md).
 
 **Disks.** Every drive is scanned for junk that is safe to remove: its Recycle Bin, unfinished downloads, old logs and dumps, remains of previous Windows installations. Temp and download files from today are kept, and program data (AppData, browser and app databases) is never searched, so a database journal is never mistaken for a log.
 
-**Quarantine.** Files are moved to `ProgramData\Sweep\Quarantine`. **Restore** puts a session back, **Delete** removes it for good, and copies older than 30 days are deleted by themselves (you can turn that off in Settings).
+**History.** Every clean-up, registry fix, program update or removal and every switch you flip is listed with its date, and while the copies still exist one button puts the files or the registry entries back. The list stays on your PC and can be cleared. Below it is the quarantine: files are moved to `ProgramData\Sweep\Quarantine`. **Restore** puts a session back, **Delete** removes it for good, and copies older than 30 days are deleted by themselves (you can turn that off in Settings).
 
 **Settings.** Language, theme, accent colour, animations, restore points, administrator rights, automatic removal of old copies, what the close button does (ask, minimise to the tray, quit), and how new versions of Sweep arrive (ask me, install automatically, or do not check).
 
@@ -168,7 +168,7 @@ No personal data, statistics or telemetry. It contacts GitHub to check for Sweep
 <details>
 <summary><b>How do I undo something?</b></summary>
 
-Files: **Quarantine → Restore**. Registry: **Registry → backups → Restore**. Switches: flip them back. For anything bigger, Windows **System Restore** has a point Sweep created before the change.
+Files and registry: **History**, the Restore button next to the action (or **Registry → backups → Restore**). Switches: flip them back. For anything bigger, Windows **System Restore** has a point Sweep created before the change.
 </details>
 
 <details>

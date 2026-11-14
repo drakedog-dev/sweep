@@ -14,7 +14,7 @@ from PySide6.QtQuick import QQuickImageProvider
 
 from . import boot as bootx
 from . import catalog as CAT
-from . import cleaner, extras, guard, tweaks
+from . import cleaner, extras, guard, history, tweaks
 from . import platform as P
 from . import selfupdate as SU
 from . import uninstall as U
@@ -778,6 +778,58 @@ class App(QObject):
     def quarantineList(self):
         return self.quarantine
 
+    @Property("QVariantList", notify=changed)
+    def historyList(self):
+        """What Sweep did, newest first, with what can still be taken back (files in quarantine, a registry backup)."""
+        t, sz = self.i18n.t, self.i18n.size
+        rows = history.load() or ([] if P.IS_WINDOWS else history.demo())
+        files = {os.path.basename(q["path"]): q["path"] for q in self.quarantine}
+        regs = {b["session"] for b in self.reg_backups}
+        icons = {"clean": "trash-2", "found": "sparkles", "drives": "hard-drive", "registry": "database", "updates": "circle-arrow-up",
+                 "install": "package-plus", "uninstall": "package", "privacy": "shield", "startup": "power", "service": "server",
+                 "restored": "rotate-ccw", "regrestored": "rotate-ccw"}
+        out = []
+        for r in rows[:120]:
+            kind, n, what, on = r["kind"], int(r.get("n", 0)), str(r.get("what", "")), bool(r.get("on"))
+            freed = sz(float(r.get("freed", 0)))
+            detail = ""
+            if kind == "clean":
+                title = t("hist.clean", freed)
+            elif kind == "found":
+                title = t("hist.found", freed, n)
+            elif kind == "drives":
+                title = t("hist.drives", freed)
+            elif kind == "registry":
+                title = t("hist.registry", n)
+            elif kind in ("updates", "install"):
+                title, detail = t("hist." + kind, n), ", ".join(r.get("names", []))
+            elif kind == "uninstall":
+                title, detail = t("hist.uninstall", what), t("hist.uninstall.left", n, freed)
+            elif kind == "privacy":
+                one = next((self._loc(p.name) for p in tweaks.PRIVACY if p.id == what), "") if what else ""
+                title = t("hist.privacy.on" if on else "hist.privacy.off", one or t("hist.switches", n))
+            elif kind in ("startup", "service"):
+                title = t(f"hist.{kind}.{'on' if on else 'off'}", what)
+            elif kind in ("restored", "regrestored"):
+                title = t("hist." + kind, n)
+            else:
+                continue
+            try:
+                when = datetime.fromisoformat(r["t"]).strftime("%d.%m.%Y %H:%M")
+            except ValueError:
+                when = str(r["t"])
+            s = str(r.get("session", ""))
+            out.append({"when": when, "title": title, "detail": detail, "icon": icons.get(kind, "history"),
+                        "files": files.get(s, ""), "reg": s if s in regs else ""})
+        return out
+
+    @Slot()
+    def clearHistory(self):
+        """Forget the list of actions. Quarantine and backups stay where they are."""
+        history.clear()
+        self.changed.emit()
+        self._set_status(self.i18n.t("hist.cleared"))
+
     @Property(float, notify=changed)
     def quarantineTotal(self):
         return float(sum(s["size"] for s in self.quarantine))
@@ -1001,6 +1053,7 @@ class App(QObject):
                 freed += cleaner.quarantine(c, session)
                 c.size = 0
             P.log(f"clean {session}: freed {freed}")
+            history.add("clean", freed=float(freed), session=session)
             return freed
 
         def done(freed):
@@ -1138,6 +1191,7 @@ class App(QObject):
                 c["size"], c["count"], c["paths"] = 0, 0, []
             fixed = sum(extras.reg_clean(c, session) for c in regs)
             P.log(f"clean found {session}: freed {freed}, registry {fixed}")
+            history.add("found", freed=float(freed), n=int(fixed), session=session)
             return freed, fixed
 
         def done(res):
@@ -1206,6 +1260,9 @@ class App(QObject):
             if self.privacy_state[p.id] == protect:
                 guard.remember_privacy(self.settings, p.id, protect)
         P.save_settings(self.settings)
+        done = [p for p in items if p not in failed]
+        if done:
+            history.add("privacy", n=len(done), on=bool(protect), what=done[0].id if len(done) == 1 else "")
         return failed
 
     @Property(str, notify=changed)
@@ -1419,7 +1476,9 @@ class App(QObject):
 
         def work():
             self._restore_point("registry cleaning")
-            return sum(extras.reg_clean(c, session) for c in cats)
+            n = sum(extras.reg_clean(c, session) for c in cats)
+            history.add("registry", n=int(n), session=session)
+            return n
 
         def done(n):
             self.reg_backups = extras.reg_backups()
@@ -1430,7 +1489,12 @@ class App(QObject):
 
     @Slot(str)
     def regRestore(self, session):
-        self._run(lambda: extras.reg_restore(session), lambda n: (setattr(self, "reg_backups", extras.reg_backups()), self.changed.emit(), self._set_status(self.i18n.t("q.restored", n))))
+        def work():
+            n = extras.reg_restore(session)
+            history.add("regrestored", n=int(n), what=session)
+            return n
+
+        self._run(work, lambda n: (setattr(self, "reg_backups", extras.reg_backups()), self.changed.emit(), self._set_status(self.i18n.t("q.restored", n))))
 
     # ---------- services / startup ----------
     @Slot(str, bool)
@@ -1455,6 +1519,7 @@ class App(QObject):
             if state is not None and bool(state) != on:
                 self._set_status(self.i18n.t("svc.failed", row["title"]))
             else:
+                history.add("service", what=row["title"], on=bool(on))
                 self._set_status(self.i18n.t("common.done"))
 
         self._run(work, done, on_fail=lambda _: row.__setitem__("enabled", not on))
@@ -1484,6 +1549,7 @@ class App(QObject):
         self.changed.emit()
 
         def done(_):
+            history.add("startup", what=name, on=bool(on))
             self._compute_health()
             self.changed.emit()
             self._set_status(self.i18n.t("start.on" if on else "start.off", name))
@@ -1632,6 +1698,7 @@ class App(QObject):
                 else:
                     freed += c["size"]
                 c["size"], c["count"], c["paths"] = 0, 0, []
+            history.add("drives", freed=float(freed), session=session)
             return freed
 
         def done(freed):
@@ -1825,6 +1892,7 @@ class App(QObject):
         def done(res):
             u["result"] = res
             u["stage"] = "done"
+            history.add("uninstall", what=p["name"], n=int(res.get("removed", 0)), freed=float(res.get("freed", 0)), session=session)
             self._after_uninstall(p)
             self.changed.emit()
             self._set_status(self.i18n.t("un.done.text", res.get("removed", 0), self.i18n.size(res.get("freed", 0))))
@@ -2116,6 +2184,9 @@ class App(QObject):
                 self._pu.update(done=n + 1, frac=0.0)
                 self.updatesChanged.emit()
             self._note_restart(todo, waiting)
+            names = [it.get("title") or it.get("name") or it["id"] for it in todo if it.get("state") == "ok"]
+            if names:
+                history.add("updates", n=len(names), names=names[:20])
             return ok
 
         def done(ok):
@@ -2369,6 +2440,9 @@ class App(QObject):
                 self._ins.update(done=n + 1, frac=0.0)
                 self.installChanged.emit()
             self._note_restart(todo, waiting)
+            names = [it.get("title") or it.get("name") or it["id"] for it in todo if it.get("state") == "ok"]
+            if names:
+                history.add("install", n=len(names), names=names[:20])
             return ok
 
         def done(ok):
@@ -2447,7 +2521,9 @@ class App(QObject):
         def work():
             if not P.IS_WINDOWS and path.startswith("demo"):
                 return 1
-            return cleaner.restore(path)
+            n = cleaner.restore(path)
+            history.add("restored", n=int(n), what=os.path.basename(path))
+            return n
 
         def done(n):
             self.quarantine = [s for s in self.quarantine if s["path"] != path] if not P.IS_WINDOWS else cleaner.sessions()
