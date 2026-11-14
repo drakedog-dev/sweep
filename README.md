@@ -38,12 +38,13 @@ Most cleaners delete first and ask later. Sweep is built the other way round:
 
 ## What's new
 
-- **Microsoft Store apps stay Store apps** (1.0.28). A program installed from the Store is updated by the Store; Sweep no longer puts the website version next to it and marks it "From Store" on the Install tab.
+- **History** (1.0.31). One page lists what Sweep did and when: clean-ups, registry fixes, programs updated or removed, switches flipped. While the copies exist, one button puts the files or the registry entries back.
+- **Honest program updates** (1.0.30). Sweep tells you when an open program has to be closed and opened again to switch to its new version, and when Windows needs a restart to finish. It never restarts the PC itself.
+- **Comfortable on big screens** (1.0.30). On a maximised window the pages keep a readable width, and nothing runs across the status bar any more.
+- **Opens once** (1.0.29). Starting Sweep while it sits in the tray brings the open window to the front instead of opening a second copy.
+- **Microsoft Store apps stay Store apps** (1.0.28). A program installed from the Store is updated by the Store; Sweep does not put the website version next to it and marks it "From Store" on the Install tab.
 - **Sweep repairs winget by itself** (1.0.28). A damaged package source ("Failed when opening source(s)") is refreshed, registered again or reset, and the check is repeated.
-- **Smooth everywhere** (1.0.28). The program icon, gradients and icons inside the app are antialiased at any scaling.
-- **Tray and window** (1.0.26, 1.0.29). Sweep remembers its window, can stay in the tray, and a second start just brings the open window to the front.
 - **Updates that survive a bad connection** (1.0.24). Sweep's own update resumes an interrupted download, checks SHA-256 and waits until Sweep is idle.
-- **Analyze on the Overview** (1.0.22). One button checks junk, drives, registry, startup, privacy and program updates.
 
 Every version is described in the [changelog](CHANGELOG.md).
 
@@ -123,6 +124,8 @@ Every version is described in the [changelog](CHANGELOG.md).
 | **Guard** | **Privacy** |
 | ![Disks](docs/screens/en-disks.png) | ![Light theme](docs/screens/en-light.png) |
 | **Disks** | **Light theme** |
+| ![History](docs/screens/en-history.png) | ![Settings](docs/screens/en-settings.png) |
+| **History: what was done, with Restore** | **Settings** |
 
 ## Download
 
