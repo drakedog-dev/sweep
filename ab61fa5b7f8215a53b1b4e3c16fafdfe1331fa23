@@ -1,0 +1,27 @@
+build: success
+run: https://github.com/drakedog-dev/sweep/actions/runs/43641044311
+commit: ab61fa5b7f8215a53b1b4e3c16fafdfe1331fa23
+
+--- build.txt (last 12 of 12 lines)
+version 1.0.31, tag existed before: False
+- History: the Quarantine page is now History. It lists what Sweep did and when (clean-ups, registry fixes, programs updated, installed or removed, privacy, startup and service switches) and, while the copies exist, puts files or registry entries back with one button. The list is kept on your PC only and can be cleared; the quarantine itself is below it, as before
+
+### Download
+
+| File | Size | SHA-256 |
+|---|---|---|
+| [Sweep-Setup-1.0.31.exe](https://github.com/drakedog-dev/sweep/releases/download/v1.0.31/Sweep-Setup-1.0.31.exe) | 35.0 MB | `50337610bb4bed09aeb672d49dc3d6f10f29805196fc4c5b4a1e7d556e994b7f` |
+
+Windows 10 and 11, 64-bit. Installer not signed yet. Check the file in PowerShell: `Get-FileHash .\Sweep-Setup-1.0.31.exe`
+
+Sweep offers this update by itself when it starts. Full list of commits: [v1.0.30...v1.0.31](https://github.com/drakedog-dev/sweep/compare/v1.0.30...v1.0.31)
+
+--- log.txt (last 8 of 8 lines)
+2026-11-14 21:07:45  auto clean 20261114_210740: freed 313110344
+2026-11-14 21:07:47  titlebar dark: dark=0x80070006, caption=0x80070006, border=0x80070006, text=0x80070006
+2026-11-14 21:07:50  context: Sweep 1.0.31, admin=True, 64bit, user=runnervmm7ud1\runneradmin, os=Microsoft Windows Server 2025 Datacenter 26100, antivirus=none reported, exe=D:\a\sweep\sweep\app\dist\Sweep\Sweep.exe
+2026-11-14 21:08:09  winget version 1.11.510
+2026-11-14 21:08:12  updates: winget upgrade rc=0x0 via conpty, 28 updates, 4 s
+2026-11-14 21:10:53  install: search 'vlc' rc=0x0 via conpty: 10 found
+2026-11-14 21:11:00  ui-test: analysis done, junk=done:clean, drives=done:90 KB can be freed, registry=done:no problems, startup=done:3 programs start with Windows, privacy=done:tracking on: 15 of 17, updates=done:28 updates available
+2026-11-14 21:11:00  ui-test: pages 14, programs 59, boots 0, updates 28 (winget=True, checked=True, suspect 0), install picks 45 (installed 4), search 10, QML warnings 0
